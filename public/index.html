@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jay Rajput Media Power - Instagram & Facebook Growth</title>
+  
+  <link rel="icon" type="image/png" href="/logo.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+
+  <!-- Cashfree JS SDK -->
+<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+
+<script>
+  // Opens the Cashfree checkout for a wallet top-up. The wallet is only
+  // credited server-side once Cashfree confirms the order as PAID.
+  async function initiateCashfreePayment(amount) {
+    const token = localStorage.getItem('jr_token');
+    if (!token) {
+      openAuthModal('signin');
+      return false;
+    }
+
+    if (typeof Cashfree === 'undefined') {
+      alert('Payment gateway failed to load. Check your internet connection and reload.');
+      return false;
+    }
+
+    try {
+      const response = await fetch('/api/cashfree/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ amount: amount, currency: 'INR' })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        alert('Payment Error: ' + (data.error || 'Could not start the payment.'));
+        return false;
+      }
+
+      const cashfree = Cashfree({ mode: "production" });
+      cashfree.checkout({
+        paymentSessionId: data.payment_session_id,
+        redirectTarget: "_self"
+      });
+
+      return true;
+    } catch (err) {
+      alert('Cashfree Checkout Error: ' + err.message);
+      return false;
+    }
+  }
+
+  // Cashfree sends the customer back to /#/payment-success or /#/payment-failed
+  function handlePaymentReturn() {
+    const hash = window.location.hash || '';
+    if (!hash.startsWith('#/payment-')) return;
+
+    const [route, query] = hash.replace('#/', '').split('?');
+    const orderId = new URLSearchParams(query || '').get('order_id') || '';
+
+    if (route === 'payment-success') {
+      alert('Payment successful! Your wallet has been credited.');
+    } else if (route === 'payment-failed') {
+      alert('Payment was not completed. No amount was deducted. Please try again.');
+    }
+
+    history.replaceState(null, document.title, window.location.pathname);
+    fetchUserProfile();
+    loadPaymentHistory();
+  }
+</script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            display: ['"Outfit"', 'sans-serif'],
+          },
+          colors: {
+            fbBlue: '#1877F2',
+            fbBlueHover: '#166FE5',
+            igPink: '#E1306C',
+            igPurple: '#833AB4',
+            igOrange: '#F77737',
+            igYellow: '#FCAF45',
+            darkBg: '#090D16',
+            darkCard: '#111827',
+            darkBorder: '#1F2937'
+          },
+          boxShadow: {
+            igGlow: '0 10px 30px -5px rgba(225, 48, 108, 0.3), 0 0 20px rgba(131, 58, 180, 0.2)',
+            fbGlow: '0 10px 30px -5px rgba(24, 119, 242, 0.35)',
+            socialCard: '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 0 1px 1px rgba(0, 0, 0, 0.05)',
+          }
+        }
+      }
+    }
+
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+
+
+    .ig-gradient-text {
+      background: linear-gradient(45deg, #F58529, #FEDA77, #DD2A7B, #8134AF, #515BD4);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .ig-gradient-bg {
+      background: linear-gradient(45deg, #F58529, #DD2A7B, #8134AF);
+    }
+    .meta-gradient-bg {
+      background: linear-gradient(135deg, #1877F2 0%, #833AB4 50%, #E1306C 100%);
+    }
+    .mesh-social-light {
+      background-color: #F8FAFC;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(24, 119, 242, 0.12) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(225, 48, 108, 0.12) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(131, 58, 180, 0.08) 0px, transparent 50%);
+      background-attachment: fixed;
+    }
+    .mesh-social-dark {
+      background-color: #090D16;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(24, 119, 242, 0.22) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(225, 48, 108, 0.2) 0px, transparent 50%),
+        radial-gradient(at 50% 100%, rgba(131, 58, 180, 0.18) 0px, transparent 50%);
+      background-attachment: fixed;
+    }
+  </style>
+</head>
+<body class="mesh-social-light dark:mesh-social-dark text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col antialiased transition-colors duration-300">
+
+  <header class="bg-white/85 dark:bg-darkCard/85 backdrop-blur-xl sticky top-0 z-40 border-b border-slate-200/80 dark:border-darkBorder transition-colors">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+      
+      <div class="flex items-center space-x-3 sm:space-x-4">
+        <button id="menuToggleBtn" type="button" class="text-slate-700 dark:text-slate-200 hover:text-fbBlue p-2 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <i class="fa-solid fa-bars-staggered text-lg"></i>
+        </button>
+        
+        <a href="/" class="flex items-center space-x-3 group">
+          <div class="relative p-0.5 rounded-full ig-gradient-bg">
+            <img src="/logo.png" alt="Jay Rajput Media Power" class="w-10 h-10 rounded-full bg-white dark:bg-darkCard p-0.5 object-cover" onerror="this.src='https://placehold.co/100x100?text=JR'"/>
+          </div>
+          <div>
+            <span class="text-lg font-display font-black tracking-tight text-slate-900 dark:text-white leading-none block">Jay Rajput</span>
+            <span class="text-[10px] font-bold tracking-widest ig-gradient-text uppercase mt-0.5 block">Media Power</span>
+          </div>
+        </a>
+      </div>
+
+      <div class="flex items-center space-x-2.5 sm:space-x-3.5">
+        
+        <div class="hidden md:flex items-center space-x-2 pr-2 border-r border-slate-200 dark:border-darkBorder">
+          <span class="w-7 h-7 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-fbBlue flex items-center justify-center text-sm shadow-sm"><i class="fa-brands fa-facebook-f"></i></span>
+          <span class="w-7 h-7 rounded-xl bg-pink-50 dark:bg-pink-950/50 text-igPink flex items-center justify-center text-sm shadow-sm"><i class="fa-brands fa-instagram"></i></span>
+        </div>
+
+        <button id="themeToggleBtn" onclick="toggleTheme()" class="w-10 h-10 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-amber-400 flex items-center justify-center hover:scale-105 shadow-sm transition">
+          <i id="themeIcon" class="fa-solid fa-moon"></i>
+        </button>
+
+        <div id="walletDisplay" class="hidden items-center bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-sm rounded-2xl px-3.5 py-1.5 text-xs sm:text-sm space-x-2">
+          <div class="w-6 h-6 rounded-lg meta-gradient-bg flex items-center justify-center text-white text-xs">
+            <i class="fa-solid fa-wallet"></i>
+          </div>
+          <div>
+            <span id="walletCurrencySymbol" class="text-slate-400 font-bold text-xs">₹</span>
+            <span id="walletBalanceAmount" class="font-display font-black text-slate-900 dark:text-white text-sm">0.00</span>
+          </div>
+          <select id="currencySelector" onchange="changeCurrency(this.value)" class="bg-slate-100 dark:bg-slate-700 border-none text-xs text-slate-700 dark:text-slate-200 font-bold rounded-lg px-2 py-1 outline-none cursor-pointer">
+            <option value="INR">INR (₹)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+          </select>
+        </div>
+
+        <div id="authNavButtons" class="flex items-center space-x-2">
+          <button onclick="openAuthModal('signin')" type="button" class="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-fbBlue rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+            Sign In
+          </button>
+          <button onclick="openAuthModal('signup')" type="button" class="px-5 py-2 text-xs sm:text-sm font-bold rounded-xl text-white meta-gradient-bg shadow-igGlow hover:opacity-95 transition-all hover:-translate-y-0.5">
+            Sign Up
+          </button>
+        </div>
+
+        <div id="userProfileNav" class="hidden items-center space-x-3">
+          <div class="text-right hidden sm:block leading-tight">
+            <span id="navUserName" class="text-xs font-bold text-slate-800 dark:text-slate-200 block"></span>
+            <span class="text-[10px] text-fbBlue font-bold uppercase tracking-wider">● Online</span>
+          </div>
+          <button onclick="logout()" title="Logout" type="button" class="text-xs bg-rose-50 dark:bg-rose-950/40 text-rose-600 border border-rose-200 dark:border-rose-900 p-2.5 rounded-xl hover:bg-rose-500 hover:text-white transition">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden transition-opacity"></div>
+  <aside id="sidebarDrawer" class="fixed top-0 left-0 w-76 h-full bg-white dark:bg-darkCard border-r border-slate-200 dark:border-darkBorder z-50 transform -translate-x-full transition-transform duration-300 ease-out flex flex-col justify-between overflow-y-auto shadow-2xl">
+    <div>
+      <div class="p-5 border-b border-slate-100 dark:border-darkBorder flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <div class="w-8 h-8 rounded-full p-0.5 ig-gradient-bg">
+            <img src="/logo.png" class="w-full h-full rounded-full bg-white dark:bg-darkCard object-cover" onerror="this.src='https://placehold.co/100x100?text=JR'" />
+          </div>
+          <span class="font-display font-extrabold text-base ig-gradient-text">JR Navigation</span>
+        </div>
+        <button id="closeSidebarBtn" type="button" class="text-slate-400 hover:text-slate-800 dark:hover:text-white p-1.5 rounded-xl">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <nav class="p-4 space-y-1.5 text-sm font-semibold text-slate-600 dark:text-slate-300">
+        <button onclick="navigateSection('home')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-fbBlue transition text-left">
+          <i class="fa-solid fa-house w-5 text-fbBlue"></i><span>Home / Overview</span>
+        </button>
+        <button onclick="navigateSection('services-catalog')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-pink-50 dark:hover:bg-slate-800 hover:text-igPink transition text-left">
+          <i class="fa-solid fa-layer-group w-5 text-igPink"></i><span>Services Store</span>
+        </button>
+        <button onclick="navigateSection('about-us')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-purple-50 dark:hover:bg-slate-800 hover:text-igPurple transition text-left">
+          <i class="fa-solid fa-circle-info w-5 text-igPurple"></i><span>About Us</span>
+        </button>
+        <button onclick="navigateSection('api')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-blue-50 dark:hover:bg-slate-800 hover:text-fbBlue transition text-left">
+          <i class="fa-solid fa-code w-5 text-fbBlue"></i><span>API Reference</span>
+        </button>
+
+        <div id="userPrivateMenuItems" class="hidden pt-4 border-t border-slate-100 dark:border-darkBorder space-y-1.5">
+          <p class="px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">User Workspace</p>
+          <button onclick="navigateSection('new-order')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-pink-50 dark:from-slate-800 dark:to-slate-800 text-fbBlue dark:text-pink-400 border border-blue-100 dark:border-slate-700 transition text-left font-bold shadow-sm">
+            <i class="fa-solid fa-cart-plus w-5"></i><span>Place Order</span>
+          </button>
+          <button onclick="navigateSection('orders')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left">
+            <i class="fa-solid fa-list-check w-5 text-fbBlue"></i><span>My Orders</span>
+          </button>
+          <button onclick="navigateSection('add-funds')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left">
+            <i class="fa-solid fa-wallet w-5 text-amber-500"></i><span>Add Funds</span>
+          </button>
+          <button onclick="navigateSection('refer-earn')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left">
+            <i class="fa-solid fa-gift w-5 text-emerald-500"></i><span>Refer & Earn (5%)</span>
+          </button>
+          <button onclick="navigateSection('support')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left">
+            <i class="fa-solid fa-headset w-5 text-rose-500"></i><span>Support / Tickets</span>
+          </button>
+          <button onclick="navigateSection('account')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left">
+            <i class="fa-solid fa-user-gear w-5 text-slate-500"></i><span>Account Settings</span>
+          </button>
+        </div>
+      </nav>
+    </div>
+
+    <div class="p-4 border-t border-slate-100 dark:border-darkBorder">
+      <div class="bg-gradient-to-br from-blue-50 to-pink-50 dark:from-slate-800 dark:to-slate-800/60 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-xl bg-fbBlue text-white flex items-center justify-center font-bold shadow-sm">
+          <i class="fa-solid fa-phone-volume text-sm"></i>
+        </div>
+        <div>
+          <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Direct Helpline</p>
+          <a href="tel:6375063791" class="text-xs font-bold text-slate-900 dark:text-white hover:text-fbBlue transition">+91 6375063791</a>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
+    
+    <section id="section-home" class="content-section space-y-12">
+      
+      <div id="userWelcomeBanner" class="hidden p-6 sm:p-8 rounded-3xl meta-gradient-bg text-white shadow-igGlow flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
+        <div class="relative z-10">
+          <div class="inline-flex items-center space-x-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-bold text-white border border-white/20 mb-2">
+            <i class="fa-solid fa-circle-check"></i><span>Logged In & Ready</span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl font-display font-black tracking-tight">
+            Welcome back, <span id="welcomeUserName" class="text-amber-300">User</span>!
+          </h2>
+          <p class="text-blue-100 text-xs sm:text-sm mt-1 max-w-lg">Manage your Instagram & Facebook campaigns with instant delivery and automated refill.</p>
+        </div>
+        <div class="flex items-center gap-3 relative z-10">
+          <button onclick="navigateSection('services-catalog')" class="px-5 py-2.5 bg-white text-slate-900 font-bold rounded-2xl shadow-md hover:bg-slate-100 transition text-xs sm:text-sm">
+            Browse Store
+          </button>
+          <button onclick="navigateSection('add-funds')" class="px-5 py-2.5 bg-black/20 hover:bg-black/30 border border-white/20 text-white font-bold rounded-2xl backdrop-blur-md transition text-xs sm:text-sm">
+            + Add Funds
+          </button>
+        </div>
+      </div>
+
+      <div class="p-8 sm:p-14 rounded-3xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder shadow-socialCard flex flex-col md:flex-row items-center justify-between gap-10 relative overflow-hidden transition-colors">
+        <div class="space-y-5 max-w-xl text-center md:text-left relative z-10">
+          <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 bg-blue-50 dark:bg-slate-800 border border-blue-100 dark:border-slate-700 text-xs font-bold text-fbBlue dark:text-blue-400 rounded-full">
+            <i class="fa-brands fa-meta"></i>
+            <span>Optimized for Instagram Reels & Facebook Pages</span>
+          </div>
+
+          <h1 class="w-full max-w-2xl mx-auto md:mx-0">
+            <img src="/hero-banner.jpg" alt="Scale High with Jay Rajput Media Power" class="w-full h-auto object-contain" onerror="this.outerHTML='<span class=\'ig-gradient-text\'>Scale High with Jay Rajput Media Power</span>'"/>
+          </h1>
+
+          <p class="text-slate-600 dark:text-slate-300 text-sm sm:text-base leading-relaxed">
+            Boost Instagram Followers, Likes, Reels Reach, and Facebook Page Engagement with high-retention automated delivery.
+          </p>
+
+          <div id="heroGuestCTA" class="flex flex-wrap items-center justify-center md:justify-start gap-3.5 pt-2">
+            <button onclick="openAuthModal('signup')" class="px-7 py-3.5 text-white font-display font-bold rounded-2xl meta-gradient-bg shadow-igGlow hover:opacity-95 transition-all hover:-translate-y-0.5">
+              Get Started Free <i class="fa-solid fa-arrow-right ml-2 text-xs"></i>
+            </button>
+            <button onclick="openAuthModal('signin')" class="px-6 py-3.5 bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white font-bold rounded-2xl hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+              Sign In
+            </button>
+          </div>
+        </div>
+        
+        <div class="flex flex-col items-center justify-center relative z-10">
+          <div class="w-52 h-52 sm:w-64 sm:h-64 rounded-full p-2 ig-gradient-bg shadow-igGlow flex items-center justify-center">
+            <img src="/logo.png" alt="Jay Rajput Media Power" class="w-full h-full object-cover rounded-full bg-black shadow-inner" onerror="this.src='https://placehold.co/240x240?text=JR+Media'"/>
+          </div>
+          <div class="mt-4 px-4 py-1.5 bg-white/90 dark:bg-darkCard/90 backdrop-blur-md rounded-full border border-slate-200 dark:border-slate-700 shadow-sm text-[11px] font-display font-black tracking-widest text-slate-600 dark:text-slate-300 uppercase">
+            CREATE • INSPIRE • GROW
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="bg-white dark:bg-darkCard p-7 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3">
+          <div class="w-12 h-12 rounded-2xl bg-pink-50 dark:bg-pink-950/50 text-igPink flex items-center justify-center text-xl font-bold">
+            <i class="fa-brands fa-instagram"></i>
+          </div>
+          <h4 class="text-lg font-display font-bold text-slate-900 dark:text-white">Instagram Automation</h4>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">High-retention non-drop followers, reel views, active story engagement, and algorithmic boosts.</p>
+        </div>
+
+        <div class="bg-white dark:bg-darkCard p-7 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3">
+          <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-fbBlue flex items-center justify-center text-xl font-bold">
+            <i class="fa-brands fa-facebook"></i>
+          </div>
+          <h4 class="text-lg font-display font-bold text-slate-900 dark:text-white">Facebook Page Power</h4>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Fast-delivery page likes, post reactions, video watchtime, and follower packages tailored for brands.</p>
+        </div>
+
+        <div class="bg-white dark:bg-darkCard p-7 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3">
+          <div class="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-500 flex items-center justify-center text-xl font-bold">
+            <i class="fa-solid fa-hand-holding-dollar"></i>
+          </div>
+          <h4 class="text-lg font-display font-bold text-slate-900 dark:text-white">5% Referral Commission</h4>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Earn recurring cash commission deposited right into your wallet for all client orders above ₹100.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-about-us" class="content-section hidden space-y-8">
+      <div class="p-8 sm:p-12 rounded-3xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-6">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl meta-gradient-bg text-white flex items-center justify-center text-xl font-bold">
+            <i class="fa-solid fa-circle-info"></i>
+          </div>
+          <div>
+            <h2 class="text-3xl font-display font-black text-slate-900 dark:text-white">About Jay Rajput Media Power</h2>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400">Pioneering High-Retention Instagram & Facebook Growth</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center pt-4">
+          <div class="space-y-4 text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
+            <p>
+              At <strong class="text-fbBlue font-bold">Jay Rajput Media Power</strong>, we empower creators and agencies to scale on Meta platforms. Built with the core vision <span class="ig-gradient-text font-bold">"CREATE • INSPIRE • GROW"</span>, our server pipelines provide reliable Instagram and Facebook growth.
+            </p>
+            <p>
+              Whether you need rapid reel reach to hit explore feeds or non-drop Facebook followers to establish brand trust, our automated workflows deliver without manual delays.
+            </p>
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center space-x-3">
+              <i class="fa-solid fa-phone-volume text-fbBlue text-2xl"></i>
+              <div>
+                <p class="text-xs text-slate-400 font-bold uppercase">Founder Support Desk</p>
+                <a href="tel:6375063791" class="text-sm font-bold text-slate-900 dark:text-white hover:text-fbBlue">+91 6375063791</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4 text-center">
+            <div class="p-6 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-3xl space-y-1">
+              <span class="text-3xl font-display font-black text-fbBlue">100%</span>
+              <p class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase">Safe Algorithm</p>
+            </div>
+            <div class="p-6 bg-pink-50 dark:bg-pink-950/30 border border-pink-200 dark:border-pink-900 rounded-3xl space-y-1">
+              <span class="text-3xl font-display font-black text-igPink">Instant</span>
+              <p class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase">Auto-Start</p>
+            </div>
+            <div class="p-6 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-900 rounded-3xl space-y-1">
+              <span class="text-3xl font-display font-black text-igPurple">5.0%</span>
+              <p class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase">Affiliate Cut</p>
+            </div>
+            <div class="p-6 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 rounded-3xl space-y-1">
+              <span class="text-3xl font-display font-black text-emerald-500">24/7</span>
+              <p class="text-xs text-slate-500 dark:text-slate-400 font-bold uppercase">Refill Active</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-services-catalog" class="content-section hidden space-y-6">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-darkBorder pb-5">
+        <div>
+          <h2 class="text-3xl font-display font-black text-slate-900 dark:text-white flex items-center space-x-2">
+            <i class="fa-solid fa-layer-group text-igPink"></i><span>Services & Packages Store</span>
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">Select an Instagram or Facebook service and click <strong>Buy Now</strong> to place your order.</p>
+        </div>
+        <div class="relative w-full md:w-72">
+          <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
+          <input type="text" id="catalogSearchInput" oninput="filterCatalogCards(this.value)" placeholder="Search packages..." class="w-full bg-white dark:bg-darkCard border border-slate-200 dark:border-darkBorder rounded-2xl pl-9 pr-4 py-2.5 text-xs text-slate-800 dark:text-white focus:border-fbBlue outline-none shadow-sm transition">
+        </div>
+      </div>
+
+      <div id="servicesCardGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        </div>
+    </section>
+
+    <section id="section-new-order" class="content-section hidden">
+      <div class="max-w-2xl mx-auto bg-white dark:bg-darkCard p-6 sm:p-10 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-6">
+        <div class="border-b border-slate-100 dark:border-darkBorder pb-4">
+          <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+            <i class="fa-solid fa-cart-shopping text-fbBlue"></i><span>Configure Order</span>
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">Paste your Instagram profile / post URL or Facebook page link.</p>
+        </div>
+
+        <form id="newOrderForm" onsubmit="handlePlaceOrder(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Platform / Category</label>
+            <select id="orderCategorySelect" onchange="filterServicesByCategory()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white font-medium outline-none text-sm transition">
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Package</label>
+            <select id="orderServiceSelect" onchange="updateServiceDetails()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white font-medium outline-none text-sm transition">
+            </select>
+          </div>
+
+          <div id="serviceDetailsBox" class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1 text-slate-600 dark:text-slate-300">
+            <p><strong>Rate / 1000:</strong> <span id="displayRate" class="text-fbBlue dark:text-pink-400 font-bold">₹0</span></p>
+            <p><strong>Min / Max Limits:</strong> <span id="displayMinMax" class="font-semibold text-slate-800 dark:text-white">0 / 0</span></p>
+            <p id="displayDesc" class="text-slate-500 italic">Select a package to view specifications.</p>
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Target URL (Instagram Profile/Reel or FB Page)</label>
+            <input type="url" id="orderLink" required placeholder="https://instagram.com/yourprofile" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Quantity</label>
+            <input type="number" id="orderQuantity" required oninput="calculateOrderCharge()" placeholder="1000" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
+          </div>
+
+          <div class="p-4 bg-gradient-to-r from-blue-50 to-pink-50 dark:from-slate-800 dark:to-slate-800 rounded-2xl border border-blue-200 dark:border-slate-700 flex justify-between items-center">
+            <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Total Price:</span>
+            <span id="orderTotalCharge" class="text-2xl font-display font-black text-fbBlue dark:text-pink-400">₹0.00</span>
+          </div>
+
+          <button type="submit" class="w-full py-4 text-white font-display font-bold rounded-2xl meta-gradient-bg shadow-igGlow hover:opacity-95 transition">
+            Submit & Launch Order
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <section id="section-orders" class="content-section hidden">
+      <div class="bg-white dark:bg-darkCard p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-6">
+        <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+          <i class="fa-solid fa-list-check text-fbBlue"></i><span>Order History</span>
+        </h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-700 dark:text-slate-300">
+            <thead class="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 uppercase text-[11px] font-bold tracking-wider border-b border-slate-200 dark:border-slate-700">
+              <tr>
+                <th class="p-3.5">ID</th>
+                <th class="p-3.5">Package</th>
+                <th class="p-3.5">Target Link</th>
+                <th class="p-3.5">Qty</th>
+                <th class="p-3.5">Cost</th>
+                <th class="p-3.5">Status</th>
+                <th class="p-3.5">Date</th>
+              </tr>
+            </thead>
+            <tbody id="ordersTableBody" class="divide-y divide-slate-100 dark:divide-slate-800">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-add-funds" class="content-section hidden">
+      <div class="max-w-xl mx-auto bg-white dark:bg-darkCard p-6 sm:p-10 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-6">
+        <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+          <i class="fa-solid fa-wallet text-amber-500"></i><span>Top Up Wallet</span>
+        </h2>
+        <form id="addFundsForm" onsubmit="handleAddFunds(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Currency</label>
+            <select id="fundCurrency" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm font-medium">
+              <option value="INR">Indian Rupee (INR ₹)</option>
+              <option value="USD">US Dollar (USD $)</option>
+              <option value="EUR">Euro (EUR €)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Payment Method</label>
+            <div class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-500 dark:text-slate-400 text-sm font-medium">
+              UPI, Cards & Netbanking — handled securely by Cashfree
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Amount</label>
+            <input type="number" min="10" id="fundAmount" required placeholder="500" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm font-medium">
+          </div>
+          <button type="submit" class="w-full py-4 text-white font-display font-bold rounded-2xl meta-gradient-bg shadow-fbGlow hover:opacity-95 transition">
+            Pay Securely via Cashfree
+          </button>
+          <p class="text-[11px] text-slate-500 dark:text-slate-400 text-center">
+            Your wallet is credited only after Cashfree confirms the payment. Online deposits are in INR.
+          </p>
+        </form>
+
+        <div class="pt-5 border-t border-slate-200 dark:border-darkBorder space-y-2">
+          <h3 class="text-xs uppercase font-bold text-slate-600 dark:text-slate-300">Deposit History</h3>
+          <div id="paymentHistory">
+            <p class="text-xs text-slate-500 dark:text-slate-400 text-center py-3">Loading...</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-refer-earn" class="content-section hidden">
+      <div class="max-w-2xl mx-auto bg-white dark:bg-darkCard p-8 sm:p-10 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-6 text-center">
+        <div class="w-16 h-16 mx-auto rounded-3xl meta-gradient-bg text-white flex items-center justify-center text-3xl shadow-md">
+          <i class="fa-solid fa-gift"></i>
+        </div>
+        <div>
+          <h2 class="text-3xl font-display font-black text-slate-900 dark:text-white">Refer & Earn 5% Commission</h2>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5">Earn a recurring <strong class="text-fbBlue font-bold">5% Commission</strong> on every referred customer's order over ₹100.</p>
+        </div>
+        <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-left space-y-1.5">
+          <label class="text-xs uppercase font-bold text-slate-600 dark:text-slate-300">Your Shareable Referral Link</label>
+          <div class="flex items-center space-x-2">
+            <input type="text" id="myReferralLink" readonly class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-800 dark:text-white font-mono text-xs outline-none">
+            <button onclick="copyReferralLink()" class="px-5 py-3 text-white font-bold rounded-xl text-xs bg-fbBlue hover:bg-fbBlueHover shadow-sm transition">Copy</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-api" class="content-section hidden">
+      <div class="space-y-6">
+        <div class="bg-white dark:bg-darkCard p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-4">
+          <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+            <i class="fa-solid fa-key text-fbBlue"></i><span>Your API Key</span>
+          </h2>
+          <p class="text-sm text-slate-600 dark:text-slate-300">Use this key so other websites, bots or scripts can buy services from Jay Rajput Media Power.</p>
+          <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+            <div class="flex items-center space-x-2">
+              <input type="text" id="myApiKey" readonly placeholder="Sign in and generate your API key" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-800 dark:text-white font-mono text-xs outline-none">
+              <button onclick="copyApiKey()" class="px-4 py-3 text-white font-bold rounded-xl text-xs bg-fbBlue hover:bg-fbBlueHover shadow-sm transition whitespace-nowrap">Copy</button>
+            </div>
+            <button onclick="generateApiKey()" class="w-full py-3 bg-slate-900 dark:bg-slate-700 text-white font-display font-bold rounded-xl hover:bg-slate-800 transition text-xs uppercase tracking-wider">
+              <i class="fa-solid fa-rotate mr-1"></i> Generate / Reset Key
+            </button>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-darkCard p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-4">
+          <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+            <i class="fa-solid fa-code text-fbBlue"></i><span>Developer API</span>
+          </h2>
+          <p class="text-sm text-slate-600 dark:text-slate-300">Connect your custom application or external script to our order automation.</p>
+          <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+            <code class="text-xs text-fbBlue dark:text-blue-400 font-mono">POST https://jayrajputmediapower.com/api/v2</code>
+          </div>
+
+          <div class="space-y-3">
+            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <p class="text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">1. List services</p>
+              <code class="text-[11px] text-fbBlue dark:text-blue-400 font-mono break-all">POST /api/v2 &nbsp;{ "key": "JR...", "action": "services" }</code>
+            </div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <p class="text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">2. Create order</p>
+              <code class="text-[11px] text-fbBlue dark:text-blue-400 font-mono break-all">POST /api/v2 &nbsp;{ "key": "JR...", "action": "add", "service": 12, "link": "https://instagram.com/p/xyz", "quantity": 1000 }</code>
+            </div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <p class="text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">3. Check order status</p>
+              <code class="text-[11px] text-fbBlue dark:text-blue-400 font-mono break-all">POST /api/v2 &nbsp;{ "key": "JR...", "action": "status", "order": 102 }</code>
+            </div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <p class="text-xs font-bold text-slate-700 dark:text-slate-200 mb-1">4. Check balance</p>
+              <code class="text-[11px] text-fbBlue dark:text-blue-400 font-mono break-all">POST /api/v2 &nbsp;{ "key": "JR...", "action": "balance" }</code>
+            </div>
+          </div>
+
+          <p class="text-[11px] text-slate-500 dark:text-slate-400">Actions supported: <strong>services</strong>, <strong>add</strong>, <strong>status</strong>, <strong>balance</strong>, <strong>refunds</strong>. Form-encoded and JSON bodies both work, plus <span class="font-mono">GET /api/v2/services?key=JR...</span>.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-support" class="content-section hidden">
+      <div class="max-w-2xl mx-auto bg-white dark:bg-darkCard p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-6">
+        <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+          <i class="fa-solid fa-headset text-rose-500"></i><span>Support Tickets</span>
+        </h2>
+        <form id="supportTicketForm" onsubmit="handleRaiseTicket(event)" class="space-y-4">
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Subject</label>
+            <input type="text" id="ticketSubject" required placeholder="Issue with Instagram / FB Order" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm">
+          </div>
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Order ID</label>
+            <input type="text" id="ticketOrderId" placeholder="e.g. 102" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm">
+          </div>
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Message</label>
+            <textarea id="ticketMessage" rows="4" required placeholder="Describe your query in detail..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm"></textarea>
+          </div>
+          <button type="submit" class="w-full py-4 text-white font-display font-bold rounded-2xl bg-fbBlue hover:bg-fbBlueHover shadow-md transition">
+            Submit Support Request
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <section id="section-account" class="content-section hidden space-y-6">
+      <div class="max-w-xl mx-auto space-y-6">
+        <div class="bg-white dark:bg-darkCard p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-4">
+          <h2 class="text-xl font-display font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+            <i class="fa-solid fa-user-shield text-fbBlue"></i><span>Account Information</span>
+          </h2>
+          <div class="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+            <p><strong class="text-slate-400">Name:</strong> <span id="accName" class="font-semibold text-slate-900 dark:text-white">-</span></p>
+            <p><strong class="text-slate-400">Email:</strong> <span id="accEmail" class="font-semibold text-slate-900 dark:text-white">-</span></p>
+            <p><strong class="text-slate-400">Referral Code:</strong> <span id="accRefCode" class="text-fbBlue font-mono font-bold">-</span></p>
+          </div>
+        </div>
+
+        <div class="bg-white dark:bg-darkCard p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-4">
+          <h2 class="text-xl font-display font-bold text-slate-900 dark:text-white flex items-center space-x-2">
+            <i class="fa-solid fa-key text-igPink"></i><span>Update Password</span>
+          </h2>
+          <form id="changePasswordForm" onsubmit="handleChangePassword(event)" class="space-y-4">
+            <div>
+              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Current Password</label>
+              <input type="password" id="currentPassword" required placeholder="••••••••" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm">
+            </div>
+            <div>
+              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">New Password</label>
+              <input type="password" id="newPassword" required placeholder="Minimum 6 characters" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm">
+            </div>
+            <button type="submit" class="w-full py-3.5 bg-slate-900 dark:bg-slate-700 text-white font-display font-bold rounded-2xl hover:bg-slate-800 transition">
+              Update Password
+            </button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <div id="authModal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 transition-all">
+    <div class="bg-white dark:bg-darkCard w-full max-w-md p-6 sm:p-8 rounded-3xl border border-slate-200 dark:border-darkBorder shadow-2xl relative">
+      <button onclick="closeAuthModal()" class="absolute top-5 right-5 text-slate-400 hover:text-slate-700 dark:hover:text-white text-lg">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      <div class="text-center mb-6">
+        <div class="w-12 h-12 mx-auto rounded-full p-0.5 ig-gradient-bg mb-2">
+          <img src="/logo.png" class="w-full h-full rounded-full bg-white dark:bg-darkCard object-cover" onerror="this.src='https://placehold.co/100x100?text=JR'"/>
+        </div>
+        <h3 id="authModalTitle" class="text-2xl font-display font-black text-slate-900 dark:text-white">Sign In</h3>
+        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Jay Rajput Media Power Portal</p>
+      </div>
+
+      <button onclick="handleGoogleSignIn()" type="button" class="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl flex items-center justify-center space-x-3 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-sm mb-4">
+        <svg class="w-5 h-5" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
+        </svg>
+        <span>Continue with Google</span>
+      </button>
+
+      <div class="flex items-center my-4">
+        <div class="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+        <span class="px-3 text-[10px] uppercase tracking-wider font-bold text-slate-400">OR EMAIL</span>
+        <div class="flex-grow border-t border-slate-200 dark:border-slate-700"></div>
+      </div>
+
+      <form id="authForm" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+        <div id="nameInputGroup" class="hidden">
+          <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1">Full Name</label>
+          <input type="text" id="authName" placeholder="Jay Rajput" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-900 dark:text-white outline-none text-sm">
+        </div>
+
+        <div>
+          <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1">Email Address</label>
+          <input type="email" id="authEmail" required placeholder="you@example.com" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-900 dark:text-white outline-none text-sm">
+        </div>
+
+        <div>
+          <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1">Password</label>
+          <input type="password" id="authPassword" required placeholder="••••••••" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-900 dark:text-white outline-none text-sm">
+        </div>
+
+        <div id="referralInputGroup" class="hidden">
+          <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1">Referral Code (Optional)</label>
+          <input type="text" id="authReferral" placeholder="e.g. JR9821" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-900 dark:text-white outline-none text-sm">
+        </div>
+
+        <button type="submit" id="authSubmitBtn" class="w-full py-3.5 text-white font-display font-bold rounded-2xl meta-gradient-bg shadow-igGlow hover:opacity-95 transition">
+          Sign In
+        </button>
+      </form>
+
+      <div class="text-center mt-5 text-xs text-slate-500">
+        <span id="authToggleText">Don't have an account?</span>
+        <button onclick="toggleAuthMode()" id="authToggleBtn" class="text-fbBlue dark:text-pink-400 font-bold ml-1 hover:underline">Create Account</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="bg-white/80 dark:bg-darkCard/80 backdrop-blur-md border-t border-slate-200 dark:border-darkBorder py-6 text-center text-xs text-slate-500 mt-12 transition-colors">
+    <p>© 2026 Jay Rajput Media Power. All rights reserved. | Helpline: <a href="tel:6375063791" class="text-fbBlue dark:text-pink-400 font-bold hover:underline">+91 6375063791</a></p>
+  </footer>
+
+  <script>
+    let currentAuthMode = 'signin';
+    let currentUser = null;
+    let allServices = [];
+    let activeCurrency = 'INR';
+
+    function initTheme() {
+      const storedTheme = localStorage.getItem('jr_theme') || 'light';
+      setTheme(storedTheme);
+    }
+
+    function toggleTheme() {
+      const isDark = document.documentElement.classList.contains('dark');
+      setTheme(isDark ? 'light' : 'dark');
+    }
+
+    function setTheme(mode) {
+      const icon = document.getElementById('themeIcon');
+      if (mode === 'dark') {
+        document.documentElement.classList.add('dark');
+        icon.className = 'fa-solid fa-sun text-amber-400';
+      } else {
+        document.documentElement.classList.remove('dark');
+        icon.className = 'fa-solid fa-moon text-slate-700';
+      }
+      localStorage.setItem('jr_theme', mode);
+    }
+
+    const menuToggleBtn = document.getElementById('menuToggleBtn');
+    const sidebarDrawer = document.getElementById('sidebarDrawer');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    const closeSidebarBtn = document.getElementById('closeSidebarBtn');
+
+    function toggleSidebar() {
+      sidebarDrawer.classList.toggle('-translate-x-full');
+      sidebarOverlay.classList.toggle('hidden');
+    }
+
+    menuToggleBtn.addEventListener('click', toggleSidebar);
+    closeSidebarBtn.addEventListener('click', toggleSidebar);
+    sidebarOverlay.addEventListener('click', toggleSidebar);
+
+    function navigateSection(sectionId) {
+      const protectedSections = ['new-order', 'orders', 'add-funds', 'refer-earn', 'support', 'account'];
+      if (protectedSections.includes(sectionId) && !currentUser) {
+        openAuthModal('signin');
+        toggleSidebar();
+        return;
+      }
+
+      document.querySelectorAll('.content-section').forEach(sec => sec.classList.add('hidden'));
+      const target = document.getElementById('section-' + sectionId);
+      if (target) target.classList.remove('hidden');
+      sidebarDrawer.classList.add('-translate-x-full');
+      sidebarOverlay.classList.add('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function openAuthModal(mode = 'signin') {
+      currentAuthMode = mode;
+      const modal = document.getElementById('authModal');
+      const title = document.getElementById('authModalTitle');
+      const nameGrp = document.getElementById('nameInputGroup');
+      const refGrp = document.getElementById('referralInputGroup');
+      const submitBtn = document.getElementById('authSubmitBtn');
+      const toggleText = document.getElementById('authToggleText');
+      const toggleBtn = document.getElementById('authToggleBtn');
+
+      if (mode === 'signup') {
+        title.innerText = 'Create Account';
+        nameGrp.classList.remove('hidden');
+        refGrp.classList.remove('hidden');
+        submitBtn.innerText = 'Sign Up';
+        toggleText.innerText = 'Already have an account?';
+        toggleBtn.innerText = 'Sign In';
+      } else {
+        title.innerText = 'Sign In';
+        nameGrp.classList.add('hidden');
+        refGrp.classList.add('hidden');
+        submitBtn.innerText = 'Sign In';
+        toggleText.innerText = "Don't have an account?";
+        toggleBtn.innerText = 'Create Account';
+      }
+      modal.classList.remove('hidden');
+    }
+
+    function closeAuthModal() {
+      document.getElementById('authModal').classList.add('hidden');
+    }
+
+    function toggleAuthMode() {
+      openAuthModal(currentAuthMode === 'signin' ? 'signup' : 'signin');
+    }
+
+    async function handleAuthSubmit(e) {
+      e.preventDefault();
+      const email = document.getElementById('authEmail').value;
+      const password = document.getElementById('authPassword').value;
+      const endpoint = currentAuthMode === 'signup' ? '/api/auth/register' : '/api/auth/login';
+
+      const payload = { email, password };
+      if (currentAuthMode === 'signup') {
+        payload.name = document.getElementById('authName').value;
+        payload.referral_code = document.getElementById('authReferral').value;
+      }
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.error) return alert(data.error);
+
+        localStorage.setItem('jr_token', data.token);
+        currentUser = data.user;
+        updateUIForUser();
+        closeAuthModal();
+        navigateSection('home');
+      } catch (err) {
+        alert('Authentication error: ' + err.message);
+      }
+    }
+
+    async function handleGoogleSignIn() {
+      const email = prompt('Sign in with Google - Enter Email:', 'user@gmail.com');
+      if (!email) return;
+
+      try {
+        const res = await fetch('/api/auth/google', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, name: email.split('@')[0], google_id: 'google_' + Date.now() })
+        });
+        const data = await res.json();
+        localStorage.setItem('jr_token', data.token);
+        currentUser = data.user;
+        updateUIForUser();
+        closeAuthModal();
+        navigateSection('home');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    function updateUIForUser() {
+      if (!currentUser) return;
+      document.getElementById('authNavButtons').classList.add('hidden');
+      document.getElementById('userProfileNav').classList.remove('hidden');
+      document.getElementById('userProfileNav').classList.add('flex');
+      document.getElementById('walletDisplay').classList.remove('hidden');
+      document.getElementById('walletDisplay').classList.add('flex');
+      document.getElementById('navUserName').innerText = currentUser.name;
+
+      document.getElementById('userWelcomeBanner').classList.remove('hidden');
+      document.getElementById('userWelcomeBanner').classList.add('flex');
+      document.getElementById('welcomeUserName').innerText = currentUser.name;
+
+      document.getElementById('userPrivateMenuItems').classList.remove('hidden');
+      document.getElementById('heroGuestCTA').classList.add('hidden');
+
+      updateWalletDisplay();
+
+      document.getElementById('accName').innerText = currentUser.name;
+      document.getElementById('accEmail').innerText = currentUser.email;
+      document.getElementById('accRefCode').innerText = currentUser.referral_code;
+      document.getElementById('myReferralLink').value = `${window.location.origin}/?ref=${currentUser.referral_code}`;
+
+      loadApiKey();
+      loadUserOrders();
+    }
+
+    function updateWalletDisplay() {
+      if (!currentUser) return;
+      let symbol = '₹';
+      let balance = currentUser.wallet_inr || 0;
+      if (activeCurrency === 'USD') { symbol = '$'; balance = currentUser.wallet_usd || 0; }
+      if (activeCurrency === 'EUR') { symbol = '€'; balance = currentUser.wallet_eur || 0; }
+
+      document.getElementById('walletCurrencySymbol').innerText = symbol;
+      document.getElementById('walletBalanceAmount').innerText = parseFloat(balance).toFixed(2);
+    }
+
+    function changeCurrency(curr) {
+      activeCurrency = curr;
+      updateWalletDisplay();
+      calculateOrderCharge();
+      renderCatalogCards(allServices);
+    }
+
+    function logout() {
+      localStorage.removeItem('jr_token');
+      location.reload();
+    }
+
+    async function loadServicesData() {
+      try {
+        const res = await fetch('/api/services');
+        allServices = await res.json();
+
+        const categories = [...new Set(allServices.map(s => s.category))];
+        const catSelect = document.getElementById('orderCategorySelect');
+        catSelect.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+        filterServicesByCategory();
+        renderCatalogCards(allServices);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    function renderCatalogCards(list) {
+      const container = document.getElementById('servicesCardGrid');
+      let multiplier = 1;
+      let symbol = '₹';
+      if (activeCurrency === 'USD') { multiplier = 0.012; symbol = '$'; }
+      if (activeCurrency === 'EUR') { multiplier = 0.011; symbol = '€'; }
+
+      container.innerHTML = list.map(s => {
+        const isIg = s.category.toLowerCase().includes('instagram');
+        const badgeStyle = isIg 
+          ? 'bg-pink-500/10 text-igPink border-pink-200 dark:border-pink-900' 
+          : 'bg-blue-500/10 text-fbBlue border-blue-200 dark:border-blue-900';
+        const buttonGradient = isIg ? 'ig-gradient-bg' : 'bg-fbBlue hover:bg-fbBlueHover';
+
+        return `
+          <div class="bg-white dark:bg-darkCard rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard flex flex-col justify-between overflow-hidden transition-all hover:-translate-y-1">
+            ${s.image ? `
+              <div class="w-full bg-slate-50 dark:bg-slate-900 border-b border-slate-200/80 dark:border-darkBorder">
+                <img src="${s.image}" alt="${s.name}" loading="lazy" class="w-full h-auto max-h-[380px] object-contain block" onerror="this.parentElement.remove()">
+              </div>
+            ` : ''}
+            <div class="p-6 space-y-4">
+            <div>
+              <div class="flex justify-between items-center mb-3">
+                <span class="text-xs px-3 py-1 rounded-full font-bold uppercase border ${badgeStyle}">
+                  ${isIg ? '<i class="fa-brands fa-instagram mr-1"></i>' : '<i class="fa-brands fa-facebook mr-1"></i>'}
+                  ${s.category}
+                </span>
+                <span class="text-xs text-slate-400 font-mono font-bold">#${s.id}</span>
+              </div>
+              <h3 class="text-base font-display font-bold text-slate-900 dark:text-white leading-snug">${s.name}</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">${s.description}</p>
+            </div>
+            <div class="pt-4 border-t border-slate-100 dark:border-darkBorder flex items-center justify-between">
+              <div>
+                <p class="text-[10px] uppercase font-bold text-slate-400">Rate / 1000</p>
+                <p class="text-xl font-display font-black text-slate-900 dark:text-white">${symbol}${(s.rate_per_1000 * multiplier).toFixed(2)}</p>
+              </div>
+              <button onclick="prepareBuyNow(${s.id})" class="px-5 py-2.5 text-white font-display font-bold rounded-2xl text-xs flex items-center space-x-1.5 shadow-sm transition ${buttonGradient}">
+                <i class="fa-solid fa-cart-shopping text-[11px]"></i><span>Buy Now</span>
+              </button>
+
+              <div class="video-editing-wrapper">
+  <iframe 
+    src="video-form.html" 
+    title="Video Editing Application Form"
+    style="width: 100%; height: 750px; border: none; border-radius: 16px; overflow: hidden;"
+    loading="lazy">
+  </iframe>
+</div>
+            </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function filterCatalogCards(query) {
+      const q = query.toLowerCase();
+      const filtered = allServices.filter(s => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q));
+      renderCatalogCards(filtered);
+    }
+
+    function prepareBuyNow(serviceId) {
+      if (!currentUser) {
+        return openAuthModal('signin');
+      }
+      const s = allServices.find(item => item.id === serviceId);
+      if (!s) return;
+
+      document.getElementById('orderCategorySelect').value = s.category;
+      filterServicesByCategory();
+      document.getElementById('orderServiceSelect').value = s.id;
+      updateServiceDetails();
+      navigateSection('new-order');
+    }
+
+    function filterServicesByCategory() {
+      const selectedCat = document.getElementById('orderCategorySelect').value;
+      const services = allServices.filter(s => s.category === selectedCat);
+      const servSelect = document.getElementById('orderServiceSelect');
+      servSelect.innerHTML = services.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      updateServiceDetails();
+    }
+
+    function updateServiceDetails() {
+      const serviceId = parseInt(document.getElementById('orderServiceSelect').value);
+      const s = allServices.find(item => item.id === serviceId);
+      if (!s) return;
+
+      document.getElementById('displayRate').innerText = `₹${s.rate_per_1000} per 1000`;
+      document.getElementById('displayMinMax').innerText = `${s.min_quantity} - ${s.max_quantity}`;
+      document.getElementById('displayDesc').innerText = s.description;
+      calculateOrderCharge();
+    }
+
+    function calculateOrderCharge() {
+      const serviceId = parseInt(document.getElementById('orderServiceSelect').value);
+      const qty = parseInt(document.getElementById('orderQuantity').value) || 0;
+      const s = allServices.find(item => item.id === serviceId);
+      if (!s) return;
+
+      let multiplier = 1;
+      let symbol = '₹';
+      if (activeCurrency === 'USD') { multiplier = 0.012; symbol = '$'; }
+      if (activeCurrency === 'EUR') { multiplier = 0.011; symbol = '€'; }
+
+      const charge = ((s.rate_per_1000 * multiplier) / 1000) * qty;
+      document.getElementById('orderTotalCharge').innerText = `${symbol}${charge.toFixed(2)}`;
+    }
+
+    async function handlePlaceOrder(e) {
+      e.preventDefault();
+      const token = localStorage.getItem('jr_token');
+      if (!token) return openAuthModal('signin');
+
+      const service_id = parseInt(document.getElementById('orderServiceSelect').value);
+      const link = document.getElementById('orderLink').value;
+      const quantity = parseInt(document.getElementById('orderQuantity').value);
+
+      const res = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ service_id, link, quantity, currency: activeCurrency })
+      });
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+
+      alert(`Order Placed Successfully! ID: #${data.order_id}`);
+      fetchUserProfile();
+      loadUserOrders();
+      navigateSection('orders');
+    }
+
+    async function loadUserOrders() {
+      const token = localStorage.getItem('jr_token');
+      if (!token) return;
+      const res = await fetch('/api/orders/my-orders', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const orders = await res.json();
+      const tbody = document.getElementById('ordersTableBody');
+      if (!orders || orders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">No orders placed yet.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = orders.map(o => `
+        <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+          <td class="p-3.5 font-mono text-fbBlue font-bold">#${o.id}</td>
+          <td class="p-3.5 font-semibold text-slate-800 dark:text-slate-200">${o.service_name}</td>
+          <td class="p-3.5"><a href="${o.link}" target="_blank" class="text-fbBlue hover:underline truncate block max-w-xs">${o.link}</a></td>
+          <td class="p-3.5 font-bold">${o.quantity}</td>
+          <td class="p-3.5 text-slate-900 dark:text-white font-semibold">${o.currency} ${o.charge}</td>
+          <td class="p-3.5"><span class="px-2.5 py-0.5 rounded-full text-xs bg-pink-100 text-igPink font-bold">${o.status}</span></td>
+          <td class="p-3.5 text-xs text-slate-400">${new Date(o.created_at).toLocaleDateString()}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function handleChangePassword(e) {
+      e.preventDefault();
+      const token = localStorage.getItem('jr_token');
+      const currentPassword = document.getElementById('currentPassword').value;
+      const newPassword = document.getElementById('newPassword').value;
+
+      const res = await fetch('/api/user/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ currentPassword, newPassword })
+      });
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+
+      alert(data.message);
+      document.getElementById('changePasswordForm').reset();
+    }
+
+    async function handleAddFunds(e) {
+      e.preventDefault();
+      const token = localStorage.getItem('jr_token');
+      if (!token) return openAuthModal('signin');
+
+      const amount = parseFloat(document.getElementById('fundAmount').value);
+      const currency = document.getElementById('fundCurrency').value;
+
+      if (!Number.isFinite(amount) || amount < 10) {
+        return alert('Minimum deposit is 10.');
+      }
+
+      if (currency !== 'INR') {
+        return alert('Online deposits are processed in INR. Contact support for USD/EUR top-ups.');
+      }
+
+      const started = await initiateCashfreePayment(amount);
+      if (started) document.getElementById('addFundsForm').reset();
+    }
+
+    async function loadPaymentHistory() {
+      const token = localStorage.getItem('jr_token');
+      const container = document.getElementById('paymentHistory');
+      if (!token || !container) return;
+
+      try {
+        const res = await fetch('/api/wallet/payments', { headers: { 'Authorization': `Bearer ${token}` } });
+        const rows = await res.json();
+
+        if (!rows.length) {
+          container.innerHTML = '<p class="text-xs text-slate-500 dark:text-slate-400 text-center py-3">No deposits yet.</p>';
+          return;
+        }
+
+        const badge = { PAID: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10', PENDING: 'text-amber-400 border-amber-500/40 bg-amber-500/10', FAILED: 'text-red-400 border-red-500/40 bg-red-500/10', CANCELLED: 'text-red-400 border-red-500/40 bg-red-500/10' };
+
+        container.innerHTML = rows.map(p => `
+          <div class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-200 dark:border-darkBorder last:border-0">
+            <div class="min-w-0">
+              <p class="text-xs font-mono text-slate-700 dark:text-slate-200 truncate">${p.order_id}</p>
+              <p class="text-[10px] text-slate-500 dark:text-slate-400">${p.created_at}</p>
+            </div>
+            <span class="text-[10px] font-bold uppercase px-2 py-1 rounded-full border shrink-0 ${badge[p.payment_status] || badge.PENDING}">${p.payment_status}</span>
+            <span class="text-sm font-display font-black text-slate-900 dark:text-white shrink-0">₹${parseFloat(p.amount).toFixed(2)}</span>
+          </div>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function handleRaiseTicket(e) {
+      e.preventDefault();
+      const token = localStorage.getItem('jr_token');
+      if (!token) return openAuthModal('signin');
+
+      const payload = {
+        subject: document.getElementById('ticketSubject').value,
+        order_id: document.getElementById('ticketOrderId').value,
+        request_type: 'Inquiry',
+        message: document.getElementById('ticketMessage').value
+      };
+
+      const res = await fetch('/api/support/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+
+      alert(`Support Ticket #${data.ticket_id} submitted!`);
+      document.getElementById('supportTicketForm').reset();
+    }
+
+    function copyReferralLink() {
+      const copyText = document.getElementById('myReferralLink');
+      copyText.select();
+      navigator.clipboard.writeText(copyText.value);
+      alert('Referral link copied!');
+    }
+
+    async function loadApiKey() {
+      if (!currentUser) return;
+      const token = localStorage.getItem('jr_token');
+      try {
+        const res = await fetch('/api/user/api-key', { headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        document.getElementById('myApiKey').value = data.api_key || '';
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function generateApiKey() {
+      if (!currentUser) return openAuthModal('signin');
+      if (!confirm('Generate a new API key? The previous key stops working immediately.')) return;
+
+      const token = localStorage.getItem('jr_token');
+      try {
+        const res = await fetch('/api/user/api-key', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ label: 'default' })
+        });
+        const data = await res.json();
+        if (data.error) return alert(data.error);
+        document.getElementById('myApiKey').value = data.api_key;
+        alert('API key generated. Keep it private.');
+      } catch (err) {
+        alert('Could not generate key: ' + err.message);
+      }
+    }
+
+    function copyApiKey() {
+      const field = document.getElementById('myApiKey');
+      if (!field.value) return alert('Generate an API key first.');
+      field.select();
+      navigator.clipboard.writeText(field.value);
+      alert('API key copied!');
+    }
+
+    async function fetchUserProfile() {
+      const token = localStorage.getItem('jr_token');
+      if (!token) return;
+      try {
+        const res = await fetch('/api/user/profile', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          currentUser = await res.json();
+          updateUIForUser();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', async () => {
+      initTheme();
+      await fetchUserProfile();
+      loadServicesData();
+      loadPaymentHistory();
+      handlePaymentReturn();
+    });
+  </script>
+
+  <!-- HTML Form -->
+  <div class="ve-form-container">
+    ... (आपका फ़ॉर्म यहाँ रहेगा)
+  </div>
+
+  <!-- 👇 JavaScript कोड यहाँ रहेगा (HTML फ़ाइल में) -->
+  <script>
+    const ADMIN_WHATSAPP_NUMBER = "919876543210"; // अपना व्हाट्सएप नंबर डालें
+
+    function veUpdateFileName(input) {
+      const fileNameText = document.getElementById('veFileNameText');
+      if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        fileNameText.innerText = `Selected: ${file.name} (${fileSizeMB} MB)`;
+      } else {
+        fileNameText.innerText = 'Click or Drag video file here';
+      }
+    }
+
+    document.getElementById('veEditingForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+
+      const name = document.getElementById('veFullName').value.trim();
+      const phone = document.getElementById('veWhatsappNum').value.trim();
+      const duration = document.getElementById('veVideoDuration').value.trim();
+      const requirements = document.getElementById('veEditingReqs').value.trim();
+      const videoInput = document.getElementById('veVideoFile');
+      
+      let fileName = "No file attached";
+      if (videoInput.files && videoInput.files[0]) {
+        fileName = videoInput.files[0].name;
+      }
+
+      const message = `🎬 *NEW VIDEO EDITING ORDER* 🎬\n\n` +
+                      `👤 *Name:* ${name}\n` +
+                      `📱 *Customer WA:* ${phone}\n` +
+                      `⏱️ *Video Duration:* ${duration}\n` +
+                      `📁 *Video File Name:* ${fileName}\n` +
+                      `📝 *Requirements:*\n${requirements}\n\n` +
+                      `------------------------------\n` +
+                      `_Sent via Video Editing Application Form_`;
+
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappURL = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodedMessage}`;
+
+      window.open(whatsappURL, '_blank');
+    });
+  </script>
+</body>
+</html>
+
+  <style>
+    /* Unique Prefixed CSS so it doesn't break your existing theme */
+.ve-form-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 10px;
+}
+
+.ve-form-card {
+  background: #1e293b;
+  border: 1px solid #334155;
+  width: 100%;
+  max-width: 520px;
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  color: #f8fafc;
+}
+
+.ve-form-header h2 {
+  font-size: 1.6rem;
+  margin-bottom: 6px;
+  color: #25d366;
+}
+
+.ve-form-header p {
+  color: #94a3b8;
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+.ve-form-group {
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.ve-form-group label {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #e2e8f0;
+}
+
+.ve-form-control {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #f8fafc;
+  outline: none;
+  box-sizing: border-box;
+}
+
+textarea.ve-form-control {
+  resize: vertical;
+  min-height: 90px;
+}
+
+.ve-file-input-wrapper {
+  position: relative;
+  background: #0f172a;
+  border: 2px dashed #334155;
+  border-radius: 8px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.ve-file-input-wrapper input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+  width: 100%;
+  height: 100%;
+}
+
+.ve-file-info {
+  color: #94a3b8;
+  font-size: 0.85rem;
+}
+
+.ve-btn-whatsapp {
+  width: 100%;
+  background: #25d366;
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 0.95rem;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background 0.2s;
+}
+
+.ve-btn-whatsapp:hover {
+  background: #20ba5a;
+}
+  </style>
+</body>
+</html>

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Jay Rajput Media Power</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+    body { background: #0f172a; color: #f8fafc; padding: 20px; }
+    .container { max-width: 1000px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 0; border-bottom: 1px solid #1e293b; }
+    .wallet-card { background: linear-gradient(135deg, #0d6efd, #d63384); padding: 24px; border-radius: 16px; margin: 30px 0; display: flex; justify-content: space-between; align-items: center; }
+    .btn-logout { background: #ef4444; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+    .order-box { background: #1e293b; padding: 30px; border-radius: 16px; margin-top: 20px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; }
+    .form-control { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: #fff; }
+    .btn-submit { background: #0d6efd; color: #fff; padding: 12px 24px; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; width: 100%; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Jay Rajput <span style="color: #d63384;">Media Dashboard</span></h2>
+      <button onclick="logout()" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</button>
+    </div>
+
+    <div class="wallet-card">
+      <div>
+        <p style="opacity: 0.8;">Welcome back,</p>
+        <h1 id="userName">User</h1>
+        <p id="userEmail" style="font-size: 0.9rem; opacity: 0.7;"></p>
+      </div>
+      <div style="text-align: right;">
+        <p style="opacity: 0.8;">Account Balance</p>
+        <h1 id="userBalance">₹0.00</h1>
+      </div>
+    </div>
+
+    <div class="order-box">
+      <h3 style="margin-bottom: 20px;"><i class="fas fa-shopping-cart"></i> Place New Order</h3>
+      <form onsubmit="alert('Order Feature Ready!'); return false;">
+        <div class="form-group">
+          <label>Category</label>
+          <select class="form-control">
+            <option>Instagram Followers</option>
+            <option>Instagram Likes / Reels Views</option>
+            <option>YouTube Subscribers / Watchtime</option>
+            <option>Facebook Page Likes</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Target Link</label>
+          <input type="url" class="form-control" placeholder="https://instagram.com/your_profile" required>
+        </div>
+        <div class="form-group">
+          <label>Quantity</label>
+          <input type="number" class="form-control" placeholder="1000" required>
+        </div>
+        <button type="submit" class="btn-submit">Submit Order</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Verify Session and Fetch Profile
+    async function loadUser() {
+      try {
+        const res = await fetch('/api/user/profile');
+        const data = await res.json();
+        
+        if (data.success) {
+          document.getElementById('userName').innerText = data.user.name;
+          document.getElementById('userEmail').innerText = data.user.email;
+          document.getElementById('userBalance').innerText = '₹' + data.user.balance.toFixed(2);
+        } else {
+          window.location.href = '/';
+        }
+      } catch (err) {
+        window.location.href = '/';
+      }
+    }
+
+    async function logout() {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      window.location.href = '/';
+    }
+
+    loadUser();
+  </script>
+</body>
+</html>

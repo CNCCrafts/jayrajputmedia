@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Portal - Jay Rajput Media Power</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            heading: ['"Space Grotesk"', 'sans-serif'],
+          },
+          colors: {
+            gold: '#F5BD02',
+            goldLight: '#FFE57F',
+            darkBg: '#070A12',
+            cardBg: '#0F1626',
+            cardBorder: 'rgba(245, 189, 2, 0.2)'
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-darkBg text-slate-100 font-sans min-h-screen antialiased flex flex-col justify-center items-center p-4">
+
+  <div id="adminLoginCard" class="w-full max-w-md bg-cardBg p-8 rounded-3xl border border-gold/40 shadow-2xl space-y-6">
+    <div class="text-center space-y-2">
+      <div class="w-14 h-14 mx-auto rounded-full border-2 border-gold flex items-center justify-center bg-black text-gold text-2xl shadow-lg">
+        <i class="fa-solid fa-user-shield"></i>
+      </div>
+      <h2 class="text-2xl font-heading font-extrabold text-gold tracking-wide">Admin Portal Sign In</h2>
+      <p class="text-xs text-slate-400">Jay Rajput Media Power Management</p>
+    </div>
+
+    <form id="adminLoginForm" onsubmit="handleAdminLogin(event)" class="space-y-4">
+      <div>
+        <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Admin Email</label>
+        <input type="email" id="adminEmail" required placeholder="admin@jayrajputmediapower.com" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none text-sm">
+      </div>
+      <div>
+        <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Admin Password</label>
+        <input type="password" id="adminPassword" required placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none text-sm">
+      </div>
+      <button type="submit" class="w-full py-3.5 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl hover:brightness-110 shadow-lg transition duration-200">
+        Sign In to Admin Panel
+      </button>
+    </form>
+    <div class="text-center pt-2">
+      <a href="/" class="text-xs text-slate-400 hover:text-gold transition"><i class="fa-solid fa-arrow-left mr-1"></i> Back to Main Website</a>
+    </div>
+  </div>
+
+  <div id="adminDashboard" class="hidden w-full max-w-6xl space-y-8 my-8">
+    <header class="flex flex-col md:flex-row justify-between items-center bg-cardBg border border-gold/30 p-5 rounded-2xl shadow-xl gap-4">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-full border border-gold flex items-center justify-center bg-black text-gold">
+          <i class="fa-solid fa-crown text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-xl font-heading font-extrabold text-gold uppercase">Jay Rajput Admin Panel</h1>
+          <p class="text-xs text-slate-400 font-mono">jayrajputmediapower.com/admin</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <a href="/" class="px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 transition">
+          <i class="fa-solid fa-globe mr-1"></i> Live Site
+        </a>
+        <button onclick="logoutAdmin()" class="px-4 py-2 bg-red-600/20 text-red-400 border border-red-500/40 rounded-xl text-xs font-semibold hover:bg-red-600 hover:text-white transition">
+          <i class="fa-solid fa-power-off mr-1"></i> Logout
+        </button>
+      </div>
+    </header>
+
+    <section class="bg-cardBg border border-gold/30 p-6 md:p-8 rounded-3xl shadow-xl">
+      <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
+        <h2 id="formHeading" class="text-lg font-bold text-gold flex items-center space-x-2">
+          <i class="fa-solid fa-circle-plus"></i><span>Add New Service Package</span>
+        </h2>
+        <button id="cancelEditBtn" onclick="resetForm()" class="hidden text-xs text-slate-400 hover:text-red-400 underline">
+          Cancel Editing
+        </button>
+      </div>
+
+      <form id="serviceForm" onsubmit="handleServiceFormSubmit(event)" class="grid grid-cols-1 md:grid-cols-3 gap-5 text-sm">
+        <input type="hidden" id="editServiceId" value="">
+
+        <div>
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Category</label>
+          <input type="text" id="svcCategory" required placeholder="Instagram / Facebook / YouTube" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Package Name</label>
+          <input type="text" id="svcName" required placeholder="Instagram Followers [HQ Non Drop]" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+        </div>
+
+        <div>
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Rate per 1000 (INR ₹)</label>
+          <input type="number" step="0.01" id="svcRate" required placeholder="120.00" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+        </div>
+
+        <div>
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Min Quantity</label>
+          <input type="number" id="svcMin" required placeholder="100" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+        </div>
+
+        <div>
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Max Quantity</label>
+          <input type="number" id="svcMax" required placeholder="50000" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+        </div>
+
+        <div class="md:col-span-3">
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Package Description & Specifications</label>
+          <input type="text" id="svcDesc" required placeholder="Instant start speed, 30 days refill button enabled" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+        </div>
+
+        <div class="md:col-span-2">
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Card Image</label>
+          <select id="svcImage" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+            <option value="">No image</option>
+          </select>
+        </div>
+
+        <div class="md:col-span-1 flex items-end">
+          <div id="svcImagePreview" class="w-full h-16 rounded-xl border border-slate-700 bg-slate-950 overflow-hidden flex items-center justify-center text-[10px] text-slate-500">
+            No image
+          </div>
+        </div>
+
+        <div class="md:col-span-3 pt-2">
+          <button type="submit" id="submitBtn" class="w-full py-3.5 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl hover:brightness-110 shadow-lg transition duration-200 uppercase tracking-wider text-xs">
+            Save & Publish Package
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="bg-cardBg border border-gold/30 p-6 md:p-8 rounded-3xl shadow-xl">
+      <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
+        <h2 class="text-lg font-bold text-gold flex items-center space-x-2">
+          <i class="fa-solid fa-tower-broadcast text-gold"></i><span>Upstream Providers (Sell via Other Panels)</span>
+        </h2>
+        <button onclick="syncAllProviders()" class="text-xs bg-gold/20 text-gold border border-gold/40 px-3 py-1 rounded-full font-bold hover:bg-gold hover:text-black transition">
+          <i class="fa-solid fa-rotate mr-1"></i> Sync All
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-400 mb-5">
+        Paste another SMM panel's API URL and key. Their services and rates get imported into your catalog with your markup, and every paid order on an imported service is pushed to that panel automatically.
+      </p>
+
+      <form id="providerForm" onsubmit="handleProviderFormSubmit(event)" class="grid grid-cols-1 md:grid-cols-4 gap-5 text-sm">
+        <input type="hidden" id="editProviderId" value="">
+
+        <div>
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Provider Name</label>
+          <input type="text" id="prvName" required placeholder="MySupplierPanel" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+        </div>
+
+        <div class="md:col-span-1">
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">API URL</label>
+          <input type="url" id="prvUrl" required placeholder="https://supplier.com/api/v2" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+        </div>
+
+        <div>
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">API Key</label>
+          <input type="text" id="prvKey" required placeholder="e2c1f0a9..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+        </div>
+
+        <div>
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Markup %</label>
+          <input type="number" step="0.01" id="prvMarkup" value="30" required placeholder="30" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+        </div>
+
+        <div class="md:col-span-4 flex flex-wrap gap-3 pt-1">
+          <button type="submit" id="prvSubmitBtn" class="flex-1 min-w-[200px] py-3 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl hover:brightness-110 shadow-lg transition text-xs uppercase tracking-wider">
+            Connect &amp; Import Services
+          </button>
+          <button type="button" onclick="resetProviderForm()" id="prvCancelBtn" class="hidden px-5 py-3 bg-slate-800 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold hover:bg-slate-700 transition">
+            Cancel
+          </button>
+        </div>
+      </form>
+
+      <div class="overflow-x-auto mt-6">
+        <table class="w-full text-left text-sm text-slate-300">
+          <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
+            <tr>
+              <th class="p-3">Provider</th>
+              <th class="p-3">API URL</th>
+              <th class="p-3">Markup</th>
+              <th class="p-3">Imported</th>
+              <th class="p-3">Last Sync</th>
+              <th class="p-3 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="providersTbody" class="divide-y divide-slate-800">
+            <tr><td colspan="6" class="p-4 text-center text-xs text-slate-500">No upstream providers connected yet.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
+      <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
+        <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+          <i class="fa-solid fa-list-check text-gold"></i><span>Live Service Packages</span>
+        </h2>
+        <span id="serviceCountBadge" class="text-xs bg-gold/20 text-gold border border-gold/40 px-3 py-1 rounded-full font-bold">0 Services</span>
+      </div>
+
+      <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+        <div>
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Category</label>
+          <input type="text" id="bulkCategory" placeholder="Instagram" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-gold outline-none text-sm">
+        </div>
+        <div class="md:col-span-2">
+          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Image</label>
+          <select id="bulkImage" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-gold outline-none text-sm">
+            <option value="">Choose an image...</option>
+          </select>
+        </div>
+        <button onclick="bulkAssignImage()" class="py-2.5 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl text-xs uppercase tracking-wider hover:brightness-110 transition">
+          Assign to Category
+        </button>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-300">
+          <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
+            <tr>
+              <th class="p-3">ID</th>
+              <th class="p-3">Category</th>
+              <th class="p-3">Name</th>
+              <th class="p-3">Rate/1000</th>
+              <th class="p-3">Min / Max</th>
+              <th class="p-3">Image</th>
+              <th class="p-3">Source</th>
+              <th class="p-3 text-center">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="adminServicesTbody" class="divide-y divide-slate-800">
+            </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    let adminServicesList = [];
+    let providersList = [];
+    let serviceImages = [];
+
+    async function loadServiceImages() {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const res = await fetch('/api/admin/service-images', { headers: { 'Authorization': `Bearer ${token}` } });
+        serviceImages = await res.json();
+
+        const select = document.getElementById('svcImage');
+        const current = select.value;
+        select.innerHTML = '<option value="">No image</option>' +
+          serviceImages.map(i => `<option value="${i.url}">${i.file}</option>`).join('');
+        select.value = current;
+        updateImagePreview();
+
+        const bulk = document.getElementById('bulkImage');
+        const bulkCurrent = bulk.value;
+        bulk.innerHTML = '<option value="">Choose an image...</option>' +
+          serviceImages.map(i => `<option value="${i.url}">${i.file}</option>`).join('');
+        bulk.value = bulkCurrent;
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function bulkAssignImage() {
+      const category = document.getElementById('bulkCategory').value.trim();
+      const image = document.getElementById('bulkImage').value;
+      if (!category || !image) return alert('Enter a category and choose an image.');
+
+      const token = localStorage.getItem('jr_admin_token');
+      const res = await fetch('/api/admin/services/images', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ category, image })
+      });
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+
+      alert(`Assigned ${data.updated} service(s) in "${category}".`);
+      loadAdminServices();
+    }
+
+    function updateImagePreview() {
+      const box = document.getElementById('svcImagePreview');
+      const url = document.getElementById('svcImage').value;
+      box.innerHTML = url
+        ? `<img src="${url}" onerror="this.parentElement.innerText='Missing file'" class="w-full h-full object-contain bg-slate-950 p-0.5">`
+        : 'No image';
+    }
+
+    async function handleAdminLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('adminEmail').value;
+      const password = document.getElementById('adminPassword').value;
+
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (data.error) return alert(data.error);
+        if (data.user.role !== 'admin') return alert('Access Denied: This account is not an Administrator.');
+
+        localStorage.setItem('jr_admin_token', data.token);
+        checkAdminAuth();
+      } catch (err) {
+        alert('Login failed: ' + err.message);
+      }
+    }
+
+    async function checkAdminAuth() {
+      const token = localStorage.getItem('jr_admin_token');
+      if (!token) {
+        document.getElementById('adminLoginCard').classList.remove('hidden');
+        document.getElementById('adminDashboard').classList.add('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/admin/services', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (res.status === 403 || res.status === 401) {
+          localStorage.removeItem('jr_admin_token');
+          document.getElementById('adminLoginCard').classList.remove('hidden');
+          document.getElementById('adminDashboard').classList.add('hidden');
+          return;
+        }
+
+        document.getElementById('adminLoginCard').classList.add('hidden');
+        document.getElementById('adminDashboard').classList.remove('hidden');
+        await loadProviders();
+        loadAdminServices();
+        loadServiceImages();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function loadAdminServices() {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const res = await fetch('/api/admin/services', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        adminServicesList = await res.json();
+        document.getElementById('serviceCountBadge').innerText = `${adminServicesList.length} Services`;
+
+        const tbody = document.getElementById('adminServicesTbody');
+        tbody.innerHTML = adminServicesList.map(s => `
+          <tr class="hover:bg-slate-900/50">
+            <td class="p-3 font-mono text-gold font-bold">#${s.id}</td>
+            <td class="p-3 font-semibold text-slate-200">${s.category}</td>
+            <td class="p-3">${s.name}</td>
+            <td class="p-3 text-gold font-mono font-bold">₹${s.rate_per_1000}</td>
+            <td class="p-3 text-xs text-slate-400">${s.min_quantity} - ${s.max_quantity}</td>
+            <td class="p-3">${s.image
+              ? `<img src="${s.image}" onerror="this.outerHTML='<span class=\'text-slate-500 text-xs\'>none</span>'" class="w-20 h-14 object-contain bg-slate-950/60 rounded-lg border border-slate-700 p-0.5">`
+              : '<span class="text-slate-500 text-xs">none</span>'}</td>
+            <td class="p-3 text-xs">${s.provider_id
+              ? `<span class="text-gold font-bold">${(providersList.find(p => p.id === s.provider_id) || {}).name || 'Provider'}</span>`
+              : '<span class="text-slate-500">Own</span>'}</td>
+            <td class="p-3 text-center space-x-2">
+              <button onclick="startEditService(${s.id})" class="px-3 py-1 bg-brandBlue/20 text-brandBlue border border-brandBlue/30 rounded-lg text-xs hover:bg-brandBlue hover:text-white transition">Edit</button>
+              <button onclick="deleteService(${s.id})" class="px-3 py-1 bg-red-600/20 text-red-400 border border-red-500/30 rounded-lg text-xs hover:bg-red-600 hover:text-white transition">Delete</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function handleServiceFormSubmit(e) {
+      e.preventDefault();
+      const token = localStorage.getItem('jr_admin_token');
+      const editId = document.getElementById('editServiceId').value;
+
+      const payload = {
+        category: document.getElementById('svcCategory').value,
+        name: document.getElementById('svcName').value,
+        rate_per_1000: parseFloat(document.getElementById('svcRate').value),
+        min_quantity: parseInt(document.getElementById('svcMin').value),
+        max_quantity: parseInt(document.getElementById('svcMax').value),
+        description: document.getElementById('svcDesc').value,
+        image: document.getElementById('svcImage').value,
+        status: 'active'
+      };
+
+      const url = editId ? `/api/admin/services/${editId}` : '/api/admin/services';
+      const method = editId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method: method,
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+
+      alert(editId ? 'Package updated!' : 'Package created!');
+      resetForm();
+      loadAdminServices();
+    }
+
+    function startEditService(id) {
+      const s = adminServicesList.find(item => item.id === id);
+      if (!s) return;
+
+      document.getElementById('editServiceId').value = s.id;
+      document.getElementById('svcCategory').value = s.category;
+      document.getElementById('svcName').value = s.name;
+      document.getElementById('svcRate').value = s.rate_per_1000;
+      document.getElementById('svcMin').value = s.min_quantity;
+      document.getElementById('svcMax').value = s.max_quantity;
+      document.getElementById('svcDesc').value = s.description;
+      document.getElementById('svcImage').value = s.image || '';
+      updateImagePreview();
+
+      document.getElementById('formHeading').innerHTML = `<i class="fa-solid fa-pen-to-square"></i><span>Edit Package #${s.id}</span>`;
+      document.getElementById('submitBtn').innerText = 'Update Service Package';
+      document.getElementById('cancelEditBtn').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForm() {
+      document.getElementById('serviceForm').reset();
+      document.getElementById('editServiceId').value = '';
+      document.getElementById('formHeading').innerHTML = `<i class="fa-solid fa-circle-plus"></i><span>Add New Service Package</span>`;
+      document.getElementById('submitBtn').innerText = 'Save & Publish Package';
+      document.getElementById('cancelEditBtn').classList.add('hidden');
+      updateImagePreview();
+    }
+
+    async function deleteService(id) {
+      if (!confirm(`Delete package #${id}?`)) return;
+      const token = localStorage.getItem('jr_admin_token');
+      const res = await fetch(`/api/admin/services/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      alert(data.message);
+      loadAdminServices();
+    }
+
+    // ==================== UPSTREAM PROVIDERS ====================
+    async function loadProviders() {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const res = await fetch('/api/admin/providers', { headers: { 'Authorization': `Bearer ${token}` } });
+        providersList = await res.json();
+
+        const tbody = document.getElementById('providersTbody');
+        if (!providersList.length) {
+          tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center text-xs text-slate-500">No upstream providers connected yet.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = providersList.map(p => `
+          <tr class="hover:bg-slate-900/50">
+            <td class="p-3 font-semibold text-slate-200">${p.name}</td>
+            <td class="p-3 text-xs font-mono text-slate-400 break-all">${p.api_url}</td>
+            <td class="p-3 text-gold font-mono font-bold">+${p.markup_percent}%</td>
+            <td class="p-3 text-slate-300 font-mono">${p.service_count}</td>
+            <td class="p-3 text-xs text-slate-400">${p.last_sync_at || 'Never'}</td>
+            <td class="p-3 text-center space-x-2 whitespace-nowrap">
+              <button onclick="syncProvider(${p.id})" class="px-3 py-1 bg-gold/20 text-gold border border-gold/30 rounded-lg text-xs hover:bg-gold hover:text-black transition">Sync</button>
+              <button onclick="startEditProvider(${p.id})" class="px-3 py-1 bg-slate-700/40 text-slate-200 border border-slate-600 rounded-lg text-xs hover:bg-slate-600 transition">Edit</button>
+              <button onclick="deleteProvider(${p.id})" class="px-3 py-1 bg-red-600/20 text-red-400 border border-red-500/30 rounded-lg text-xs hover:bg-red-600 hover:text-white transition">Remove</button>
+            </td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function handleProviderFormSubmit(e) {
+      e.preventDefault();
+      const token = localStorage.getItem('jr_admin_token');
+      const editId = document.getElementById('editProviderId').value;
+
+      const payload = {
+        name: document.getElementById('prvName').value,
+        api_url: document.getElementById('prvUrl').value,
+        api_key: document.getElementById('prvKey').value,
+        markup_percent: parseFloat(document.getElementById('prvMarkup').value) || 0
+      };
+
+      const res = await fetch(editId ? `/api/admin/providers/${editId}` : '/api/admin/providers', {
+        method: editId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+
+      resetProviderForm();
+      await loadProviders();
+
+      if (!editId) {
+        const id = data.id;
+        const btn = document.getElementById('prvSubmitBtn');
+        btn.disabled = true;
+        btn.innerText = 'Importing services...';
+        await syncProvider(id);
+        btn.disabled = false;
+        btn.innerText = 'Connect & Import Services';
+      } else {
+        alert('Provider updated.');
+      }
+    }
+
+    async function syncProvider(id) {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const res = await fetch(`/api/admin/providers/${id}/sync`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok || data.success === false) return alert('Sync failed: ' + (data.error || 'unknown error'));
+
+        alert(`Sync complete.\nNew services: ${data.added}\nUpdated services: ${data.updated}\nTotal from provider: ${data.total}`);
+        await loadProviders();
+        loadAdminServices();
+      } catch (err) {
+        alert('Sync failed: ' + err.message);
+      }
+    }
+
+    async function syncAllProviders() {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const res = await fetch('/api/admin/providers/sync-all', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) return alert('Sync failed: ' + (data.error || 'unknown error'));
+
+        const report = data.results.map(r => r.ok
+          ? `${r.provider}: +${r.added} new, ${r.updated} updated`
+          : `${r.provider}: FAILED - ${r.error}`).join('\n');
+
+        alert('Sync All complete.\n\n' + report);
+        await loadProviders();
+        loadAdminServices();
+      } catch (err) {
+        alert('Sync failed: ' + err.message);
+      }
+    }
+
+    function startEditProvider(id) {
+      const p = providersList.find(item => item.id === id);
+      if (!p) return;
+
+      document.getElementById('editProviderId').value = p.id;
+      document.getElementById('prvName').value = p.name;
+      document.getElementById('prvUrl').value = p.api_url;
+      document.getElementById('prvKey').value = p.api_key;
+      document.getElementById('prvMarkup').value = p.markup_percent;
+      document.getElementById('prvSubmitBtn').innerText = 'Update Provider';
+      document.getElementById('prvCancelBtn').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetProviderForm() {
+      document.getElementById('providerForm').reset();
+      document.getElementById('editProviderId').value = '';
+      document.getElementById('prvMarkup').value = '30';
+      document.getElementById('prvSubmitBtn').innerText = 'Connect & Import Services';
+      document.getElementById('prvCancelBtn').classList.add('hidden');
+    }
+
+    async function deleteProvider(id) {
+      if (!confirm('Remove this provider? Imported services will be deactivated, not deleted.')) return;
+      const token = localStorage.getItem('jr_admin_token');
+      const res = await fetch(`/api/admin/providers/${id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      alert(data.message || data.error);
+      loadProviders();
+      loadAdminServices();
+    }
+
+    function logoutAdmin() {
+      localStorage.removeItem('jr_admin_token');
+      location.reload();
+    }
+
+    document.getElementById('svcImage').addEventListener('change', updateImagePreview);
+
+    window.addEventListener('DOMContentLoaded', checkAdminAuth);  </script>
+</body>
+</html>
