@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "description": "Backend & Dashboard Authentication System for Jay Rajput Media Power",
   "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "start": "node server.js"
   },

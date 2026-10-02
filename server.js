@@ -30,7 +30,13 @@ app.use((err, req, res, next) => {
 });
 
 // Initialize Database
-const db = new Database('database.sqlite');
+// DB_PATH lets the host point at a mounted persistent volume. Serverless
+// platforms have no writable persistent disk, so this app needs a host that
+// provides one (Render / Railway / Fly.io / a VPS).
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'database.sqlite');
+fs.mkdirSync(path.dirname(path.resolve(DB_PATH)), { recursive: true });
+const db = new Database(DB_PATH);
+db.pragma('journal_mode = WAL');
 
 // Create Tables
 db.exec(`
@@ -1070,6 +1076,7 @@ app.get('{*splat}', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`🚀 Jay Rajput Media Power Server live on http://localhost:${PORT}`);
+  console.log(`🗄️  Database: ${DB_PATH}`);
   console.log(`💳 Cashfree return/webhook origin: ${PUBLIC_URL}`);
 });
 
