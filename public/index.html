@@ -592,7 +592,7 @@
           <h2 class="text-3xl font-display font-black text-slate-900 dark:text-white flex items-center space-x-2">
             <i class="fa-solid fa-layer-group text-igPink"></i><span>Services & Packages Store</span>
           </h2>
-          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">Select an Instagram or Facebook service and click <strong>Buy Now</strong> to place your order.</p>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">Select a service to view details and place your order.</p>
         </div>
         <div class="relative w-full md:w-72">
           <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
@@ -600,9 +600,29 @@
         </div>
       </div>
 
-      <div id="servicesCardGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <!-- Category Filter Pills -->
+      <div id="categoryFilters" class="flex flex-wrap gap-2">
+        <button onclick="filterByCategory('all')" class="category-pill active px-4 py-2 rounded-full text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-900 dark:bg-white text-white dark:text-slate-900 transition" data-category="all">
+          All Services
+        </button>
+      </div>
+
+      <div id="servicesCardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
         </div>
     </section>
+
+    <!-- Service Detail Modal -->
+    <div id="serviceDetailModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white dark:bg-darkCard w-full max-w-2xl rounded-3xl border border-slate-200 dark:border-darkBorder shadow-2xl relative max-h-[90vh] overflow-y-auto">
+        <button onclick="closeServiceDetail()" class="absolute top-4 right-4 z-10 w-8 h-8 bg-white/90 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white shadow-lg transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        
+        <div id="serviceDetailContent">
+          <!-- Content injected by JS -->
+        </div>
+      </div>
+    </div>
 
     <section id="section-new-order" class="content-section hidden">
       <div class="max-w-2xl mx-auto bg-white dark:bg-darkCard p-6 sm:p-10 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-6">
@@ -1198,54 +1218,187 @@
       if (activeCurrency === 'USD') { multiplier = 0.012; symbol = '$'; }
       if (activeCurrency === 'EUR') { multiplier = 0.011; symbol = '€'; }
 
+      if (!list.length) {
+        container.innerHTML = '<div class="col-span-full text-center py-12 text-slate-400">No services found.</div>';
+        return;
+      }
+
       container.innerHTML = list.map(s => {
         const isIg = s.category.toLowerCase().includes('instagram');
+        const isFb = s.category.toLowerCase().includes('facebook');
+        const isYt = s.category.toLowerCase().includes('youtube');
         const badgeStyle = isIg 
           ? 'bg-pink-500/10 text-igPink border-pink-200 dark:border-pink-900' 
-          : 'bg-blue-500/10 text-fbBlue border-blue-200 dark:border-blue-900';
-        const buttonGradient = isIg ? 'ig-gradient-bg' : 'bg-fbBlue hover:bg-fbBlueHover';
+          : isFb
+            ? 'bg-blue-500/10 text-fbBlue border-blue-200 dark:border-blue-900'
+            : 'bg-red-500/10 text-red-500 border-red-200 dark:border-red-900';
+        const icon = isIg ? 'fa-brands fa-instagram' : isFb ? 'fa-brands fa-facebook' : isYt ? 'fa-brands fa-youtube' : 'fa-solid fa-globe';
+
+        const imageHtml = s.image ? `
+          <div class="relative w-full aspect-[4/3] bg-slate-50 dark:bg-slate-900 border-b border-slate-200/80 dark:border-darkBorder overflow-hidden cursor-pointer" onclick="openServiceDetail(${s.id})">
+            <img src="${s.image}" alt="${s.name}" loading="lazy" class="w-full h-full object-cover hover:scale-105 transition-transform duration-300" onerror="this.src='https://placehold.co/600x400?text=${encodeURIComponent(s.name)}'">
+            <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 hover:opacity-100 transition-opacity flex items-end p-3">
+              <span class="text-white text-xs font-bold">View Details →</span>
+            </div>
+          </div>
+        ` : `
+          <div class="w-full aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center cursor-pointer" onclick="openServiceDetail(${s.id})">
+            <i class="${icon} text-4xl text-slate-400"></i>
+          </div>
+        `;
 
         return `
-          <div class="bg-white dark:bg-darkCard rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard flex flex-col justify-between overflow-hidden transition-all hover:-translate-y-1">
-            ${s.image ? `
-              <div class="w-full bg-slate-50 dark:bg-slate-900 border-b border-slate-200/80 dark:border-darkBorder">
-                <img src="${s.image}" alt="${s.name}" loading="lazy" class="w-full h-auto max-h-[380px] object-contain block" onerror="this.parentElement.remove()">
-              </div>
-            ` : ''}
-            <div class="p-6 space-y-4">
-            <div>
-              <div class="flex justify-between items-center mb-3">
-                <span class="text-xs px-3 py-1 rounded-full font-bold uppercase border ${badgeStyle}">
-                  ${isIg ? '<i class="fa-brands fa-instagram mr-1"></i>' : '<i class="fa-brands fa-facebook mr-1"></i>'}
-                  ${s.category}
-                </span>
-                <span class="text-xs text-slate-400 font-mono font-bold">#${s.id}</span>
-              </div>
-              <h3 class="text-base font-display font-bold text-slate-900 dark:text-white leading-snug">${s.name}</h3>
-              <p class="text-xs text-slate-500 dark:text-slate-400 mt-2 line-clamp-2">${s.description}</p>
-            </div>
-            <div class="pt-4 border-t border-slate-100 dark:border-darkBorder flex items-center justify-between">
+          <div class="bg-white dark:bg-darkCard rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard flex flex-col overflow-hidden transition-all hover:-translate-y-1 hover:shadow-lg">
+            ${imageHtml}
+            <div class="p-5 space-y-3 flex-1 flex flex-col">
               <div>
-                <p class="text-[10px] uppercase font-bold text-slate-400">Rate / 1000</p>
-                <p class="text-xl font-display font-black text-slate-900 dark:text-white">${symbol}${(s.rate_per_1000 * multiplier).toFixed(2)}</p>
+                <div class="flex justify-between items-center mb-2">
+                  <span class="text-[10px] px-2.5 py-1 rounded-full font-bold uppercase border ${badgeStyle}">
+                    <i class="${icon} mr-1"></i>${s.category}
+                  </span>
+                  <span class="text-[10px] text-slate-400 font-mono font-bold">#${s.id}</span>
+                </div>
+                <h3 class="text-sm font-display font-bold text-slate-900 dark:text-white leading-snug line-clamp-2">${s.name}</h3>
               </div>
-              <button onclick="prepareBuyNow(${s.id})" class="px-5 py-2.5 text-white font-display font-bold rounded-2xl text-xs flex items-center space-x-1.5 shadow-sm transition ${buttonGradient}">
-                <i class="fa-solid fa-cart-shopping text-[11px]"></i><span>Buy Now</span>
-              </button>
-
-              <div class="video-editing-wrapper">
-  <iframe 
-    src="video-form.html" 
-    title="Video Editing Application Form"
-    style="width: 100%; height: 750px; border: none; border-radius: 16px; overflow: hidden;"
-    loading="lazy">
-  </iframe>
-</div>
-            </div>
+              
+              <div class="flex-1"></div>
+              
+              <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-darkBorder">
+                <div>
+                  <p class="text-[10px] uppercase font-bold text-slate-400">Rate / 1000</p>
+                  <p class="text-lg font-display font-black text-slate-900 dark:text-white">${symbol}${(s.rate_per_1000 * multiplier).toFixed(2)}</p>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button onclick="openServiceDetail(${s.id})" class="px-3 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                    Details
+                  </button>
+                  <button onclick="prepareBuyNow(${s.id})" class="px-3 py-2 bg-fbBlue text-white font-bold rounded-xl text-xs hover:bg-fbBlueHover transition">
+                    <i class="fa-solid fa-cart-shopping text-[10px] mr-1"></i>Buy
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         `;
       }).join('');
+    }
+
+    function openServiceDetail(serviceId) {
+      const s = allServices.find(item => item.id === serviceId);
+      if (!s) return;
+
+      let multiplier = 1;
+      let symbol = '₹';
+      if (activeCurrency === 'USD') { multiplier = 0.012; symbol = '$'; }
+      if (activeCurrency === 'EUR') { multiplier = 0.011; symbol = '€'; }
+
+      const isIg = s.category.toLowerCase().includes('instagram');
+      const isFb = s.category.toLowerCase().includes('facebook');
+      const isYt = s.category.toLowerCase().includes('youtube');
+      const icon = isIg ? 'fa-brands fa-instagram' : isFb ? 'fa-brands fa-facebook' : isYt ? 'fa-brands fa-youtube' : 'fa-solid fa-globe';
+      const iconColor = isIg ? 'text-igPink' : isFb ? 'text-fbBlue' : isYt ? 'text-red-500' : 'text-slate-500';
+
+      const imageHtml = s.image ? `
+        <div class="w-full aspect-video bg-slate-50 dark:bg-slate-900">
+          <img src="${s.image}" alt="${s.name}" class="w-full h-full object-contain" onerror="this.src='https://placehold.co/800x400?text=${encodeURIComponent(s.name)}'">
+        </div>
+      ` : `
+        <div class="w-full aspect-video bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center">
+          <i class="${icon} text-6xl text-slate-400"></i>
+        </div>
+      `;
+
+      const content = document.getElementById('serviceDetailContent');
+      content.innerHTML = `
+        ${imageHtml}
+        <div class="p-6 sm:p-8 space-y-6">
+          <div>
+            <div class="flex items-center space-x-2 mb-3">
+              <span class="text-xs px-3 py-1 rounded-full font-bold uppercase border ${isIg ? 'bg-pink-500/10 text-igPink border-pink-200 dark:border-pink-900' : isFb ? 'bg-blue-500/10 text-fbBlue border-blue-200 dark:border-blue-900' : 'bg-red-500/10 text-red-500 border-red-200 dark:border-red-900'}">
+                <i class="${icon} mr-1"></i>${s.category}
+              </span>
+              <span class="text-xs text-slate-400 font-mono font-bold">#${s.id}</span>
+            </div>
+            <h2 class="text-2xl font-display font-black text-slate-900 dark:text-white mb-2">${s.name}</h2>
+            <p class="text-sm text-slate-600 dark:text-slate-300">${s.description || 'Professional social media growth service with high retention and fast delivery.'}</p>
+          </div>
+
+          <div class="grid grid-cols-2 gap-4">
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <p class="text-xs text-slate-400 font-bold uppercase">Rate per 1000</p>
+              <p class="text-2xl font-display font-black text-slate-900 dark:text-white mt-1">${symbol}${(s.rate_per_1000 * multiplier).toFixed(2)}</p>
+            </div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <p class="text-xs text-slate-400 font-bold uppercase">Min / Max</p>
+              <p class="text-2xl font-display font-black text-slate-900 dark:text-white mt-1">${s.min_quantity} / ${s.max_quantity}</p>
+            </div>
+          </div>
+
+          <div class="flex items-center space-x-3 pt-4 border-t border-slate-200 dark:border-darkBorder">
+            <button onclick="prepareBuyNow(${s.id}); closeServiceDetail();" class="flex-1 py-3.5 bg-fbBlue text-white font-display font-bold rounded-2xl hover:bg-fbBlueHover transition">
+              <i class="fa-solid fa-cart-shopping mr-2"></i>Buy Now
+            </button>
+            <button onclick="closeServiceDetail()" class="px-6 py-3.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+              Close
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('serviceDetailModal').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeServiceDetail() {
+      document.getElementById('serviceDetailModal').classList.add('hidden');
+      document.body.style.overflow = '';
+    }
+
+    function filterByCategory(category) {
+      document.querySelectorAll('.category-pill').forEach(pill => {
+        pill.classList.remove('bg-slate-900', 'dark:bg-white', 'text-white', 'dark:text-slate-900');
+        if (pill.dataset.category === category) {
+          pill.classList.add('bg-slate-900', 'dark:bg-white', 'text-white', 'dark:text-slate-900');
+        }
+      });
+
+      if (category === 'all') {
+        renderCatalogCards(allServices);
+      } else {
+        renderCatalogCards(allServices.filter(s => s.category === category));
+      }
+    }
+
+    function updateCategoryFilters() {
+      const categories = [...new Set(allServices.map(s => s.category))];
+      const container = document.getElementById('categoryFilters');
+      container.innerHTML = `
+        <button onclick="filterByCategory('all')" class="category-pill active px-4 py-2 rounded-full text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-900 dark:bg-white text-white dark:text-slate-900 transition" data-category="all">
+          All Services
+        </button>
+        ${categories.map(c => `
+          <button onclick="filterByCategory('${c}')" class="category-pill px-4 py-2 rounded-full text-xs font-bold border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition" data-category="${c}">
+            ${c}
+          </button>
+        `).join('')}
+      `;
+    }
+
+    // Update loadServicesData to also update category filters
+    async function loadServicesData() {
+      try {
+        const res = await fetch('/api/services');
+        allServices = await res.json();
+
+        const categories = [...new Set(allServices.map(s => s.category))];
+        const catSelect = document.getElementById('orderCategorySelect');
+        catSelect.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('') + '<option value="all">All Categories</option>';
+
+        updateCategoryFilters();
+        renderCatalogCards(allServices);
+      } catch (err) {
+        console.error(err);
+      }
     }
 
     function filterCatalogCards(query) {
