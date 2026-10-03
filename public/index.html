@@ -1224,12 +1224,42 @@
       }
     }
 
+    function parseJwtPayload(token) {
+      const payload = token.split('.')[1];
+      const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
+      return JSON.parse(json);
+    }
+
+    async function handleGoogleCredentialResponse(response) {
+      try {
+        const payload = parseJwtPayload(response.credential);
+        const email = payload.email;
+        const name = payload.name;
+        
+        if (!email) {
+          alert('Google Sign-In failed: No email found in credential.');
+          return;
+        }
+        
+        await submitGoogleAuth(email, name);
+      } catch (err) {
+        console.error('Google credential parsing error:', err);
+        alert('Google Sign-In failed: ' + err.message);
+      }
+    }
+
     async function handleGoogleSignIn() {
       try {
-        // Direct manual email entry - works without FedCM/One Tap
-        const email = prompt('Enter your Google email to sign in:', 'user@gmail.com');
-        if (!email) return;
-        await submitGoogleAuth(email, email.split('@')[0]);
+        if (typeof google === 'undefined' || !google.accounts) {
+          alert('Google Sign-In is loading. Please wait a moment and try again.');
+          return;
+        }
+
+        google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed()) {
+            alert('Google Sign-In is not available right now. Please use email sign-in.');
+          }
+        });
       } catch (err) {
         alert('Google Sign-In failed: ' + err.message);
       }
