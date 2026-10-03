@@ -35,12 +35,15 @@ app.use((err, req, res, next) => {
 });
 
 // Database configuration for Vercel serverless.
-// Uses PostgreSQL via pg. For Vercel, set DATABASE_URL or POSTGRES_URL env var.
+// Uses PostgreSQL via pg. For Vercel Postgres, checks multiple possible env var names.
 let pool;
 try {
-  const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  const connectionString = process.env.DATABASE_URL 
+    || process.env.POSTGRES_URL 
+    || process.env.vercel_DATABASE_URL 
+    || process.env.vercel_POSTGRES_URL;
   if (!connectionString) {
-    console.error('DATABASE_URL or POSTGRES_URL environment variable is not set');
+    console.error('DATABASE_URL or POSTGRES_URL or vercel_DATABASE_URL environment variable is not set');
     throw new Error('DATABASE_URL or POSTGRES_URL environment variable is not set');
   }
   pool = globalThis.vercelPostgres || new Pool({ connectionString });
