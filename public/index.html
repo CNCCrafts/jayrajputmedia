@@ -256,6 +256,9 @@
           <button onclick="navigateSection('support')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left">
             <i class="fa-solid fa-headset w-5 text-rose-500"></i><span>Support / Tickets</span>
           </button>
+          <button onclick="navigateSection('video-editing')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-purple-50 dark:hover:bg-slate-800 hover:text-purple-600 dark:hover:text-purple-400 transition text-left">
+            <i class="fa-solid fa-film w-5 text-purple-500"></i><span>Video Editing</span>
+          </button>
           <button onclick="navigateSection('account')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left">
             <i class="fa-solid fa-user-gear w-5 text-slate-500"></i><span>Account Settings</span>
           </button>
@@ -358,6 +361,17 @@
           </div>
           <h4 class="text-lg font-display font-bold text-slate-900 dark:text-white">5% Referral Commission</h4>
           <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Earn recurring cash commission deposited right into your wallet for all client orders above ₹100.</p>
+        </div>
+
+        <div class="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 p-7 rounded-3xl border border-purple-200 dark:border-purple-800 shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3 cursor-pointer" onclick="navigateSection('video-editing')">
+          <div class="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl font-bold">
+            <i class="fa-solid fa-film"></i>
+          </div>
+          <h4 class="text-lg font-display font-bold text-slate-900 dark:text-white">Professional Video Editing</h4>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Reels, Shorts, Promotional videos — fast turnaround, creative cuts, and platform-ready formatting.</p>
+          <button type="button" onclick="event.stopPropagation(); navigateSection('video-editing')" class="mt-2 px-5 py-2.5 bg-purple-600 text-white text-xs font-bold rounded-2xl shadow-md hover:bg-purple-700 transition">
+            🎬 Apply for Video Editing
+          </button>
         </div>
       </div>
     </section>
@@ -637,6 +651,57 @@
           </div>
           <button type="submit" class="w-full py-4 text-white font-display font-bold rounded-2xl bg-fbBlue hover:bg-fbBlueHover shadow-md transition">
             Submit Support Request
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <section id="section-video-editing" class="content-section hidden">
+      <div class="max-w-2xl mx-auto bg-white dark:bg-darkCard p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-6">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-2xl bg-purple-50 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl font-bold">
+            <i class="fa-solid fa-film"></i>
+          </div>
+          <div>
+            <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white">Video Editing Services</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Professional editing for reels, shorts, and promotional videos</p>
+          </div>
+        </div>
+
+        <form id="videoEditingForm" onsubmit="handleVideoEditingSubmit(event)" class="space-y-5">
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Your Name</label>
+            <input type="text" id="veName" required placeholder="Enter your full name" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">WhatsApp Number</label>
+            <input type="tel" id="veWhatsapp" required placeholder="e.g. 919876543210" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm">
+            <p class="text-[10px] text-slate-400 mt-1">Enter number with country code, no + symbol</p>
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Video Upload</label>
+            <input type="file" id="veVideo" accept="video/*" onchange="handleVideoSelect(this)" class="hidden">
+            <label for="veVideo" class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl cursor-pointer hover:border-purple-400 dark:hover:border-purple-500 transition bg-slate-50 dark:bg-slate-800/50">
+              <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-400 mb-2"></i>
+              <span id="veFileNameText" class="text-xs font-medium text-slate-500 dark:text-slate-400">Click or Drag video file here</span>
+            </label>
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Video Duration</label>
+            <input type="text" id="veDuration" required placeholder="e.g. 2:30, 60 seconds, 5 mins" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Editing Requirements</label>
+            <textarea id="veRequirements" rows="4" required placeholder="Describe what kind of editing you need: cuts, transitions, text overlays, music, effects, etc." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm"></textarea>
+          </div>
+
+          <button type="submit" class="w-full py-4 text-white font-display font-bold rounded-2xl bg-purple-600 hover:bg-purple-700 shadow-lg hover:shadow-xl transition-all flex items-center justify-center space-x-2">
+            <i class="fa-brands fa-whatsapp text-xl"></i>
+            <span>🎬 Apply for Video Editing on WhatsApp</span>
           </button>
         </form>
       </div>
@@ -1207,6 +1272,48 @@
 
       alert(`Support Ticket #${data.ticket_id} submitted!`);
       document.getElementById('supportTicketForm').reset();
+    }
+
+    function handleVideoSelect(input) {
+      const fileNameText = document.getElementById('veFileNameText');
+      if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        fileNameText.innerText = `Selected: ${file.name} (${fileSizeMB} MB)`;
+      } else {
+        fileNameText.innerText = 'Click or Drag video file here';
+      }
+    }
+
+    function handleVideoEditingSubmit(e) {
+      e.preventDefault();
+      const name = document.getElementById('veName').value.trim();
+      const whatsapp = document.getElementById('veWhatsapp').value.trim();
+      const videoInput = document.getElementById('veVideo');
+      const duration = document.getElementById('veDuration').value.trim();
+      const requirements = document.getElementById('veRequirements').value.trim();
+
+      if (!name || !whatsapp || !duration || !requirements) {
+        alert('Please fill in all fields.');
+        return;
+      }
+
+      const videoFile = videoInput.files && videoInput.files[0];
+      let videoInfo = 'No video uploaded';
+      if (videoFile) {
+        const sizeMB = (videoFile.size / (1024 * 1024)).toFixed(2);
+        videoInfo = `Video: ${videoFile.name} (${sizeMB} MB)`;
+      }
+
+      const message = `🎬 *Video Editing Application*%0A%0A` +
+        `👤 *Name:* ${encodeURIComponent(name)}%0A` +
+        `📱 *WhatsApp:* ${encodeURIComponent(whatsapp)}%0A` +
+        `⏱️ *Duration:* ${encodeURIComponent(duration)}%0A` +
+        `📹 *Video:* ${videoInfo}%0A%0A` +
+        `📝 *Requirements:*%0A${encodeURIComponent(requirements)}`;
+
+      const whatsappURL = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${message}`;
+      window.open(whatsappURL, '_blank');
     }
 
     function copyReferralLink() {

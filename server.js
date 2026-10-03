@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const Database = require('better-sqlite3');
+const { Pool } = require('pg');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -29,149 +29,163 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// Initialize Database
-// DB_PATH lets the host point at a mounted persistent volume. Serverless
-// platforms have no writable persistent disk, so this app needs a host that
-// provides one (Render / Railway / Fly.io / a VPS).
-const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'database.sqlite');
-fs.mkdirSync(path.dirname(path.resolve(DB_PATH)), { recursive: true });
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
+// Database configuration for Vercel serverless.
+// Uses @vercel/postgres which is automatically available in Vercel edge/functions.
+// Falls back to a local Pool for non-Vercel environments.
+let pool;
+try {
+  pool = globalThis.vercelPostgres || new Pool({ connectionString: process.env.DATABASE_URL });
+} catch (e) {
+  pool = new Pool({ connectionString: process.env.DATABASE_URL });
+}
 
-// Create Tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    email TEXT UNIQUE,
-    password TEXT,
-    google_id TEXT,
-    role TEXT DEFAULT 'user',
-    wallet_inr REAL DEFAULT 0.0,
-    wallet_usd REAL DEFAULT 0.0,
-    wallet_eur REAL DEFAULT 0.0,
-    currency TEXT DEFAULT 'INR',
-    referral_code TEXT UNIQUE,
-    referred_by TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+async function initDb() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        email TEXT UNIQUE,
+        password TEXT,
+        google_id TEXT,
+        role TEXT DEFAULT 'user',
+        wallet_inr REAL DEFAULT 0,
+        wallet_usd REAL DEFAULT 0,
+        wallet_eur REAL DEFAULT 0,
+        currency TEXT DEFAULT 'INR',
+        referral_code TEXT UNIQUE,
+        referred_by TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
 
-  CREATE TABLE IF NOT EXISTS services (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    category TEXT,
-    name TEXT,
-    rate_per_1000 REAL,
-    min_quantity INTEGER,
-    max_quantity INTEGER,
-    description TEXT,
-    status TEXT DEFAULT 'active'
-  );
+      CREATE TABLE IF NOT EXISTS services (
+        id SERIAL PRIMARY KEY,
+        category TEXT,
+        name TEXT,
+        rate_per_1000 REAL,
+        min_quantity INTEGER,
+        max_quantity INTEGER,
+        description TEXT,
+        status TEXT DEFAULT 'active'
+      );
 
-  CREATE TABLE IF NOT EXISTS orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    service_id INTEGER,
-    service_name TEXT,
-    link TEXT,
-    quantity INTEGER,
-    charge REAL,
-    currency TEXT,
-    status TEXT DEFAULT 'Pending',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-  );
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        service_id INTEGER,
+        service_name TEXT,
+        link TEXT,
+        quantity INTEGER,
+        charge REAL,
+        currency TEXT,
+        status TEXT DEFAULT 'Pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      );
 
-  CREATE TABLE IF NOT EXISTS tickets (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    subject TEXT,
-    order_id TEXT,
-    request_type TEXT,
-    message TEXT,
-    status TEXT DEFAULT 'Open',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+      CREATE TABLE IF NOT EXISTS tickets (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        subject TEXT,
+        order_id TEXT,
+        request_type TEXT,
+        message TEXT,
+        status TEXT DEFAULT 'Open',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
 
-  CREATE TABLE IF NOT EXISTS transactions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    amount REAL,
-    currency TEXT,
-    payment_method TEXT,
-    status TEXT DEFAULT 'Completed',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+      CREATE TABLE IF NOT EXISTS transactions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER,
+        amount REAL,
+        currency TEXT,
+        payment_method TEXT,
+        status TEXT DEFAULT 'Completed',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
 
-  CREATE TABLE IF NOT EXISTS api_keys (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER UNIQUE,
-    api_key TEXT UNIQUE,
-    label TEXT,
-    status TEXT DEFAULT 'active',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-  );
+      CREATE TABLE IF NOT EXISTS api_keys (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER UNIQUE,
+        api_key TEXT UNIQUE,
+        label TEXT,
+        status TEXT DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      );
 
-  CREATE TABLE IF NOT EXISTS upstream_providers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT,
-    api_url TEXT,
-    api_key TEXT,
-    markup_percent REAL DEFAULT 0,
-    status TEXT DEFAULT 'active',
-    last_sync_at DATETIME,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+      CREATE TABLE IF NOT EXISTS upstream_providers (
+        id SERIAL PRIMARY KEY,
+        name TEXT,
+        api_url TEXT,
+        api_key TEXT,
+        markup_percent REAL DEFAULT 0,
+        status TEXT DEFAULT 'active',
+        last_sync_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
 
-  CREATE TABLE IF NOT EXISTS payment_orders (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    order_id TEXT UNIQUE,
-    user_id INTEGER,
-    amount REAL,
-    currency TEXT,
-    wallet_field TEXT,
-    payment_status TEXT DEFAULT 'PENDING',
-    payment_session_id TEXT,
-    credited INTEGER DEFAULT 0,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME,
-    FOREIGN KEY(user_id) REFERENCES users(id)
-  );
-`);
+      CREATE TABLE IF NOT EXISTS payment_orders (
+        id SERIAL PRIMARY KEY,
+        order_id TEXT UNIQUE,
+        user_id INTEGER,
+        amount REAL,
+        currency TEXT,
+        wallet_field TEXT,
+        payment_status TEXT DEFAULT 'PENDING',
+        payment_session_id TEXT,
+        credited INTEGER DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id)
+      );
+    `);
+  } finally {
+    client.release();
+  }
+}
 
 // Lightweight migrations for columns added after the initial schema
-const addColumnIfMissing = (table, column, definition) => {
-  const existing = db.prepare(`PRAGMA table_info(${table})`).all();
-  if (!existing.some((c) => c.name === column)) {
-    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+const addColumnIfMissing = async (table, column, definition) => {
+  const existing = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = ? AND column_name = ?`, [table, column]);
+  if (!existing.rows.length) {
+    await pool.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
 };
 
-addColumnIfMissing('services', 'provider_id', 'INTEGER');
-addColumnIfMissing('services', 'upstream_service_id', 'TEXT');
-addColumnIfMissing('services', 'cost_per_1000', 'REAL');
-addColumnIfMissing('services', 'image', 'TEXT');
-addColumnIfMissing('orders', 'upstream_order_id', 'TEXT');
-addColumnIfMissing('orders', 'cost', 'REAL DEFAULT 0');
+await addColumnIfMissing('services', 'provider_id', 'INTEGER');
+await addColumnIfMissing('services', 'upstream_service_id', 'TEXT');
+await addColumnIfMissing('services', 'cost_per_1000', 'REAL');
+await addColumnIfMissing('services', 'image', 'TEXT');
+await addColumnIfMissing('orders', 'upstream_order_id', 'TEXT');
+await addColumnIfMissing('orders', 'cost', 'REAL DEFAULT 0');
 
 // Insert default Admin & demo services if empty
-const adminCheck = db.prepare('SELECT * FROM users WHERE email = ?').get('admin@jayrajputmediapower.com');
-if (!adminCheck) {
+const adminCheck = await pool.query('SELECT * FROM users WHERE email = ?', ['admin@jayrajputmediapower.com']);
+if (!adminCheck.rows.length) {
   const hash = bcrypt.hashSync('admin@3360', 10);
-  db.prepare(`
-    INSERT INTO users (name, email, password, role, referral_code) 
-    VALUES (?, ?, ?, ?, ?)
-  `).run('Admin Jay Rajput', 'admin@jayrajputmediapower.com', hash, 'admin', 'JRADMIN');
+  const info = await pool.query(
+    `INSERT INTO users (name, email, password, role, referral_code) VALUES (?, ?, ?, ?, ?)`,
+    ['Admin Jay Rajput', 'admin@jayrajputmediapower.com', hash, 'admin', 'JRADMIN']
+  );
 
-  // Seed default services
-  const insertService = db.prepare(`
-    INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-  insertService.run('Instagram', 'Instagram Followers [High Quality - Non Drop]', 120.00, 100, 50000, 'Instant start, 30 days refill guarantee.');
-  insertService.run('Instagram', 'Instagram Likes [Real Active Users]', 40.00, 50, 100000, 'Fast speed, organic appearance.');
-  insertService.run('Facebook', 'Facebook Page Likes & Followers', 180.00, 100, 20000, 'Worldwide targeting, safe delivery.');
-  insertService.run('YouTube', 'YouTube WatchTime Hours [Monetizable]', 850.00, 500, 4000, 'Refill enabled, 100% safe.');
+  await pool.query(
+    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
+    ['Instagram', 'Instagram Followers [High Quality - Non Drop]', 120.00, 100, 50000, 'Instant start, 30 days refill guarantee.']
+  );
+  await pool.query(
+    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
+    ['Instagram', 'Instagram Likes [Real Active Users]', 40.00, 50, 100000, 'Fast speed, organic appearance.']
+  );
+  await pool.query(
+    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
+    ['Facebook', 'Facebook Page Likes & Followers', 180.00, 100, 20000, 'Worldwide targeting, safe delivery.']
+  );
+  await pool.query(
+    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
+    ['YouTube', 'YouTube WatchTime Hours [Monetizable]', 850.00, 500, 4000, 'Refill enabled, 100% safe.']
+  );
 }
 
 // Middleware: Authentication
@@ -194,76 +208,76 @@ const requireAdmin = (req, res, next) => {
 };
 
 // ==================== AUTH ROUTES ====================
-app.post('/api/auth/register', (req, res) => {
+app.post('/api/auth/register', async (req, res) => {
   const { name, email, password, referral_code } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'All fields are required.' });
 
   try {
-    const existing = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-    if (existing) return res.status(400).json({ error: 'Email already registered.' });
+    const existing = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    if (existing.rows.length) return res.status(400).json({ error: 'Email already registered.' });
 
     const hash = bcrypt.hashSync(password, 10);
     const myRefCode = 'JR' + Math.random().toString(36).substring(2, 7).toUpperCase();
 
-    const stmt = db.prepare(`
-      INSERT INTO users (name, email, password, referral_code, referred_by)
-      VALUES (?, ?, ?, ?, ?)
-    `);
-    const info = stmt.run(name, email, hash, myRefCode, referral_code || null);
+    const stmt = await pool.query(
+      `INSERT INTO users (name, email, password, referral_code, referred_by) VALUES (?, ?, ?, ?, ?)`,
+      [name, email, hash, myRefCode, referral_code || null]
+    );
 
-    const token = jwt.sign({ id: info.lastInsertRowid, email, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: info.lastInsertRowid, name, email, role: 'user', referral_code: myRefCode } });
+    const token = jwt.sign({ id: stmt.rows[0].id, email, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: stmt.rows[0].id, name, email, role: 'user', referral_code: myRefCode } });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-  if (!user || !bcrypt.compareSync(password, user.password)) {
+  const user = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+  const existingUser = user.rows[0];
+  if (!existingUser || !bcrypt.compareSync(password, existingUser.password)) {
     return res.status(400).json({ error: 'Invalid email or password.' });
   }
 
-  const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ id: existingUser.id, email: existingUser.email, role: existingUser.role }, JWT_SECRET, { expiresIn: '7d' });
   res.json({
     token,
     user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      wallet_inr: user.wallet_inr,
-      wallet_usd: user.wallet_usd,
-      wallet_eur: user.wallet_eur,
-      currency: user.currency,
-      referral_code: user.referral_code
+      id: existingUser.id,
+      name: existingUser.name,
+      email: existingUser.email,
+      role: existingUser.role,
+      wallet_inr: existingUser.wallet_inr,
+      wallet_usd: existingUser.wallet_usd,
+      wallet_eur: existingUser.wallet_eur,
+      currency: existingUser.currency,
+      referral_code: existingUser.referral_code
     }
   });
 });
 
 // Google Login Mock / API integration hook
-app.post('/api/auth/google', (req, res) => {
+app.post('/api/auth/google', async (req, res) => {
   const { google_id, email, name } = req.body;
-  let user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+  let user = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
 
-  if (!user) {
+  if (!user.rows.length) {
     const myRefCode = 'JR' + Math.random().toString(36).substring(2, 7).toUpperCase();
-    const info = db.prepare(`
-      INSERT INTO users (name, email, google_id, role, referral_code)
-      VALUES (?, ?, ?, 'user', ?)
-    `).run(name, email, google_id, myRefCode);
-    user = db.prepare('SELECT * FROM users WHERE id = ?').get(info.lastInsertRowid);
+    const info = await pool.query(
+      `INSERT INTO users (name, email, google_id, role, referral_code) VALUES (?, ?, ?, 'user', ?)`,
+      [name, email, google_id, myRefCode]
+    );
+    user = await pool.query('SELECT * FROM users WHERE id = ?', [info.rows[0].id]);
   }
 
-  const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+  const token = jwt.sign({ id: user.rows[0].id, email: user.rows[0].email, role: user.rows[0].role }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, user });
 });
 
 // User Profile & Balance
-app.get('/api/user/profile', authenticateToken, (req, res) => {
-  const user = db.prepare('SELECT id, name, email, role, wallet_inr, wallet_usd, wallet_eur, currency, referral_code, referred_by FROM users WHERE id = ?').get(req.user.id);
-  res.json(user);
+app.get('/api/user/profile', authenticateToken, async (req, res) => {
+  const user = await pool.query('SELECT id, name, email, role, wallet_inr, wallet_usd, wallet_eur, currency, referral_code, referred_by FROM users WHERE id = ?', [req.user.id]);
+  res.json(user.rows[0]);
 });
 
 // ==================== PRICING & ORDER PLACEMENT ====================
@@ -272,7 +286,7 @@ const CURRENCY_MULTIPLIER = { INR: 1, USD: 0.012, EUR: 0.011 };
 
 // Places an order for a user: charges the wallet, writes the order, applies referral commission.
 // Returns { error } on failure, otherwise the created order summary.
-function placeOrder(user, service, link, quantity, currency = 'INR') {
+async function placeOrder(user, service, link, quantity, currency = 'INR') {
   const multiplier = CURRENCY_MULTIPLIER[currency] ?? 1;
   const walletField = WALLET_BY_CURRENCY[currency] || 'wallet_inr';
   const totalCost = parseFloat((((service.rate_per_1000 * multiplier) / 1000) * quantity).toFixed(2));
@@ -286,21 +300,21 @@ function placeOrder(user, service, link, quantity, currency = 'INR') {
     ? parseFloat((((service.cost_per_1000 * multiplier) / 1000) * quantity).toFixed(2))
     : 0;
 
-  db.prepare(`UPDATE users SET ${walletField} = ${walletField} - ? WHERE id = ?`).run(totalCost, user.id);
+  await pool.query(`UPDATE users SET ${walletField} = ${walletField} - ? WHERE id = ?`, [totalCost, user.id]);
 
-  const info = db.prepare(`
-    INSERT INTO orders (user_id, service_id, service_name, link, quantity, charge, currency, cost)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(user.id, service.id, service.name, link, quantity, totalCost, currency, supplierCost);
+  const info = await pool.query(
+    `INSERT INTO orders (user_id, service_id, service_name, link, quantity, charge, currency, cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [user.id, service.id, service.name, link, quantity, totalCost, currency, supplierCost]
+  );
 
-  const orderId = info.lastInsertRowid;
+  const orderId = info.rows[0].id;
 
   // Referral Reward Logic (5% commission if amount >= 100 INR/equivalent)
   if (totalCost >= 100 && user.referred_by) {
-    const referrer = db.prepare('SELECT id FROM users WHERE referral_code = ?').get(user.referred_by);
-    if (referrer) {
+    const referrer = await pool.query('SELECT id FROM users WHERE referral_code = ?', [user.referred_by]);
+    if (referrer.rows.length) {
       const commission = parseFloat((totalCost * 0.05).toFixed(2));
-      db.prepare(`UPDATE users SET ${walletField} = ${walletField} + ? WHERE id = ?`).run(commission, referrer.id);
+      await pool.query(`UPDATE users SET ${walletField} = ${walletField} + ? WHERE id = ?`, [commission, referrer.rows[0].id]);
     }
   }
 
@@ -308,26 +322,26 @@ function placeOrder(user, service, link, quantity, currency = 'INR') {
 }
 
 // ==================== SERVICES & ORDERS ====================
-app.get('/api/services', (req, res) => {
-  const services = db.prepare("SELECT * FROM services WHERE status = 'active'").all();
-  res.json(services);
+app.get('/api/services', async (req, res) => {
+  const services = await pool.query("SELECT * FROM services WHERE status = 'active'");
+  res.json(services.rows);
 });
 
 app.post('/api/orders/create', authenticateToken, async (req, res) => {
   const { service_id, link, quantity, currency = 'INR' } = req.body;
-  const service = db.prepare('SELECT * FROM services WHERE id = ?').get(service_id);
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
+  const service = await pool.query('SELECT * FROM services WHERE id = ?', [service_id]);
+  const user = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
 
-  if (!service) return res.status(404).json({ error: 'Service not found.' });
-  if (quantity < service.min_quantity || quantity > service.max_quantity) {
-    return res.status(400).json({ error: `Quantity must be between ${service.min_quantity} and ${service.max_quantity}` });
+  if (!service.rows.length) return res.status(404).json({ error: 'Service not found.' });
+  if (quantity < service.rows[0].min_quantity || quantity > service.rows[0].max_quantity) {
+    return res.status(400).json({ error: `Quantity must be between ${service.rows[0].min_quantity} and ${service.rows[0].max_quantity}` });
   }
 
-  const placed = placeOrder(user, service, link, quantity, currency);
+  const placed = await placeOrder(user.rows[0], service.rows[0], link, quantity, currency);
   if (placed.error) return res.status(400).json({ error: placed.error });
 
   // Services imported from an upstream panel are pushed to that supplier automatically
-  if (service.provider_id) {
+  if (service.rows[0].provider_id) {
     const forwarded = await forwardOrderToProvider(placed.order_id);
     if (forwarded.error) {
       res.json({ success: false, warning: forwarded.error, order_id: placed.order_id, charge: placed.charge, remaining_balance: placed.remaining_balance });
@@ -338,16 +352,16 @@ app.post('/api/orders/create', authenticateToken, async (req, res) => {
   res.json({ success: true, order_id: placed.order_id, charge: placed.charge, remaining_balance: placed.remaining_balance });
 });
 
-app.get('/api/orders/my-orders', authenticateToken, (req, res) => {
-  const orders = db.prepare('SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC').all(req.user.id);
-  res.json(orders);
+app.get('/api/orders/my-orders', authenticateToken, async (req, res) => {
+  const orders = await pool.query('SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC', [req.user.id]);
+  res.json(orders.rows);
 });
 
 // ==================== WALLET & ADD FUNDS ====================
 // Manual top-ups are admin-only. Customer deposits must go through the
 // Cashfree checkout in /api/cashfree/* so the wallet is credited from a
 // verified payment, never from a client request.
-app.post('/api/wallet/add-funds', authenticateToken, requireAdmin, (req, res) => {
+app.post('/api/wallet/add-funds', authenticateToken, requireAdmin, async (req, res) => {
   const { amount, currency = 'INR', payment_method } = req.body;
   if (!amount || amount <= 0) return res.status(400).json({ error: 'Invalid amount' });
 
@@ -355,42 +369,43 @@ app.post('/api/wallet/add-funds', authenticateToken, requireAdmin, (req, res) =>
   if (currency === 'USD') walletField = 'wallet_usd';
   if (currency === 'EUR') walletField = 'wallet_eur';
 
-  db.prepare(`UPDATE users SET ${walletField} = ${walletField} + ? WHERE id = ?`).run(amount, req.user.id);
-  db.prepare('INSERT INTO transactions (user_id, amount, currency, payment_method) VALUES (?, ?, ?, ?)').run(req.user.id, amount, currency, payment_method);
+  await pool.query(`UPDATE users SET ${walletField} = ${walletField} + ? WHERE id = ?`, [amount, req.user.id]);
+  await pool.query('INSERT INTO transactions (user_id, amount, currency, payment_method) VALUES (?, ?, ?, ?)', [req.user.id, amount, currency, payment_method]);
 
   res.json({ success: true, message: `Successfully added ${amount} ${currency} to wallet!` });
 });
 
 // ==================== SUPPORT TICKETS ====================
-app.post('/api/support/tickets', authenticateToken, (req, res) => {
+app.post('/api/support/tickets', authenticateToken, async (req, res) => {
   const { subject, order_id, request_type, message } = req.body;
   if (!subject || !request_type || !message) {
     return res.status(400).json({ error: 'Please provide all ticket details.' });
   }
 
-  const info = db.prepare(`
-    INSERT INTO tickets (user_id, subject, order_id, request_type, message)
-    VALUES (?, ?, ?, ?, ?)
-  `).run(req.user.id, subject, order_id || 'N/A', request_type, message);
+  const info = await pool.query(
+    `INSERT INTO tickets (user_id, subject, order_id, request_type, message) VALUES (?, ?, ?, ?, ?)`,
+    [req.user.id, subject, order_id || 'N/A', request_type, message]
+  );
 
-  res.json({ success: true, ticket_id: info.lastInsertRowid });
+  res.json({ success: true, ticket_id: info.rows[0].id });
 });
 
-app.get('/api/support/tickets', authenticateToken, (req, res) => {
-  const tickets = db.prepare('SELECT * FROM tickets WHERE user_id = ? ORDER BY id DESC').all(req.user.id);
-  res.json(tickets);
+app.get('/api/support/tickets', authenticateToken, async (req, res) => {
+  const tickets = await pool.query('SELECT * FROM tickets WHERE user_id = ? ORDER BY id DESC', [req.user.id]);
+  res.json(tickets.rows);
 });
 
 
 // ==================== UPDATE PASSWORD ROUTE ====================
-app.post('/api/user/change-password', authenticateToken, (req, res) => {
+app.post('/api/user/change-password', authenticateToken, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (!currentPassword || !newPassword) {
     return res.status(400).json({ error: 'Both current and new passwords are required.' });
   }
 
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-  if (!user || !bcrypt.compareSync(currentPassword, user.password)) {
+  const user = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+  const existingUser = user.rows[0];
+  if (!existingUser || !bcrypt.compareSync(currentPassword, existingUser.password)) {
     return res.status(400).json({ error: 'Current password is incorrect.' });
   }
 
@@ -399,56 +414,65 @@ app.post('/api/user/change-password', authenticateToken, (req, res) => {
   }
 
   const newHash = bcrypt.hashSync(newPassword, 10);
-  db.prepare('UPDATE users SET password = ? WHERE id = ?').run(newHash, user.id);
+  await pool.query('UPDATE users SET password = ? WHERE id = ?', [newHash, user.rows[0].id]);
   res.json({ success: true, message: 'Password updated successfully!' });
 });
 
 // ==================== ADMIN PANEL ROUTES ====================
-app.get('/api/admin/services', authenticateToken, requireAdmin, (req, res) => {
-  const services = db.prepare('SELECT * FROM services').all();
-  res.json(services);
+app.get('/api/admin/services', authenticateToken, requireAdmin, async (req, res) => {
+  const services = await pool.query('SELECT * FROM services');
+  res.json(services.rows);
 });
 
-app.post('/api/admin/services', authenticateToken, requireAdmin, (req, res) => {
+app.post('/api/admin/services', authenticateToken, requireAdmin, async (req, res) => {
   const { category, name, rate_per_1000, min_quantity, max_quantity, description, image } = req.body;
-  const info = db.prepare(`
-    INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, image)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(category, name, rate_per_1000, min_quantity, max_quantity, description, image || null);
-  res.json({ success: true, id: info.lastInsertRowid });
+  const info = await pool.query(
+    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, image) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [category, name, rate_per_1000, min_quantity, max_quantity, description, image || null]
+  );
+  res.json({ success: true, id: info.rows[0].id });
 });
 
-app.put('/api/admin/services/:id', authenticateToken, requireAdmin, (req, res) => {
+app.put('/api/admin/services/:id', authenticateToken, requireAdmin, async (req, res) => {
   const { category, name, rate_per_1000, min_quantity, max_quantity, description, status, image } = req.body;
-  db.prepare(`
-    UPDATE services SET category=?, name=?, rate_per_1000=?, min_quantity=?, max_quantity=?, description=?, status=?, image=?
-    WHERE id = ?
-  `).run(category, name, rate_per_1000, min_quantity, max_quantity, description, status, image || null, req.params.id);
+  await pool.query(
+    `UPDATE services SET category=?, name=?, rate_per_1000=?, min_quantity=?, max_quantity=?, description=?, status=?, image=? WHERE id = ?`,
+    [category, name, rate_per_1000, min_quantity, max_quantity, description, status, image || null, req.params.id]
+  );
   res.json({ success: true, message: 'Service updated successfully.' });
 });
 
 // Bulk image assignment: { assignments: [{ id, image }] } or { category, image }
-app.post('/api/admin/services/images', authenticateToken, requireAdmin, (req, res) => {
+app.post('/api/admin/services/images', authenticateToken, requireAdmin, async (req, res) => {
   const { assignments, category, image } = req.body;
 
   if (Array.isArray(assignments) && assignments.length) {
-    const stmt = db.prepare('UPDATE services SET image = ? WHERE id = ?');
-    db.transaction(() => {
-      for (const a of assignments) stmt.run(a.image || null, a.id);
-    })();
-    return res.json({ success: true, updated: assignments.length });
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (const a of assignments) {
+        await client.query('UPDATE services SET image = ? WHERE id = ?', [a.image || null, a.id]);
+      }
+      await client.query('COMMIT');
+      return res.json({ success: true, updated: assignments.length });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   if (category && image) {
-    const info = db.prepare('UPDATE services SET image = ? WHERE category = ?').run(image, category);
-    return res.json({ success: true, updated: info.changes, category });
+    const info = await pool.query('UPDATE services SET image = ? WHERE category = ?', [image, category]);
+    return res.json({ success: true, updated: info.rowCount, category });
   }
 
   res.status(400).json({ error: 'Provide assignments[] or a category + image.' });
 });
 
-app.delete('/api/admin/services/:id', authenticateToken, requireAdmin, (req, res) => {
-  db.prepare('DELETE FROM services WHERE id = ?').run(req.params.id);
+app.delete('/api/admin/services/:id', authenticateToken, requireAdmin, async (req, res) => {
+  await pool.query('DELETE FROM services WHERE id = ?', [req.params.id]);
   res.json({ success: true, message: 'Service deleted successfully.' });
 });
 
@@ -500,22 +524,12 @@ async function syncProviderServices(provider) {
   }
 
   const markup = 1 + (Number(provider.markup_percent) || 0) / 100;
-  const upsert = db.prepare(`
-    SELECT id FROM services WHERE provider_id = ? AND upstream_service_id = ?
-  `);
-  const insert = db.prepare(`
-    INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, provider_id, upstream_service_id, cost_per_1000, status)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  const update = db.prepare(`
-    UPDATE services SET category = ?, name = ?, rate_per_1000 = ?, min_quantity = ?, max_quantity = ?,
-      description = ?, cost_per_1000 = ?, status = ? WHERE id = ?
-  `);
-
   let added = 0;
   let updated = 0;
 
-  db.transaction(() => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
     for (const item of list) {
       const upstreamId = String(item.service ?? item.id ?? '');
       if (!upstreamId) continue;
@@ -531,40 +545,52 @@ async function syncProviderServices(provider) {
       const description = item.description || `Supplied by ${provider.name}`;
       const status = String(item.status || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
 
-      const existing = upsert.get(provider.id, upstreamId);
-      if (existing) {
-        update.run(category, name, retailRate, min, max, description, wholesaleRate, status, existing.id);
+      const existing = await client.query('SELECT id FROM services WHERE provider_id = ? AND upstream_service_id = ?', [provider.id, upstreamId]);
+      if (existing.rows.length) {
+        await client.query(
+          `UPDATE services SET category = ?, name = ?, rate_per_1000 = ?, min_quantity = ?, max_quantity = ?, description = ?, cost_per_1000 = ?, status = ? WHERE id = ?`,
+          [category, name, retailRate, min, max, description, wholesaleRate, status, existing.rows[0].id]
+        );
         updated++;
       } else {
-        insert.run(category, name, retailRate, min, max, description, provider.id, upstreamId, wholesaleRate, status);
+        await client.query(
+          `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, provider_id, upstream_service_id, cost_per_1000, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [category, name, retailRate, min, max, description, provider.id, upstreamId, wholesaleRate, status]
+        );
         added++;
       }
     }
-    db.prepare("UPDATE upstream_providers SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?").run(provider.id);
-  })();
+    await client.query("UPDATE upstream_providers SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?", [provider.id]);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 
   return { added, updated, total: list.length };
 }
 
 // Pushes a locally created order to the upstream panel that supplies its service
 async function forwardOrderToProvider(orderId) {
-  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(orderId);
-  if (!order) return { error: 'Order not found.' };
+  const order = await pool.query('SELECT * FROM orders WHERE id = ?', [orderId]);
+  if (!order.rows.length) return { error: 'Order not found.' };
 
-  const service = db.prepare('SELECT * FROM services WHERE id = ?').get(order.service_id);
-  if (!service || !service.provider_id || !service.upstream_service_id) {
+  const service = await pool.query('SELECT * FROM services WHERE id = ?', [order.rows[0].service_id]);
+  if (!service.rows.length || !service.rows[0].provider_id || !service.rows[0].upstream_service_id) {
     return { error: 'This service is not linked to an upstream provider.' };
   }
 
-  const provider = db.prepare("SELECT * FROM upstream_providers WHERE id = ? AND status = 'active'").get(service.provider_id);
-  if (!provider) return { error: 'Upstream provider is missing or disabled.' };
+  const provider = await pool.query("SELECT * FROM upstream_providers WHERE id = ? AND status = 'active'", [service.rows[0].provider_id]);
+  if (!provider.rows.length) return { error: 'Upstream provider is missing or disabled.' };
 
   try {
-    const response = await providerRequest(provider, {
+    const response = await providerRequest(provider.rows[0], {
       action: 'add',
-      service: service.upstream_service_id,
-      link: order.link,
-      quantity: order.quantity
+      service: service.rows[0].upstream_service_id,
+      link: order.rows[0].link,
+      quantity: order.rows[0].quantity
     }, 'POST');
 
     const body = response.data || {};
@@ -575,7 +601,7 @@ async function forwardOrderToProvider(orderId) {
       return { error: `Upstream rejected the order: ${JSON.stringify(body)}` };
     }
 
-    db.prepare('UPDATE orders SET upstream_order_id = ? WHERE id = ?').run(String(upstreamOrderId), orderId);
+    await pool.query('UPDATE orders SET upstream_order_id = ? WHERE id = ?', [String(upstreamOrderId), orderId]);
     return { upstream_order_id: String(upstreamOrderId) };
   } catch (err) {
     const detail = err.response ? JSON.stringify(err.response.data) : err.message;
@@ -585,24 +611,24 @@ async function forwardOrderToProvider(orderId) {
 
 // Pulls the delivery status of forwarded orders back from the upstream panel
 async function refreshUpstreamOrderStatus() {
-  const pending = db.prepare(`
+  const pending = await pool.query(`
     SELECT o.id, o.service_id, o.upstream_order_id FROM orders o
     JOIN services s ON s.id = o.service_id
     WHERE o.upstream_order_id IS NOT NULL
       AND o.upstream_order_id != ''
       AND o.status IN ('Pending', 'In progress', 'Partial')
       AND s.provider_id IS NOT NULL
-  `).all();
+  `);
 
   let checked = 0;
 
-  for (const order of pending) {
-    const service = db.prepare('SELECT provider_id FROM services WHERE id = ?').get(order.service_id);
-    const provider = db.prepare("SELECT * FROM upstream_providers WHERE id = ? AND status = 'active'").get(service.provider_id);
-    if (!provider) continue;
+  for (const order of pending.rows) {
+    const service = await pool.query('SELECT provider_id FROM services WHERE id = ?', [order.service_id]);
+    const provider = await pool.query("SELECT * FROM upstream_providers WHERE id = ? AND status = 'active'", [service.rows[0].provider_id]);
+    if (!provider.rows.length) continue;
 
     try {
-      const response = await providerRequest(provider, { action: 'status', id: order.upstream_order_id });
+      const response = await providerRequest(provider.rows[0], { action: 'status', id: order.upstream_order_id });
       const payload = (response.data && (response.data.order ?? response.data.data)) || {};
       const raw = String(payload.status ?? (typeof payload === 'string' ? payload : '')).trim();
       if (!raw) continue;
@@ -621,7 +647,7 @@ async function refreshUpstreamOrderStatus() {
       const mapped = statusMap[raw.toLowerCase()];
       if (!mapped) continue;
 
-      db.prepare('UPDATE orders SET status = ? WHERE id = ?').run(mapped, order.id);
+      await pool.query('UPDATE orders SET status = ? WHERE id = ?', [mapped, order.id]);
       checked++;
     } catch (err) {
       console.error(`Upstream status check failed for order ${order.id}:`, err.message);
@@ -632,12 +658,13 @@ async function refreshUpstreamOrderStatus() {
 }
 
 app.post('/api/admin/providers/sync-all', authenticateToken, requireAdmin, async (req, res) => {
-  const providers = db.prepare("SELECT * FROM upstream_providers WHERE status = 'active'").all();
+  const providers = await pool.query("SELECT * FROM upstream_providers WHERE status = 'active'").rows;
   const results = [];
 
   for (const provider of providers) {
     try {
-      results.push({ provider: provider.name, ok: true, ...(await syncProviderServices(provider)) });
+      const summary = await syncProviderServices(provider);
+      results.push({ provider: provider.name, ok: true, ...summary });
     } catch (err) {
       results.push({ provider: provider.name, ok: false, error: err.message });
     }
@@ -646,12 +673,12 @@ app.post('/api/admin/providers/sync-all', authenticateToken, requireAdmin, async
   res.json({ success: true, results });
 });
 
-app.get('/api/admin/providers', authenticateToken, requireAdmin, (req, res) => {
-  const providers = db.prepare('SELECT * FROM upstream_providers ORDER BY id DESC').all();
-  const counts = db.prepare(`
+app.get('/api/admin/providers', authenticateToken, requireAdmin, async (req, res) => {
+  const providers = await pool.query('SELECT * FROM upstream_providers ORDER BY id DESC').rows;
+  const counts = await pool.query(`
     SELECT provider_id, COUNT(*) AS service_count FROM services
     WHERE provider_id IS NOT NULL GROUP BY provider_id
-  `).all();
+  `).rows;
   const map = new Map(counts.map((c) => [c.provider_id, c.service_count]));
 
   res.json(providers.map((p) => ({
@@ -667,45 +694,39 @@ app.get('/api/admin/providers', authenticateToken, requireAdmin, (req, res) => {
   })));
 });
 
-app.post('/api/admin/providers', authenticateToken, requireAdmin, (req, res) => {
+app.post('/api/admin/providers', authenticateToken, requireAdmin, async (req, res) => {
   const { name, api_url, api_key, markup_percent = 0 } = req.body;
   if (!name || !api_url || !api_key) {
     return res.status(400).json({ error: 'Name, API URL and API key are all required.' });
   }
 
-  const info = db.prepare(`
-    INSERT INTO upstream_providers (name, api_url, api_key, markup_percent)
-    VALUES (?, ?, ?, ?)
-  `).run(name, api_url.trim(), api_key.trim(), Number(markup_percent) || 0);
+  const info = await pool.query(
+    `INSERT INTO upstream_providers (name, api_url, api_key, markup_percent) VALUES (?, ?, ?, ?)`,
+    [name, api_url.trim(), api_key.trim(), Number(markup_percent) || 0]
+  );
 
-  res.json({ success: true, id: info.lastInsertRowid });
+  res.json({ success: true, id: info.rows[0].id });
 });
 
-app.put('/api/admin/providers/:id', authenticateToken, requireAdmin, (req, res) => {
+app.put('/api/admin/providers/:id', authenticateToken, requireAdmin, async (req, res) => {
   const { name, api_url, api_key, markup_percent = 0, status = 'active' } = req.body;
-  const provider = db.prepare('SELECT * FROM upstream_providers WHERE id = ?').get(req.params.id);
-  if (!provider) return res.status(404).json({ error: 'Provider not found.' });
+  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = ?', [req.params.id]);
+  if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
 
-  db.prepare(`
-    UPDATE upstream_providers SET name = ?, api_url = ?, api_key = ?, markup_percent = ?, status = ? WHERE id = ?
-  `).run(
-    name || provider.name,
-    (api_url || provider.api_url).trim(),
-    api_key || provider.api_key,
-    Number(markup_percent) || 0,
-    status,
-    provider.id
+  await pool.query(
+    `UPDATE upstream_providers SET name = ?, api_url = ?, api_key = ?, markup_percent = ?, status = ? WHERE id = ?`,
+    [name || provider.rows[0].name, (api_url || provider.rows[0].api_url).trim(), api_key || provider.rows[0].api_key, Number(markup_percent) || 0, status, provider.rows[0].id]
   );
 
   res.json({ success: true, message: 'Provider updated.' });
 });
 
 app.post('/api/admin/providers/:id/sync', authenticateToken, requireAdmin, async (req, res) => {
-  const provider = db.prepare('SELECT * FROM upstream_providers WHERE id = ?').get(req.params.id);
-  if (!provider) return res.status(404).json({ error: 'Provider not found.' });
+  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = ?', [req.params.id]);
+  if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
 
   try {
-    const summary = await syncProviderServices(provider);
+    const summary = await syncProviderServices(provider.rows[0]);
     res.json({ success: true, ...summary });
   } catch (err) {
     const detail = err.response ? (err.response.data.message || JSON.stringify(err.response.data)) : err.message;
@@ -713,25 +734,33 @@ app.post('/api/admin/providers/:id/sync', authenticateToken, requireAdmin, async
   }
 });
 
-app.delete('/api/admin/providers/:id', authenticateToken, requireAdmin, (req, res) => {
-  const provider = db.prepare('SELECT * FROM upstream_providers WHERE id = ?').get(req.params.id);
-  if (!provider) return res.status(404).json({ error: 'Provider not found.' });
+app.delete('/api/admin/providers/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = ?', [req.params.id]);
+  if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
 
-  const orphaned = db.prepare('SELECT COUNT(*) AS n FROM services WHERE provider_id = ?').get(provider.id).n;
-  db.transaction(() => {
-    db.prepare('UPDATE services SET status = \'inactive\' WHERE provider_id = ?').run(provider.id);
-    db.prepare('DELETE FROM upstream_providers WHERE id = ?').run(provider.id);
-  })();
+  const orphaned = (await pool.query('SELECT COUNT(*) AS n FROM services WHERE provider_id = ?', [provider.rows[0].id])).rows[0].n;
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('UPDATE services SET status = $1 WHERE provider_id = $2', ['inactive', provider.rows[0].id]);
+    await client.query('DELETE FROM upstream_providers WHERE id = $1', [provider.rows[0].id]);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 
   res.json({ success: true, message: `Provider removed. ${orphaned} imported service(s) were deactivated.` });
 });
 
 app.post('/api/admin/orders/:id/forward', authenticateToken, requireAdmin, async (req, res) => {
-  const order = db.prepare('SELECT * FROM orders WHERE id = ?').get(req.params.id);
-  if (!order) return res.status(404).json({ error: 'Order not found.' });
-  if (order.upstream_order_id) return res.status(400).json({ error: 'Order was already forwarded upstream.' });
+  const order = await pool.query('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+  if (!order.rows.length) return res.status(404).json({ error: 'Order not found.' });
+  if (order.rows[0].upstream_order_id) return res.status(400).json({ error: 'Order was already forwarded upstream.' });
 
-  const result = await forwardOrderToProvider(order.id);
+  const result = await forwardOrderToProvider(order.rows[0].id);
   if (result.error) return res.status(502).json({ success: false, error: result.error });
 
   res.json({ success: true, upstream_order_id: result.upstream_order_id });
@@ -740,17 +769,17 @@ app.post('/api/admin/orders/:id/forward', authenticateToken, requireAdmin, async
 // ==================== RESELLER API (sell our services to other sites) ====================
 // Mirrors the common SMM panel contract so external websites / scripts can buy from us
 // using the same endpoint they already use for their own supplier.
-function authenticateApiKey(req, res, next) {
+async function authenticateApiKey(req, res, next) {
   const key = req.body?.key || req.query.key || req.headers['x-api-key'];
   if (!key) return res.status(401).json({ error: 'No API key supplied' });
 
-  const record = db.prepare("SELECT * FROM api_keys WHERE api_key = ? AND status = 'active'").get(String(key));
-  if (!record) return res.status(403).json({ error: 'Invalid API key' });
+  const record = await pool.query("SELECT * FROM api_keys WHERE api_key = ? AND status = 'active'", [String(key)]);
+  if (!record.rows.length) return res.status(403).json({ error: 'Invalid API key' });
 
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(record.user_id);
-  if (!user) return res.status(403).json({ error: 'API key is not linked to an active account' });
+  const user = await pool.query('SELECT * FROM users WHERE id = ?', [record.rows[0].user_id]);
+  if (!user.rows.length) return res.status(403).json({ error: 'API key is not linked to an active account' });
 
-  req.apiUser = user;
+  req.apiUser = user.rows[0];
   next();
 }
 
@@ -759,9 +788,9 @@ app.post('/api/v2', authenticateApiKey, async (req, res) => {
 
   switch (action) {
     case 'services': {
-      const rows = db.prepare("SELECT id, category, name, rate_per_1000, min_quantity, max_quantity, description FROM services WHERE status = 'active'");
+      const rows = await pool.query("SELECT id, category, name, rate_per_1000, min_quantity, max_quantity, description FROM services WHERE status = 'active'");
       return res.json({
-        data: rows.all().map((s) => ({
+        data: rows.rows.map((s) => ({
           service: s.id,
           name: s.name,
           type: s.category,
@@ -774,19 +803,19 @@ app.post('/api/v2', authenticateApiKey, async (req, res) => {
     }
 
     case 'add': {
-      const svc = db.prepare('SELECT * FROM services WHERE id = ?').get(service);
-      if (!svc) return res.json({ error: 'Invalid service id' });
+      const svc = await pool.query('SELECT * FROM services WHERE id = ?', [service]);
+      if (!svc.rows.length) return res.json({ error: 'Invalid service id' });
       if (!link) return res.json({ error: 'Link is required' });
 
       const qty = parseInt(quantity);
-      if (!Number.isFinite(qty) || qty < svc.min_quantity || qty > svc.max_quantity) {
-        return res.json({ error: `Quantity must be between ${svc.min_quantity} and ${svc.max_quantity}` });
+      if (!Number.isFinite(qty) || qty < svc.rows[0].min_quantity || qty > svc.rows[0].max_quantity) {
+        return res.json({ error: `Quantity must be between ${svc.rows[0].min_quantity} and ${svc.rows[0].max_quantity}` });
       }
 
-      const placed = placeOrder(req.apiUser, svc, link, qty, req.apiUser.currency || 'INR');
+      const placed = await placeOrder(req.apiUser, svc.rows[0], link, qty, req.apiUser.currency || 'INR');
       if (placed.error) return res.json({ error: placed.error });
 
-      if (svc.provider_id) {
+      if (svc.rows[0].provider_id) {
         const forwarded = await forwardOrderToProvider(placed.order_id);
         if (forwarded.error) {
           return res.json({ order: placed.order_id, warning: forwarded.error });
@@ -797,16 +826,16 @@ app.post('/api/v2', authenticateApiKey, async (req, res) => {
     }
 
     case 'status': {
-      const row = db.prepare('SELECT * FROM orders WHERE id = ? AND user_id = ?').get(order, req.apiUser.id);
-      if (!row) return res.json({ error: 'Order not found' });
+      const row = await pool.query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [order, req.apiUser.id]);
+      if (!row.rows.length) return res.json({ error: 'Order not found' });
 
       return res.json({
-        order: row.id,
-        charge: row.charge,
+        order: row.rows[0].id,
+        charge: row.rows[0].charge,
         start_count: 0,
-        status: row.status,
+        status: row.rows[0].status,
         remains: 0,
-        currency: row.currency
+        currency: row.rows[0].currency
       });
     }
 
@@ -825,10 +854,10 @@ app.post('/api/v2', authenticateApiKey, async (req, res) => {
   }
 });
 
-app.get('/api/v2/services', authenticateApiKey, (req, res) => {
-  const rows = db.prepare("SELECT id, category, name, rate_per_1000, min_quantity, max_quantity, description FROM services WHERE status = 'active'");
+app.get('/api/v2/services', authenticateApiKey, async (req, res) => {
+  const rows = await pool.query("SELECT id, category, name, rate_per_1000, min_quantity, max_quantity, description FROM services WHERE status = 'active'");
   res.json({
-    data: rows.all().map((s) => ({
+    data: rows.rows.map((s) => ({
       service: s.id,
       name: s.name,
       type: s.category,
@@ -841,20 +870,21 @@ app.get('/api/v2/services', authenticateApiKey, (req, res) => {
 });
 
 // API key self-service for logged-in dashboard users
-app.get('/api/user/api-key', authenticateToken, (req, res) => {
-  const record = db.prepare('SELECT api_key, created_at FROM api_keys WHERE user_id = ?').get(req.user.id);
-  res.json({ api_key: record ? record.api_key : null, created_at: record ? record.created_at : null });
+app.get('/api/user/api-key', authenticateToken, async (req, res) => {
+  const record = await pool.query('SELECT api_key, created_at FROM api_keys WHERE user_id = ?', [req.user.id]);
+  const row = record.rows[0];
+  res.json({ api_key: row ? row.api_key : null, created_at: row ? row.created_at : null });
 });
 
-app.post('/api/user/api-key', authenticateToken, (req, res) => {
-  const existing = db.prepare('SELECT id FROM api_keys WHERE user_id = ?').get(req.user.id);
+app.post('/api/user/api-key', authenticateToken, async (req, res) => {
+  const existing = await pool.query('SELECT id FROM api_keys WHERE user_id = ?', [req.user.id]);
   const apiKey = 'JR' + crypto.randomBytes(20).toString('hex');
   const label = (req.body && req.body.label) || 'default';
 
-  if (existing) {
-    db.prepare('UPDATE api_keys SET api_key = ?, label = ? WHERE id = ?').run(apiKey, label, existing.id);
+  if (existing.rows.length) {
+    await pool.query('UPDATE api_keys SET api_key = ?, label = ? WHERE id = ?', [apiKey, label, existing.rows[0].id]);
   } else {
-    db.prepare('INSERT INTO api_keys (user_id, api_key, label) VALUES (?, ?, ?)').run(req.user.id, apiKey, label);
+    await pool.query('INSERT INTO api_keys (user_id, api_key, label) VALUES (?, ?, ?)', [req.user.id, apiKey, label]);
   }
 
   res.json({ success: true, api_key: apiKey });
@@ -889,37 +919,42 @@ const CASHFREE_HEADERS = () => ({
  * same order: the `credited` flag is flipped in the same transaction as the
  * balance update, so a replayed callback or webhook cannot double-credit.
  */
-function creditVerifiedPayment(orderId, cashfreeStatus) {
-  const record = db.prepare('SELECT * FROM payment_orders WHERE order_id = ?').get(orderId);
-  if (!record) return { credited: false, reason: 'Unknown order' };
+async function creditVerifiedPayment(orderId, cashfreeStatus) {
+  const record = await pool.query('SELECT * FROM payment_orders WHERE order_id = ?', [orderId]);
+  if (!record.rows.length) return { credited: false, reason: 'Unknown order' };
 
   // Only a fresh PAID from the gateway may credit. Anything else just records
   // the latest status so the deposit history stays accurate.
   if (cashfreeStatus !== 'PAID') {
-    db.prepare("UPDATE payment_orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_id = ? AND credited = 0")
-      .run(cashfreeStatus, orderId);
+    await pool.query("UPDATE payment_orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_id = ? AND credited = 0", [cashfreeStatus, orderId]);
     return { credited: false, reason: `Payment status is ${cashfreeStatus}` };
   }
 
-  if (record.credited) return { credited: false, reason: 'Already credited', amount: record.amount };
+  if (record.rows[0].credited) return { credited: false, reason: 'Already credited', amount: record.rows[0].amount };
 
-  const user = db.prepare('SELECT * FROM users WHERE id = ?').get(record.user_id);
-  if (!user) return { credited: false, reason: 'User no longer exists' };
+  const user = await pool.query('SELECT * FROM users WHERE id = ?', [record.rows[0].user_id]);
+  if (!user.rows.length) return { credited: false, reason: 'User no longer exists' };
 
-  const walletField = record.wallet_field || WALLET_BY_CURRENCY[record.currency] || 'wallet_inr';
+  const walletField = record.rows[0].wallet_field || WALLET_BY_CURRENCY[record.rows[0].currency] || 'wallet_inr';
 
-  const claim = db.transaction(() => {
-    const info = db.prepare("UPDATE payment_orders SET payment_status = 'PAID', credited = 1, updated_at = CURRENT_TIMESTAMP WHERE order_id = ? AND credited = 0").run(orderId);
-    if (info.changes !== 1) return false;
-    db.prepare(`UPDATE users SET ${walletField} = ${walletField} + ? WHERE id = ?`).run(record.amount, record.user_id);
-    db.prepare('INSERT INTO transactions (user_id, amount, currency, payment_method) VALUES (?, ?, ?, ?)')
-      .run(record.user_id, record.amount, record.currency, 'Cashfree');
-    return true;
-  });
-
-  if (!claim()) return { credited: false, reason: 'Already credited', amount: record.amount };
-
-  return { credited: true, amount: record.amount, currency: record.currency };
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const info = await client.query("UPDATE payment_orders SET payment_status = 'PAID', credited = 1, updated_at = CURRENT_TIMESTAMP WHERE order_id = ? AND credited = 0", [orderId]);
+    if (info.rowCount !== 1) {
+      await client.query('ROLLBACK');
+      return { credited: false, reason: 'Already credited', amount: record.rows[0].amount };
+    }
+    await client.query(`UPDATE users SET ${walletField} = ${walletField} + ? WHERE id = ?`, [record.rows[0].amount, record.rows[0].user_id]);
+    await client.query('INSERT INTO transactions (user_id, amount, currency, payment_method) VALUES (?, ?, ?, ?)', [record.rows[0].user_id, record.rows[0].amount, record.rows[0].currency, 'Cashfree']);
+    await client.query('COMMIT');
+    return { credited: true, amount: record.rows[0].amount, currency: record.rows[0].currency };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 /**
@@ -941,24 +976,24 @@ app.post('/api/cashfree/create-order', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Online deposits are in INR only. Contact support for USD/EUR top-ups.' });
     }
 
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.user.id);
-    if (!user) return res.status(404).json({ success: false, error: 'Account not found.' });
+    const user = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    if (!user.rows.length) return res.status(404).json({ success: false, error: 'Account not found.' });
 
     const orderId = `TOPUP_${Date.now()}_${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
-    db.prepare(`
-      INSERT INTO payment_orders (order_id, user_id, amount, currency, wallet_field, payment_status)
-      VALUES (?, ?, ?, ?, ?, 'PENDING')
-    `).run(orderId, user.id, amount, currency, WALLET_BY_CURRENCY[currency] || 'wallet_inr');
+    await pool.query(
+      `INSERT INTO payment_orders (order_id, user_id, amount, currency, wallet_field, payment_status) VALUES (?, ?, ?, ?, ?, 'PENDING')`,
+      [orderId, user.rows[0].id, amount, currency, WALLET_BY_CURRENCY[currency] || 'wallet_inr']
+    );
 
     const orderPayload = {
       order_id: orderId,
       order_amount: amount.toFixed(2),
       order_currency: currency,
       customer_details: {
-        customer_id: String(user.id),
-        customer_name: user.name || 'Customer',
-        customer_email: user.email,
+        customer_id: String(user.rows[0].id),
+        customer_name: user.rows[0].name || 'Customer',
+        customer_email: user.rows[0].email,
         customer_phone: req.body.customer_phone || '9999999999'
       },
       order_meta: {
@@ -973,8 +1008,7 @@ app.post('/api/cashfree/create-order', authenticateToken, async (req, res) => {
 
     const response = await axios.post(`${CASHFREE_BASE_URL}/orders`, orderPayload, { headers: CASHFREE_HEADERS() });
 
-    db.prepare('UPDATE payment_orders SET payment_session_id = ? WHERE order_id = ?')
-      .run(response.data.payment_session_id, orderId);
+    await pool.query('UPDATE payment_orders SET payment_session_id = ? WHERE order_id = ?', [response.data.payment_session_id, orderId]);
 
     res.json({
       success: true,
@@ -1002,12 +1036,11 @@ app.get('/api/cashfree/verify-payment', async (req, res) => {
     const orderStatus = response.data.order_status;
 
     if (orderStatus === 'PAID') {
-      creditVerifiedPayment(order_id, 'PAID');
+      await creditVerifiedPayment(order_id, 'PAID');
       return res.redirect(`/#/payment-success?order_id=${order_id}`);
     }
 
-    db.prepare("UPDATE payment_orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_id = ? AND credited = 0")
-      .run(orderStatus, order_id);
+    await pool.query("UPDATE payment_orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_id = ? AND credited = 0", [orderStatus, order_id]);
     return res.redirect(`/#/payment-failed?order_id=${order_id}`);
   } catch (error) {
     console.error('Cashfree Verification Error:', error.response ? error.response.data : error.message);
@@ -1019,7 +1052,7 @@ app.get('/api/cashfree/verify-payment', async (req, res) => {
  * Server-to-server notification from Cashfree. Signature verified against the
  * client secret so only genuine events credit a wallet.
  */
-app.post('/api/cashfree/webhook', (req, res) => {
+app.post('/api/cashfree/webhook', async (req, res) => {
   const raw = Buffer.isBuffer(req.body) ? req.body : Buffer.from('');
   const signature = req.get('x-cashfree-signature') || '';
   const expected = crypto.createHmac('sha256', CASHFREE_CLIENT_SECRET).update(raw).digest('hex');
@@ -1044,10 +1077,9 @@ app.post('/api/cashfree/webhook', (req, res) => {
     const status = data.order_status || event.type || 'UNKNOWN';
 
     if (status === 'PAID') {
-      creditVerifiedPayment(orderId, 'PAID');
+      await creditVerifiedPayment(orderId, 'PAID');
     } else if (['FAILED', 'CANCELLED'].includes(String(status).toUpperCase())) {
-      db.prepare("UPDATE payment_orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_id = ? AND credited = 0")
-        .run(String(status).toUpperCase(), orderId);
+      await pool.query("UPDATE payment_orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_id = ? AND credited = 0", [String(status).toUpperCase(), orderId]);
     }
 
     res.json({ success: true });
@@ -1058,12 +1090,12 @@ app.post('/api/cashfree/webhook', (req, res) => {
 });
 
 /** Deposit history for the signed-in user */
-app.get('/api/wallet/payments', authenticateToken, (req, res) => {
-  const rows = db.prepare(`
+app.get('/api/wallet/payments', authenticateToken, async (req, res) => {
+  const rows = await pool.query(`
     SELECT order_id, amount, currency, payment_status, credited, created_at
     FROM payment_orders WHERE user_id = ? ORDER BY id DESC LIMIT 50
-  `).all(req.user.id);
-  res.json(rows);
+  `, [req.user.id]);
+  res.json(rows.rows);
 });
 
 app.get('/admin', (req, res) => {
@@ -1074,22 +1106,13 @@ app.get('{*splat}', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Jay Rajput Media Power Server live on http://localhost:${PORT}`);
-  console.log(`🗄️  Database: ${DB_PATH}`);
-  console.log(`💳 Cashfree return/webhook origin: ${PUBLIC_URL}`);
+// Initialize database and start server
+initDb().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🚀 Jay Rajput Media Power Server live on http://localhost:${PORT}`);
+    console.log(`💳 Cashfree return/webhook origin: ${PUBLIC_URL}`);
+  });
+}).catch(err => {
+  console.error('Failed to initialize database:', err);
+  process.exit(1);
 });
-
-// Change to your WhatsApp Number (with Country Code, no + symbol)
-const ADMIN_WHATSAPP_NUMBER = "919876543210"; 
-
-function veUpdateFileName(input) {
-  const fileNameText = document.getElementById('veFileNameText');
-  if (input.files && input.files[0]) {
-    const file = input.files[0];
-    const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-    fileNameText.innerText = `Selected: ${file.name} (${fileSizeMB} MB)`;
-  } else {
-    fileNameText.innerText = 'Click or Drag video file here';
-  }
-}
