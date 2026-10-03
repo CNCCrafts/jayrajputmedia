@@ -13,6 +13,11 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET;
 
+if (!JWT_SECRET) {
+  console.error('JWT_SECRET environment variable is not set');
+  process.exit(1);
+}
+
 app.use(cors());
 // The webhook must see the untouched request body to verify its HMAC signature,
 // so it is parsed as a raw buffer before the JSON parser runs.
@@ -30,16 +35,23 @@ app.use((err, req, res, next) => {
 });
 
 // Database configuration for Vercel serverless.
-// Uses @vercel/postgres which is automatically available in Vercel edge/functions.
-// Falls back to a local Pool for non-Vercel environments.
+// Uses PostgreSQL via pg. For Vercel, set DATABASE_URL or POSTGRES_URL env var.
 let pool;
 try {
-  pool = globalThis.vercelPostgres || new Pool({ connectionString: process.env.DATABASE_URL });
+  const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+  if (!connectionString) {
+    console.error('DATABASE_URL or POSTGRES_URL environment variable is not set');
+    throw new Error('DATABASE_URL or POSTGRES_URL environment variable is not set');
+  }
+  pool = globalThis.vercelPostgres || new Pool({ connectionString });
+  console.log('Database pool created successfully');
 } catch (e) {
-  pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  console.error('Failed to create database pool:', e.message);
+  throw e;
 }
 
 async function initDb() {
+  console.log('Initializing database...');
   const client = await pool.connect();
   try {
     await client.query(`
@@ -141,6 +153,7 @@ async function initDb() {
         FOREIGN KEY (user_id) REFERENCES users (id)
       );
     `);
+    console.log('Database tables created successfully');
   } finally {
     client.release();
   }
