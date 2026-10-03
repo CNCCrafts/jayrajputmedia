@@ -234,6 +234,29 @@
         </button>
       </div>
 
+      <!-- Cloudinary Upload Section -->
+      <div class="bg-gradient-to-r from-blue-950/40 to-indigo-950/40 border border-blue-800/50 rounded-2xl p-5 mb-6">
+        <h3 class="text-sm font-bold text-blue-300 mb-3 flex items-center">
+          <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary
+        </h3>
+        <form onsubmit="handleCloudinaryUpload(event)" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+          <div class="md:col-span-1">
+            <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Image File</label>
+            <input type="file" id="cloudinaryFile" accept="image/*" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
+          </div>
+          <div class="md:col-span-1">
+            <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Assign to Category</label>
+            <input type="text" id="uploadCategory" placeholder="Instagram" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-blue-500 outline-none text-sm">
+          </div>
+          <div class="md:col-span-2">
+            <button type="submit" id="uploadCloudinaryBtn" class="w-full py-2.5 bg-blue-600 text-white font-extrabold rounded-xl text-xs uppercase tracking-wider hover:bg-blue-500 transition">
+              <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary
+            </button>
+          </div>
+        </form>
+        <p class="text-[10px] text-slate-500 mt-2">Uploads go to folder <code class="text-blue-400">jayrajputmedia/services</code>. After upload, the image is automatically assigned to all services in the specified category.</p>
+      </div>
+
       <div class="overflow-x-auto">
         <table class="w-full text-left text-sm text-slate-300">
           <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
@@ -307,6 +330,69 @@
       box.innerHTML = url
         ? `<img src="${url}" onerror="this.parentElement.innerText='Missing file'" class="w-full h-full object-contain bg-slate-950 p-0.5">`
         : 'No image';
+    }
+
+    async function uploadToCloudinary(imageDataUrl) {
+      const token = localStorage.getItem('jr_admin_token');
+      const res = await fetch('/api/admin/upload-image', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ image: imageDataUrl })
+      });
+      
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      return data.url;
+    }
+
+    async function handleCloudinaryUpload(e) {
+      e.preventDefault();
+      const fileInput = document.getElementById('cloudinaryFile');
+      const file = fileInput.files[0];
+      if (!file) return alert('Please select a file to upload.');
+      
+      const category = document.getElementById('uploadCategory').value.trim();
+      const btn = document.getElementById('uploadCloudinaryBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Uploading...';
+      
+      try {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
+          try {
+            const url = await uploadToCloudinary(event.target.result);
+            
+            const token = localStorage.getItem('jr_admin_token');
+            const res = await fetch('/api/admin/services/images', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+              body: JSON.stringify({ category, image: url })
+            });
+            
+            const data = await res.json();
+            if (data.error) return alert(data.error);
+            
+            alert(`Uploaded and assigned to ${data.updated} service(s) in "${category}".`);
+            fileInput.value = '';
+            document.getElementById('uploadCategory').value = '';
+            loadServiceImages();
+            loadAdminServices();
+          } catch (err) {
+            alert('Upload failed: ' + err.message);
+          } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary';
+          }
+        };
+        reader.readAsDataURL(file);
+      } catch (err) {
+        alert('Upload failed: ' + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary';
+      }
     }
 
     async function handleAdminLogin(e) {
