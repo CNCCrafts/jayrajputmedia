@@ -188,28 +188,28 @@ const addColumnIfMissing = async (table, column, definition) => {
   await addColumnIfMissing('orders', 'cost', 'REAL DEFAULT 0');
 
   // Insert default Admin & demo services if empty
-  const adminCheck = await pool.query('SELECT * FROM users WHERE email = ?', ['admin@jayrajputmediapower.com']);
+  const adminCheck = await pool.query('SELECT * FROM users WHERE email = $1', ['admin@jayrajputmediapower.com']);
   if (!adminCheck.rows.length) {
     const hash = bcrypt.hashSync('admin@3360', 10);
     const info = await pool.query(
-      `INSERT INTO users (name, email, password, role, referral_code) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO users (name, email, password, role, referral_code) VALUES ($1, $2, $3, $4, $5)`,
       ['Admin Jay Rajput', 'admin@jayrajputmediapower.com', hash, 'admin', 'JRADMIN']
     );
 
     await pool.query(
-      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES ($1, $2, $3, $4, $5, $6)`,
       ['Instagram', 'Instagram Followers [High Quality - Non Drop]', 120.00, 100, 50000, 'Instant start, 30 days refill guarantee.']
     );
     await pool.query(
-      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES ($1, $2, $3, $4, $5, $6)`,
       ['Instagram', 'Instagram Likes [Real Active Users]', 40.00, 50, 100000, 'Fast speed, organic appearance.']
     );
     await pool.query(
-      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES ($1, $2, $3, $4, $5, $6)`,
       ['Facebook', 'Facebook Page Likes & Followers', 180.00, 100, 20000, 'Worldwide targeting, safe delivery.']
     );
     await pool.query(
-      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES ($1, $2, $3, $4, $5, $6)`,
       ['YouTube', 'YouTube WatchTime Hours [Monetizable]', 850.00, 500, 4000, 'Refill enabled, 100% safe.']
     );
   }
@@ -241,14 +241,14 @@ app.post('/api/auth/register', async (req, res) => {
 
   try {
     console.log('Register attempt for:', email);
-    const existing = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    const existing = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (existing.rows.length) return res.status(400).json({ error: 'Email already registered.' });
 
     const hash = bcrypt.hashSync(password, 10);
     const myRefCode = 'JR' + Math.random().toString(36).substring(2, 7).toUpperCase();
 
     const stmt = await pool.query(
-      `INSERT INTO users (name, email, password, referral_code, referred_by) VALUES (?, ?, ?, ?, ?) RETURNING id`,
+      `INSERT INTO users (name, email, password, referral_code, referred_by) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [name, email, hash, myRefCode, referral_code || null]
     );
 
@@ -266,7 +266,7 @@ app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   try {
     console.log('Login attempt for:', email);
-    const user = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    const user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     const existingUser = user.rows[0];
     if (!existingUser || !bcrypt.compareSync(password, existingUser.password)) {
       return res.status(400).json({ error: 'Invalid email or password.' });
@@ -303,16 +303,16 @@ app.post('/api/auth/google', async (req, res) => {
 
   try {
     console.log('Google Sign-In attempt for:', email);
-    let user = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    let user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
 
     if (!user.rows.length) {
       const myRefCode = 'JR' + Math.random().toString(36).substring(2, 7).toUpperCase();
       const info = await pool.query(
-        `INSERT INTO users (name, email, google_id, role, referral_code) VALUES (?, ?, ?, 'user', ?) RETURNING id`,
+        `INSERT INTO users (name, email, google_id, role, referral_code) VALUES ($1, $2, $3, 'user', $4) RETURNING id`,
         [name || email.split('@')[0], email, google_id || 'google_' + Date.now(), myRefCode]
       );
       const newUserId = info.rows[0].id;
-      user = await pool.query('SELECT * FROM users WHERE id = ?', [newUserId]);
+      user = await pool.query('SELECT * FROM users WHERE id = $1', [newUserId]);
       console.log('New Google user created:', email);
     } else {
       console.log('Existing Google user logged in:', email);
@@ -341,7 +341,7 @@ app.post('/api/auth/google', async (req, res) => {
 
 // User Profile & Balance
 app.get('/api/user/profile', authenticateToken, async (req, res) => {
-  const user = await pool.query('SELECT id, name, email, role, wallet_inr, wallet_usd, wallet_eur, currency, referral_code, referred_by FROM users WHERE id = ?', [req.user.id]);
+  const user = await pool.query('SELECT id, name, email, role, wallet_inr, wallet_usd, wallet_eur, currency, referral_code, referred_by FROM users WHERE id = $1', [req.user.id]);
   res.json(user.rows[0]);
 });
 
@@ -365,10 +365,10 @@ async function placeOrder(user, service, link, quantity, currency = 'INR') {
     ? parseFloat((((service.cost_per_1000 * multiplier) / 1000) * quantity).toFixed(2))
     : 0;
 
-  await pool.query(`UPDATE users SET ${walletField} = ${walletField} - ? WHERE id = ?`, [totalCost, user.id]);
+  await pool.query(`UPDATE users SET ${walletField} = ${walletField} - $1 WHERE id = $2`, [totalCost, user.id]);
 
     const info = await pool.query(
-      `INSERT INTO orders (user_id, service_id, service_name, link, quantity, charge, currency, cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      `INSERT INTO orders (user_id, service_id, service_name, link, quantity, charge, currency, cost) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
       [user.id, service.id, service.name, link, quantity, totalCost, currency, supplierCost]
     );
 
@@ -376,10 +376,10 @@ async function placeOrder(user, service, link, quantity, currency = 'INR') {
 
   // Referral Reward Logic (5% commission if amount >= 100 INR/equivalent)
   if (totalCost >= 100 && user.referred_by) {
-    const referrer = await pool.query('SELECT id FROM users WHERE referral_code = ?', [user.referred_by]);
+    const referrer = await pool.query('SELECT id FROM users WHERE referral_code = $1', [user.referred_by]);
     if (referrer.rows.length) {
       const commission = parseFloat((totalCost * 0.05).toFixed(2));
-      await pool.query(`UPDATE users SET ${walletField} = ${walletField} + ? WHERE id = ?`, [commission, referrer.rows[0].id]);
+      await pool.query(`UPDATE users SET ${walletField} = ${walletField} + $1 WHERE id = $2`, [commission, referrer.rows[0].id]);
     }
   }
 
@@ -394,8 +394,8 @@ app.get('/api/services', async (req, res) => {
 
 app.post('/api/orders/create', authenticateToken, async (req, res) => {
   const { service_id, link, quantity, currency = 'INR' } = req.body;
-  const service = await pool.query('SELECT * FROM services WHERE id = ?', [service_id]);
-  const user = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+  const service = await pool.query('SELECT * FROM services WHERE id = $1', [service_id]);
+  const user = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
 
   if (!service.rows.length) return res.status(404).json({ error: 'Service not found.' });
   if (quantity < service.rows[0].min_quantity || quantity > service.rows[0].max_quantity) {
@@ -418,7 +418,7 @@ app.post('/api/orders/create', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/orders/my-orders', authenticateToken, async (req, res) => {
-  const orders = await pool.query('SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC', [req.user.id]);
+  const orders = await pool.query('SELECT * FROM orders WHERE user_id = $1 ORDER BY id DESC', [req.user.id]);
   res.json(orders.rows);
 });
 
@@ -434,8 +434,8 @@ app.post('/api/wallet/add-funds', authenticateToken, requireAdmin, async (req, r
   if (currency === 'USD') walletField = 'wallet_usd';
   if (currency === 'EUR') walletField = 'wallet_eur';
 
-  await pool.query(`UPDATE users SET ${walletField} = ${walletField} + ? WHERE id = ?`, [amount, req.user.id]);
-  await pool.query('INSERT INTO transactions (user_id, amount, currency, payment_method) VALUES (?, ?, ?, ?)', [req.user.id, amount, currency, payment_method]);
+  await pool.query(`UPDATE users SET ${walletField} = ${walletField} + $1 WHERE id = $2`, [amount, req.user.id]);
+  await pool.query('INSERT INTO transactions (user_id, amount, currency, payment_method) VALUES ($1, $2, $3, $4)', [req.user.id, amount, currency, payment_method]);
 
   res.json({ success: true, message: `Successfully added ${amount} ${currency} to wallet!` });
 });
@@ -448,7 +448,7 @@ app.post('/api/support/tickets', authenticateToken, async (req, res) => {
   }
 
   const info = await pool.query(
-    `INSERT INTO tickets (user_id, subject, order_id, request_type, message) VALUES (?, ?, ?, ?, ?) RETURNING id`,
+    `INSERT INTO tickets (user_id, subject, order_id, request_type, message) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
     [req.user.id, subject, order_id || 'N/A', request_type, message]
   );
 
@@ -456,7 +456,7 @@ app.post('/api/support/tickets', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/support/tickets', authenticateToken, async (req, res) => {
-  const tickets = await pool.query('SELECT * FROM tickets WHERE user_id = ? ORDER BY id DESC', [req.user.id]);
+  const tickets = await pool.query('SELECT * FROM tickets WHERE user_id = $1 ORDER BY id DESC', [req.user.id]);
   res.json(tickets.rows);
 });
 
@@ -468,7 +468,7 @@ app.post('/api/user/change-password', authenticateToken, async (req, res) => {
     return res.status(400).json({ error: 'Both current and new passwords are required.' });
   }
 
-  const user = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+    const user = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
   const existingUser = user.rows[0];
   if (!existingUser || !bcrypt.compareSync(currentPassword, existingUser.password)) {
     return res.status(400).json({ error: 'Current password is incorrect.' });
@@ -479,7 +479,7 @@ app.post('/api/user/change-password', authenticateToken, async (req, res) => {
   }
 
   const newHash = bcrypt.hashSync(newPassword, 10);
-  await pool.query('UPDATE users SET password = ? WHERE id = ?', [newHash, user.rows[0].id]);
+  await pool.query('UPDATE users SET password = $1 WHERE id = $2', [newHash, user.rows[0].id]);
   res.json({ success: true, message: 'Password updated successfully!' });
 });
 
@@ -492,7 +492,7 @@ app.get('/api/admin/services', authenticateToken, requireAdmin, async (req, res)
 app.post('/api/admin/services', authenticateToken, requireAdmin, async (req, res) => {
   const { category, name, rate_per_1000, min_quantity, max_quantity, description, image } = req.body;
   const info = await pool.query(
-    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, image) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, image) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
     [category, name, rate_per_1000, min_quantity, max_quantity, description, image || null]
   );
   res.json({ success: true, id: info.rows[0].id });
@@ -501,7 +501,7 @@ app.post('/api/admin/services', authenticateToken, requireAdmin, async (req, res
 app.put('/api/admin/services/:id', authenticateToken, requireAdmin, async (req, res) => {
   const { category, name, rate_per_1000, min_quantity, max_quantity, description, status, image } = req.body;
   await pool.query(
-    `UPDATE services SET category=?, name=?, rate_per_1000=?, min_quantity=?, max_quantity=?, description=?, status=?, image=? WHERE id = ?`,
+    `UPDATE services SET category=$1, name=$2, rate_per_1000=$3, min_quantity=$4, max_quantity=$5, description=$6, status=$7, image=$8 WHERE id = $9`,
     [category, name, rate_per_1000, min_quantity, max_quantity, description, status, image || null, req.params.id]
   );
   res.json({ success: true, message: 'Service updated successfully.' });
@@ -516,7 +516,7 @@ app.post('/api/admin/services/images', authenticateToken, requireAdmin, async (r
     try {
       await client.query('BEGIN');
       for (const a of assignments) {
-        await client.query('UPDATE services SET image = ? WHERE id = ?', [a.image || null, a.id]);
+        await client.query('UPDATE services SET image = $1 WHERE id = $2', [a.image || null, a.id]);
       }
       await client.query('COMMIT');
       return res.json({ success: true, updated: assignments.length });
@@ -529,7 +529,7 @@ app.post('/api/admin/services/images', authenticateToken, requireAdmin, async (r
   }
 
   if (category && image) {
-    const info = await pool.query('UPDATE services SET image = ? WHERE category = ?', [image, category]);
+    const info = await pool.query('UPDATE services SET image = $1 WHERE category = $2', [image, category]);
     return res.json({ success: true, updated: info.rowCount, category });
   }
 
@@ -537,7 +537,7 @@ app.post('/api/admin/services/images', authenticateToken, requireAdmin, async (r
 });
 
 app.delete('/api/admin/services/:id', authenticateToken, requireAdmin, async (req, res) => {
-  await pool.query('DELETE FROM services WHERE id = ?', [req.params.id]);
+  await pool.query('DELETE FROM services WHERE id = $1', [req.params.id]);
   res.json({ success: true, message: 'Service deleted successfully.' });
 });
 
@@ -628,22 +628,22 @@ async function syncProviderServices(provider) {
       const description = item.description || `Supplied by ${provider.name}`;
       const status = String(item.status || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
 
-      const existing = await client.query('SELECT id FROM services WHERE provider_id = ? AND upstream_service_id = ?', [provider.id, upstreamId]);
+      const existing = await client.query('SELECT id FROM services WHERE provider_id = $1 AND upstream_service_id = $2', [provider.id, upstreamId]);
       if (existing.rows.length) {
         await client.query(
-          `UPDATE services SET category = ?, name = ?, rate_per_1000 = ?, min_quantity = ?, max_quantity = ?, description = ?, cost_per_1000 = ?, status = ? WHERE id = ?`,
+          `UPDATE services SET category = $1, name = $2, rate_per_1000 = $3, min_quantity = $4, max_quantity = $5, description = $6, cost_per_1000 = $7, status = $8 WHERE id = $9`,
           [category, name, retailRate, min, max, description, wholesaleRate, status, existing.rows[0].id]
         );
         updated++;
       } else {
         await client.query(
-          `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, provider_id, upstream_service_id, cost_per_1000, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, provider_id, upstream_service_id, cost_per_1000, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
           [category, name, retailRate, min, max, description, provider.id, upstreamId, wholesaleRate, status]
         );
         added++;
       }
     }
-    await client.query("UPDATE upstream_providers SET last_sync_at = CURRENT_TIMESTAMP WHERE id = ?", [provider.id]);
+    await client.query("UPDATE upstream_providers SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1", [provider.id]);
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
@@ -657,15 +657,15 @@ async function syncProviderServices(provider) {
 
 // Pushes a locally created order to the upstream panel that supplies its service
 async function forwardOrderToProvider(orderId) {
-  const order = await pool.query('SELECT * FROM orders WHERE id = ?', [orderId]);
+  const order = await pool.query('SELECT * FROM orders WHERE id = $1', [orderId]);
   if (!order.rows.length) return { error: 'Order not found.' };
 
-  const service = await pool.query('SELECT * FROM services WHERE id = ?', [order.rows[0].service_id]);
+  const service = await pool.query('SELECT * FROM services WHERE id = $1', [order.rows[0].service_id]);
   if (!service.rows.length || !service.rows[0].provider_id || !service.rows[0].upstream_service_id) {
     return { error: 'This service is not linked to an upstream provider.' };
   }
 
-  const provider = await pool.query("SELECT * FROM upstream_providers WHERE id = ? AND status = 'active'", [service.rows[0].provider_id]);
+  const provider = await pool.query("SELECT * FROM upstream_providers WHERE id = $1 AND status = 'active'", [service.rows[0].provider_id]);
   if (!provider.rows.length) return { error: 'Upstream provider is missing or disabled.' };
 
   try {
@@ -684,7 +684,7 @@ async function forwardOrderToProvider(orderId) {
       return { error: `Upstream rejected the order: ${JSON.stringify(body)}` };
     }
 
-    await pool.query('UPDATE orders SET upstream_order_id = ? WHERE id = ?', [String(upstreamOrderId), orderId]);
+    await pool.query('UPDATE orders SET upstream_order_id = $1 WHERE id = $2', [String(upstreamOrderId), orderId]);
     return { upstream_order_id: String(upstreamOrderId) };
   } catch (err) {
     const detail = err.response ? JSON.stringify(err.response.data) : err.message;
@@ -706,8 +706,8 @@ async function refreshUpstreamOrderStatus() {
   let checked = 0;
 
   for (const order of pending.rows) {
-    const service = await pool.query('SELECT provider_id FROM services WHERE id = ?', [order.service_id]);
-    const provider = await pool.query("SELECT * FROM upstream_providers WHERE id = ? AND status = 'active'", [service.rows[0].provider_id]);
+    const service = await pool.query('SELECT provider_id FROM services WHERE id = $1', [order.service_id]);
+    const provider = await pool.query("SELECT * FROM upstream_providers WHERE id = $1 AND status = 'active'", [service.rows[0].provider_id]);
     if (!provider.rows.length) continue;
 
     try {
@@ -730,7 +730,7 @@ async function refreshUpstreamOrderStatus() {
       const mapped = statusMap[raw.toLowerCase()];
       if (!mapped) continue;
 
-      await pool.query('UPDATE orders SET status = ? WHERE id = ?', [mapped, order.id]);
+      await pool.query('UPDATE orders SET status = $1 WHERE id = $2', [mapped, order.id]);
       checked++;
     } catch (err) {
       console.error(`Upstream status check failed for order ${order.id}:`, err.message);
@@ -784,7 +784,7 @@ app.post('/api/admin/providers', authenticateToken, requireAdmin, async (req, re
   }
 
   const info = await pool.query(
-    `INSERT INTO upstream_providers (name, api_url, api_key, markup_percent) VALUES (?, ?, ?, ?) RETURNING id`,
+    `INSERT INTO upstream_providers (name, api_url, api_key, markup_percent) VALUES ($1, $2, $3, $4) RETURNING id`,
     [name, api_url.trim(), api_key.trim(), Number(markup_percent) || 0]
   );
 
@@ -793,11 +793,11 @@ app.post('/api/admin/providers', authenticateToken, requireAdmin, async (req, re
 
 app.put('/api/admin/providers/:id', authenticateToken, requireAdmin, async (req, res) => {
   const { name, api_url, api_key, markup_percent = 0, status = 'active' } = req.body;
-  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = ?', [req.params.id]);
+  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = $1', [req.params.id]);
   if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
 
   await pool.query(
-    `UPDATE upstream_providers SET name = ?, api_url = ?, api_key = ?, markup_percent = ?, status = ? WHERE id = ?`,
+    `UPDATE upstream_providers SET name = $1, api_url = $2, api_key = $3, markup_percent = $4, status = $5 WHERE id = $6`,
     [name || provider.rows[0].name, (api_url || provider.rows[0].api_url).trim(), api_key || provider.rows[0].api_key, Number(markup_percent) || 0, status, provider.rows[0].id]
   );
 
@@ -805,7 +805,7 @@ app.put('/api/admin/providers/:id', authenticateToken, requireAdmin, async (req,
 });
 
 app.post('/api/admin/providers/:id/sync', authenticateToken, requireAdmin, async (req, res) => {
-  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = ?', [req.params.id]);
+  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = $1', [req.params.id]);
   if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
 
   try {
@@ -818,10 +818,10 @@ app.post('/api/admin/providers/:id/sync', authenticateToken, requireAdmin, async
 });
 
 app.delete('/api/admin/providers/:id', authenticateToken, requireAdmin, async (req, res) => {
-  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = ?', [req.params.id]);
+  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = $1', [req.params.id]);
   if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
 
-  const orphaned = (await pool.query('SELECT COUNT(*) AS n FROM services WHERE provider_id = ?', [provider.rows[0].id])).rows[0].n;
+  const orphaned = (await pool.query('SELECT COUNT(*) AS n FROM services WHERE provider_id = $1', [provider.rows[0].id])).rows[0].n;
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -839,7 +839,7 @@ app.delete('/api/admin/providers/:id', authenticateToken, requireAdmin, async (r
 });
 
 app.post('/api/admin/orders/:id/forward', authenticateToken, requireAdmin, async (req, res) => {
-  const order = await pool.query('SELECT * FROM orders WHERE id = ?', [req.params.id]);
+  const order = await pool.query('SELECT * FROM orders WHERE id = $1', [req.params.id]);
   if (!order.rows.length) return res.status(404).json({ error: 'Order not found.' });
   if (order.rows[0].upstream_order_id) return res.status(400).json({ error: 'Order was already forwarded upstream.' });
 
@@ -856,10 +856,10 @@ async function authenticateApiKey(req, res, next) {
   const key = req.body?.key || req.query.key || req.headers['x-api-key'];
   if (!key) return res.status(401).json({ error: 'No API key supplied' });
 
-  const record = await pool.query("SELECT * FROM api_keys WHERE api_key = ? AND status = 'active'", [String(key)]);
+  const record = await pool.query("SELECT * FROM api_keys WHERE api_key = $1 AND status = 'active'", [String(key)]);
   if (!record.rows.length) return res.status(403).json({ error: 'Invalid API key' });
 
-  const user = await pool.query('SELECT * FROM users WHERE id = ?', [record.rows[0].user_id]);
+  const user = await pool.query('SELECT * FROM users WHERE id = $1', [record.rows[0].user_id]);
   if (!user.rows.length) return res.status(403).json({ error: 'API key is not linked to an active account' });
 
   req.apiUser = user.rows[0];
@@ -886,7 +886,7 @@ app.post('/api/v2', authenticateApiKey, async (req, res) => {
     }
 
     case 'add': {
-      const svc = await pool.query('SELECT * FROM services WHERE id = ?', [service]);
+      const svc = await pool.query('SELECT * FROM services WHERE id = $1', [service]);
       if (!svc.rows.length) return res.json({ error: 'Invalid service id' });
       if (!link) return res.json({ error: 'Link is required' });
 
@@ -909,7 +909,7 @@ app.post('/api/v2', authenticateApiKey, async (req, res) => {
     }
 
     case 'status': {
-      const row = await pool.query('SELECT * FROM orders WHERE id = ? AND user_id = ?', [order, req.apiUser.id]);
+      const row = await pool.query('SELECT * FROM orders WHERE id = $1 AND user_id = $2', [order, req.apiUser.id]);
       if (!row.rows.length) return res.json({ error: 'Order not found' });
 
       return res.json({
@@ -954,20 +954,20 @@ app.get('/api/v2/services', authenticateApiKey, async (req, res) => {
 
 // API key self-service for logged-in dashboard users
 app.get('/api/user/api-key', authenticateToken, async (req, res) => {
-  const record = await pool.query('SELECT api_key, created_at FROM api_keys WHERE user_id = ?', [req.user.id]);
+  const record = await pool.query('SELECT api_key, created_at FROM api_keys WHERE user_id = $1', [req.user.id]);
   const row = record.rows[0];
   res.json({ api_key: row ? row.api_key : null, created_at: row ? row.created_at : null });
 });
 
 app.post('/api/user/api-key', authenticateToken, async (req, res) => {
-  const existing = await pool.query('SELECT id FROM api_keys WHERE user_id = ?', [req.user.id]);
+  const existing = await pool.query('SELECT id FROM api_keys WHERE user_id = $1', [req.user.id]);
   const apiKey = 'JR' + crypto.randomBytes(20).toString('hex');
   const label = (req.body && req.body.label) || 'default';
 
   if (existing.rows.length) {
-    await pool.query('UPDATE api_keys SET api_key = ?, label = ? WHERE id = ?', [apiKey, label, existing.rows[0].id]);
+    await pool.query('UPDATE api_keys SET api_key = $1, label = $2 WHERE id = $3', [apiKey, label, existing.rows[0].id]);
   } else {
-    await pool.query('INSERT INTO api_keys (user_id, api_key, label) VALUES (?, ?, ?)', [req.user.id, apiKey, label]);
+    await pool.query('INSERT INTO api_keys (user_id, api_key, label) VALUES ($1, $2, $3)', [req.user.id, apiKey, label]);
   }
 
   res.json({ success: true, api_key: apiKey });
@@ -1003,19 +1003,19 @@ const CASHFREE_HEADERS = () => ({
  * balance update, so a replayed callback or webhook cannot double-credit.
  */
 async function creditVerifiedPayment(orderId, cashfreeStatus) {
-  const record = await pool.query('SELECT * FROM payment_orders WHERE order_id = ?', [orderId]);
+  const record = await pool.query('SELECT * FROM payment_orders WHERE order_id = $1', [orderId]);
   if (!record.rows.length) return { credited: false, reason: 'Unknown order' };
 
   // Only a fresh PAID from the gateway may credit. Anything else just records
   // the latest status so the deposit history stays accurate.
   if (cashfreeStatus !== 'PAID') {
-    await pool.query("UPDATE payment_orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_id = ? AND credited = 0", [cashfreeStatus, orderId]);
+    await pool.query("UPDATE payment_orders SET payment_status = $1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $2 AND credited = 0", [cashfreeStatus, orderId]);
     return { credited: false, reason: `Payment status is ${cashfreeStatus}` };
   }
 
   if (record.rows[0].credited) return { credited: false, reason: 'Already credited', amount: record.rows[0].amount };
 
-  const user = await pool.query('SELECT * FROM users WHERE id = ?', [record.rows[0].user_id]);
+  const user = await pool.query('SELECT * FROM users WHERE id = $1', [record.rows[0].user_id]);
   if (!user.rows.length) return { credited: false, reason: 'User no longer exists' };
 
   const walletField = record.rows[0].wallet_field || WALLET_BY_CURRENCY[record.rows[0].currency] || 'wallet_inr';
@@ -1023,13 +1023,13 @@ async function creditVerifiedPayment(orderId, cashfreeStatus) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const info = await client.query("UPDATE payment_orders SET payment_status = 'PAID', credited = 1, updated_at = CURRENT_TIMESTAMP WHERE order_id = ? AND credited = 0", [orderId]);
+    const info = await client.query("UPDATE payment_orders SET payment_status = 'PAID', credited = 1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $1 AND credited = 0", [orderId]);
     if (info.rowCount !== 1) {
       await client.query('ROLLBACK');
       return { credited: false, reason: 'Already credited', amount: record.rows[0].amount };
     }
-    await client.query(`UPDATE users SET ${walletField} = ${walletField} + ? WHERE id = ?`, [record.rows[0].amount, record.rows[0].user_id]);
-    await client.query('INSERT INTO transactions (user_id, amount, currency, payment_method) VALUES (?, ?, ?, ?)', [record.rows[0].user_id, record.rows[0].amount, record.rows[0].currency, 'Cashfree']);
+    await client.query(`UPDATE users SET ${walletField} = ${walletField} + $1 WHERE id = $2`, [record.rows[0].amount, record.rows[0].user_id]);
+    await client.query('INSERT INTO transactions (user_id, amount, currency, payment_method) VALUES ($1, $2, $3, $4)', [record.rows[0].user_id, record.rows[0].amount, record.rows[0].currency, 'Cashfree']);
     await client.query('COMMIT');
     return { credited: true, amount: record.rows[0].amount, currency: record.rows[0].currency };
   } catch (err) {
@@ -1059,13 +1059,13 @@ app.post('/api/cashfree/create-order', authenticateToken, async (req, res) => {
       return res.status(400).json({ success: false, error: 'Online deposits are in INR only. Contact support for USD/EUR top-ups.' });
     }
 
-    const user = await pool.query('SELECT * FROM users WHERE id = ?', [req.user.id]);
+  const user = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
     if (!user.rows.length) return res.status(404).json({ success: false, error: 'Account not found.' });
 
     const orderId = `TOPUP_${Date.now()}_${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
     await pool.query(
-      `INSERT INTO payment_orders (order_id, user_id, amount, currency, wallet_field, payment_status) VALUES (?, ?, ?, ?, ?, 'PENDING') RETURNING id`,
+      `INSERT INTO payment_orders (order_id, user_id, amount, currency, wallet_field, payment_status) VALUES ($1, $2, $3, $4, $5, 'PENDING') RETURNING id`,
       [orderId, user.rows[0].id, amount, currency, WALLET_BY_CURRENCY[currency] || 'wallet_inr']
     );
 
@@ -1091,7 +1091,7 @@ app.post('/api/cashfree/create-order', authenticateToken, async (req, res) => {
 
     const response = await axios.post(`${CASHFREE_BASE_URL}/orders`, orderPayload, { headers: CASHFREE_HEADERS() });
 
-    await pool.query('UPDATE payment_orders SET payment_session_id = ? WHERE order_id = ?', [response.data.payment_session_id, orderId]);
+    await pool.query('UPDATE payment_orders SET payment_session_id = $1 WHERE order_id = $2', [response.data.payment_session_id, orderId]);
 
     res.json({
       success: true,
@@ -1123,7 +1123,7 @@ app.get('/api/cashfree/verify-payment', async (req, res) => {
       return res.redirect(`/#/payment-success?order_id=${order_id}`);
     }
 
-    await pool.query("UPDATE payment_orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_id = ? AND credited = 0", [orderStatus, order_id]);
+    await pool.query("UPDATE payment_orders SET payment_status = $1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $2 AND credited = 0", [orderStatus, order_id]);
     return res.redirect(`/#/payment-failed?order_id=${order_id}`);
   } catch (error) {
     console.error('Cashfree Verification Error:', error.response ? error.response.data : error.message);
@@ -1162,7 +1162,7 @@ app.post('/api/cashfree/webhook', async (req, res) => {
     if (status === 'PAID') {
       await creditVerifiedPayment(orderId, 'PAID');
     } else if (['FAILED', 'CANCELLED'].includes(String(status).toUpperCase())) {
-      await pool.query("UPDATE payment_orders SET payment_status = ?, updated_at = CURRENT_TIMESTAMP WHERE order_id = ? AND credited = 0", [String(status).toUpperCase(), orderId]);
+      await pool.query("UPDATE payment_orders SET payment_status = $1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $2 AND credited = 0", [String(status).toUpperCase(), orderId]);
     }
 
     res.json({ success: true });
@@ -1176,7 +1176,7 @@ app.post('/api/cashfree/webhook', async (req, res) => {
 app.get('/api/wallet/payments', authenticateToken, async (req, res) => {
   const rows = await pool.query(`
     SELECT order_id, amount, currency, payment_status, credited, created_at
-    FROM payment_orders WHERE user_id = ? ORDER BY id DESC LIMIT 50
+    FROM payment_orders WHERE user_id = $1 ORDER BY id DESC LIMIT 50
   `, [req.user.id]);
   res.json(rows.rows);
 });
