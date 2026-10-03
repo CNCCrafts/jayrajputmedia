@@ -849,6 +849,47 @@ app.post('/api/admin/orders/:id/forward', authenticateToken, requireAdmin, async
   res.json({ success: true, upstream_order_id: result.upstream_order_id });
 });
 
+app.get('/api/admin/orders', authenticateToken, requireAdmin, async (req, res) => {
+  const { status, search, page = 1, limit = 50 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+
+  let where = 'WHERE 1=1';
+  const params = [];
+
+  if (status && status !== 'all') {
+    where += ` AND o.status = $${params.length + 1}`;
+    params.push(status);
+  }
+
+  if (search) {
+    where += ` AND (o.service_name ILIKE $${params.length + 1} OR u.email ILIKE $${params.length + 1} OR o.link ILIKE $${params.length + 1})`;
+    params.push(`%${search}%`);
+  }
+
+  const countRes = await pool.query(`SELECT COUNT(*) AS total FROM orders o JOIN users u ON o.user_id = u.id ${where}`, params);
+  const total = parseInt(countRes.rows[0].total);
+
+  const ordersRes = await pool.query(
+    `SELECT o.*, u.email AS user_email, u.name AS user_name FROM orders o JOIN users u ON o.user_id = u.id ${where} ORDER BY o.id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, parseInt(limit), offset]
+  );
+
+  res.json({ orders: ordersRes.rows, total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
+});
+
+app.put('/api/admin/orders/:id/status', authenticateToken, requireAdmin, async (req, res) => {
+  const { status } = req.body;
+  if (!status) return res.status(400).json({ error: 'Status is required.' });
+
+  const allowedStatuses = ['Pending', 'In Progress', 'Completed', 'Canceled', 'Refunded'];
+  if (!allowedStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status.' });
+
+  const result = await pool.query('UPDATE orders SET status = $1 WHERE id = $2 RETURNING *', [status, req.params.id]);
+  if (!result.rows.length) return res.status(404).json({ error: 'Order not found.' });
+
+  res.json({ order: result.rows[0] });
+});
+
 // ==================== RESELLER API (sell our services to other sites) ====================
 // Mirrors the common SMM panel contract so external websites / scripts can buy from us
 // using the same endpoint they already use for their own supplier.

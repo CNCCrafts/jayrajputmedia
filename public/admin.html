@@ -276,6 +276,64 @@
         </table>
       </div>
     </section>
+
+    <!-- Admin Orders Section -->
+    <section class="bg-cardBg border border-gold/30 p-6 md:p-8 rounded-3xl shadow-xl">
+      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-3 border-b border-slate-800">
+        <div>
+          <h2 class="text-lg font-bold text-gold flex items-center space-x-2">
+            <i class="fa-solid fa-receipt"></i><span>Orders Management</span>
+          </h2>
+          <p class="text-xs text-slate-400 mt-1">View all customer orders and update their status.</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <input type="text" id="adminOrdersSearch" oninput="onAdminOrdersSearch(event)" placeholder="Search orders..." class="bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none focus:border-gold w-48">
+          <select id="adminOrdersStatusFilter" onchange="filterAdminOrdersByStatus(this.value)" class="bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none focus:border-gold">
+            <option value="all">All Status</option>
+            <option value="Pending">Pending</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Completed">Completed</option>
+            <option value="Canceled">Canceled</option>
+            <option value="Refunded">Refunded</option>
+          </select>
+          <button onclick="loadAdminOrders()" class="px-3 py-2 bg-gold/20 text-gold border border-gold/40 rounded-xl text-xs font-bold hover:bg-gold hover:text-black transition">
+            <i class="fa-solid fa-rotate"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-sm text-slate-300">
+          <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
+            <tr>
+              <th class="p-3">ID</th>
+              <th class="p-3">Customer</th>
+              <th class="p-3">Email</th>
+              <th class="p-3">Service</th>
+              <th class="p-3">Link</th>
+              <th class="p-3 text-right">Qty</th>
+              <th class="p-3 text-center">Status</th>
+              <th class="p-3">Date</th>
+              <th class="p-3 text-center">Update Status</th>
+            </tr>
+          </thead>
+          <tbody id="adminOrdersTbody" class="divide-y divide-slate-800">
+            <tr><td colspan="9" class="p-6 text-center text-xs text-slate-500">Loading orders...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-800">
+        <button onclick="changeAdminOrdersPage(-1)" class="px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800 transition">
+          <i class="fa-solid fa-chevron-left mr-1"></i> Previous
+        </button>
+        <span id="adminOrdersPageInfo" class="text-xs text-slate-400 font-mono">Page 1</span>
+        <span class="text-xs text-slate-500">Total: <span id="adminOrdersTotalCount">0</span> orders</span>
+        <button onclick="changeAdminOrdersPage(1)" class="px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800 transition">
+          Next <i class="fa-solid fa-chevron-right ml-1"></i>
+        </button>
+      </div>
+    </section>
   </div>
 
   <script>
@@ -442,6 +500,7 @@
         await loadProviders();
         loadAdminServices();
         loadServiceImages();
+        loadAdminOrders();
       } catch (err) {
         console.error(err);
       }
@@ -695,6 +754,133 @@
       alert(data.message || data.error);
       loadProviders();
       loadAdminServices();
+    }
+
+    // ==================== ADMIN ORDERS ====================
+    let adminOrders = [];
+    let adminOrdersTotal = 0;
+    let adminOrdersPage = 1;
+    let adminOrdersFilter = 'all';
+    let adminOrdersSearch = '';
+
+    async function loadAdminOrders() {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const params = new URLSearchParams({
+          page: adminOrdersPage,
+          limit: 25,
+          status: adminOrdersFilter,
+          search: adminOrdersSearch
+        });
+
+        const res = await fetch(`/api/admin/orders?${params}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to load orders');
+
+        adminOrders = data.orders;
+        adminOrdersTotal = data.total;
+        renderAdminOrders();
+      } catch (err) {
+        console.error(err);
+        alert('Failed to load orders: ' + err.message);
+      }
+    }
+
+    function renderAdminOrders() {
+      const tbody = document.getElementById('adminOrdersTbody');
+      if (!tbody) return;
+
+      if (!adminOrders.length) {
+        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-xs text-slate-500">No orders found.</td></tr>';
+        return;
+      }
+
+      const statusColors = {
+        'Pending': 'text-amber-400 border-amber-500/40 bg-amber-500/10',
+        'In Progress': 'text-blue-400 border-blue-500/40 bg-blue-500/10',
+        'Completed': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10',
+        'Canceled': 'text-red-400 border-red-500/40 bg-red-500/10',
+        'Refunded': 'text-purple-400 border-purple-500/40 bg-purple-500/10'
+      };
+
+      tbody.innerHTML = adminOrders.map(o => `
+        <tr class="hover:bg-slate-900/40 transition">
+          <td class="p-3 text-xs font-mono text-slate-400">#${o.id}</td>
+          <td class="p-3 text-xs text-slate-300">${o.user_name || 'N/A'}</td>
+          <td class="p-3 text-xs text-slate-300">${o.user_email || 'N/A'}</td>
+          <td class="p-3 text-xs text-slate-200 font-medium">${o.service_name}</td>
+          <td class="p-3 text-xs text-slate-400">${o.link ? `<a href="${o.link}" target="_blank" class="text-fbBlue hover:underline truncate block max-w-[160px]">${o.link}</a>` : '-'}</td>
+          <td class="p-3 text-xs text-slate-300 text-right">${o.quantity.toLocaleString()}</td>
+          <td class="p-3 text-xs text-right">
+            <span class="inline-block text-[10px] font-bold uppercase px-2 py-1 rounded-full border ${statusColors[o.status] || 'text-slate-400 border-slate-600 bg-slate-800'}">${o.status}</span>
+          </td>
+          <td class="p-3 text-xs text-slate-400">${new Date(o.created_at).toLocaleDateString()}</td>
+          <td class="p-3 text-center">
+            <select onchange="updateAdminOrderStatus(${o.id}, this.value)" class="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-white outline-none focus:border-gold">
+              <option value="">Change...</option>
+              <option value="Pending" ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
+              <option value="In Progress" ${o.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+              <option value="Completed" ${o.status === 'Completed' ? 'selected' : ''}>Completed</option>
+              <option value="Canceled" ${o.status === 'Canceled' ? 'selected' : ''}>Canceled</option>
+              <option value="Refunded" ${o.status === 'Refunded' ? 'selected' : ''}>Refunded</option>
+            </select>
+          </td>
+        </tr>
+      `).join('');
+
+      const totalPagesEl = document.getElementById('adminOrdersTotalPages');
+      const pageInfoEl = document.getElementById('adminOrdersPageInfo');
+      const totalPages = Math.ceil(adminOrdersTotal / 25);
+
+      if (totalPagesEl) totalPagesEl.innerText = totalPages;
+      if (pageInfoEl) pageInfoEl.innerText = `Page ${adminOrdersPage} of ${totalPages || 1}`;
+    }
+
+    async function updateAdminOrderStatus(orderId, status) {
+      if (!status) return;
+      if (!confirm(`Update order #${orderId} status to "${status}"?`)) return;
+
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const res = await fetch(`/api/admin/orders/${orderId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ status })
+        });
+        const data = await res.json();
+        if (data.error) return alert(data.error);
+
+        alert('Order status updated.');
+        loadAdminOrders();
+      } catch (err) {
+        alert('Update failed: ' + err.message);
+      }
+    }
+
+    function filterAdminOrdersByStatus(status) {
+      adminOrdersFilter = status;
+      adminOrdersPage = 1;
+      document.querySelectorAll('.order-status-filter').forEach(btn => {
+        btn.classList.remove('bg-gold', 'text-black');
+        if (btn.dataset.status === status) {
+          btn.classList.add('bg-gold', 'text-black');
+        }
+      });
+      loadAdminOrders();
+    }
+
+    function onAdminOrdersSearch(e) {
+      adminOrdersSearch = e.target.value.trim();
+      adminOrdersPage = 1;
+      loadAdminOrders();
+    }
+
+    function changeAdminOrdersPage(delta) {
+      adminOrdersPage += delta;
+      if (adminOrdersPage < 1) adminOrdersPage = 1;
+      loadAdminOrders();
     }
 
     function logoutAdmin() {
