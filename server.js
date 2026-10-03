@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const axios = require('axios');
+const cloudinary = require('cloudinary').v2;
 require('dotenv').config();
 
 const app = express();
@@ -17,6 +18,14 @@ if (!JWT_SECRET) {
   console.error('JWT_SECRET environment variable is not set');
   process.exit(1);
 }
+
+// Cloudinary configuration
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'iobtqc2g',
+  api_key: process.env.CLOUDINARY_API_KEY || '175498488934745',
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'FDC-_1qDMCKRp-JswrOmku37HaQ'
+});
+console.log('Cloudinary configured');
 
 app.use(cors());
 // The webhook must see the untouched request body to verify its HMAC signature,
@@ -546,6 +555,24 @@ app.get('/api/admin/service-images', authenticateToken, requireAdmin, (req, res)
   }
 
   res.json(files.map((f) => ({ file: f, url: `/images/services/${f}` })));
+});
+
+// Upload image to Cloudinary (admin only)
+app.post('/api/admin/upload-image', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await cloudinary.uploader.upload(req.body.image, {
+      folder: 'jayrajputmedia/services',
+      resource_type: 'image',
+      transformation: [
+        { width: 800, height: 600, crop: 'limit', quality: 'auto' },
+        { fetch_format: 'auto' }
+      ]
+    });
+    res.json({ url: result.secure_url, public_id: result.public_id });
+  } catch (err) {
+    console.error('Cloudinary upload error:', err);
+    res.status(500).json({ error: 'Image upload failed: ' + err.message });
+  }
 });
 
 // ==================== UPSTREAM PROVIDERS (sell via other panels) ====================
