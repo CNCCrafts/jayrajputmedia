@@ -624,6 +624,18 @@
       </div>
     </div>
 
+    <!-- Service Detail Page (individual product page) -->
+    <section id="section-service-detail" class="content-section hidden">
+      <div class="max-w-4xl mx-auto">
+        <button onclick="navigateSection('services-catalog')" class="mb-4 px-4 py-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-fbBlue transition">
+          <i class="fa-solid fa-arrow-left mr-1"></i> Back to Services
+        </button>
+        <div id="serviceDetailPage" class="bg-white dark:bg-darkCard rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard overflow-hidden">
+          <!-- Content injected by JS -->
+        </div>
+      </div>
+    </section>
+
     <section id="section-new-order" class="content-section hidden">
       <div class="max-w-2xl mx-auto bg-white dark:bg-darkCard p-6 sm:p-10 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard space-y-6">
         <div class="border-b border-slate-100 dark:border-darkBorder pb-4">
@@ -1045,7 +1057,105 @@
       sidebarDrawer.classList.add('-translate-x-full');
       sidebarOverlay.classList.add('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      if (sectionId !== 'service-detail') {
+        history.pushState(null, '', '#');
+      }
     }
+
+    function handleHashRoute() {
+      const hash = window.location.hash;
+      if (hash.startsWith('#service/')) {
+        const serviceId = parseInt(hash.replace('#service/', ''));
+        if (!isNaN(serviceId)) {
+          loadServiceDetailPage(serviceId);
+          return;
+        }
+      }
+    }
+
+    async function loadServiceDetailPage(serviceId) {
+      const s = allServices.find(item => item.id === serviceId);
+      if (!s) {
+        navigateSection('services-catalog');
+        return;
+      }
+
+      let multiplier = 1;
+      let symbol = '₹';
+      if (activeCurrency === 'USD') { multiplier = 0.012; symbol = '$'; }
+      if (activeCurrency === 'EUR') { multiplier = 0.011; symbol = '€'; }
+
+      const isIg = s.category.toLowerCase().includes('instagram');
+      const isFb = s.category.toLowerCase().includes('facebook');
+      const isYt = s.category.toLowerCase().includes('youtube');
+      const icon = isIg ? 'fa-brands fa-instagram' : isFb ? 'fa-brands fa-facebook' : isYt ? 'fa-brands fa-youtube' : 'fa-solid fa-globe';
+      const iconColor = isIg ? 'text-igPink' : isFb ? 'text-fbBlue' : isYt ? 'text-red-500' : 'text-slate-500';
+
+      const imageHtml = s.image ? `
+        <div class="w-full aspect-video bg-slate-50 dark:bg-slate-900">
+          <img src="${s.image}" alt="${s.name}" class="w-full h-full object-contain" onerror="this.src='https://placehold.co/800x400?text=${encodeURIComponent(s.name)}'">
+        </div>
+      ` : `
+        <div class="w-full aspect-video bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center">
+          <i class="${icon} text-6xl text-slate-400"></i>
+        </div>
+      `;
+
+      const page = document.getElementById('serviceDetailPage');
+      page.innerHTML = `
+        ${imageHtml}
+        <div class="p-6 sm:p-8 space-y-6">
+          <div>
+            <div class="flex items-center space-x-2 mb-3">
+              <span class="text-xs px-3 py-1 rounded-full font-bold uppercase border ${isIg ? 'bg-pink-500/10 text-igPink border-pink-200 dark:border-pink-900' : isFb ? 'bg-blue-500/10 text-fbBlue border-blue-200 dark:border-blue-900' : 'bg-red-500/10 text-red-500 border-red-200 dark:border-red-900'}">
+                <i class="${icon} mr-1"></i>${s.category}
+              </span>
+              <span class="text-xs text-slate-400 font-mono font-bold">#${s.id}</span>
+            </div>
+            <h1 class="text-3xl font-display font-black text-slate-900 dark:text-white mb-3">${s.name}</h1>
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">${s.description || 'Professional social media growth service with high retention and fast delivery.'}</p>
+          </div>
+
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <p class="text-[10px] text-slate-400 font-bold uppercase">Rate per 1000</p>
+              <p class="text-xl font-display font-black text-slate-900 dark:text-white mt-1">${symbol}${(s.rate_per_1000 * multiplier).toFixed(2)}</p>
+            </div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <p class="text-[10px] text-slate-400 font-bold uppercase">Min Quantity</p>
+              <p class="text-xl font-display font-black text-slate-900 dark:text-white mt-1">${s.min_quantity}</p>
+            </div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <p class="text-[10px] text-slate-400 font-bold uppercase">Max Quantity</p>
+              <p class="text-xl font-display font-black text-slate-900 dark:text-white mt-1">${s.max_quantity}</p>
+            </div>
+            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
+              <p class="text-[10px] text-slate-400 font-bold uppercase">Category</p>
+              <p class="text-sm font-display font-black text-slate-900 dark:text-white mt-1 truncate">${s.category}</p>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-4 border-t border-slate-200 dark:border-darkBorder">
+            <button onclick="prepareBuyNow(${s.id}); navigateSection('new-order');" class="flex-1 py-4 bg-fbBlue text-white font-display font-bold rounded-2xl hover:bg-fbBlueHover transition text-sm">
+              <i class="fa-solid fa-cart-shopping mr-2"></i>Buy Now
+            </button>
+            <button onclick="navigateSection('services-catalog')" class="px-6 py-4 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition text-sm">
+              Browse More
+            </button>
+          </div>
+        </div>
+      `;
+
+      document.querySelectorAll('.content-section').forEach(sec => sec.classList.add('hidden'));
+      document.getElementById('section-service-detail').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    window.addEventListener('hashchange', handleHashRoute);
+    window.addEventListener('load', () => {
+      handleHashRoute();
+    });
 
     function openAuthModal(mode = 'signin') {
       currentAuthMode = mode;
@@ -1284,75 +1394,22 @@
     }
 
     function openServiceDetail(serviceId) {
-      const s = allServices.find(item => item.id === serviceId);
-      if (!s) return;
-
-      let multiplier = 1;
-      let symbol = '₹';
-      if (activeCurrency === 'USD') { multiplier = 0.012; symbol = '$'; }
-      if (activeCurrency === 'EUR') { multiplier = 0.011; symbol = '€'; }
-
-      const isIg = s.category.toLowerCase().includes('instagram');
-      const isFb = s.category.toLowerCase().includes('facebook');
-      const isYt = s.category.toLowerCase().includes('youtube');
-      const icon = isIg ? 'fa-brands fa-instagram' : isFb ? 'fa-brands fa-facebook' : isYt ? 'fa-brands fa-youtube' : 'fa-solid fa-globe';
-      const iconColor = isIg ? 'text-igPink' : isFb ? 'text-fbBlue' : isYt ? 'text-red-500' : 'text-slate-500';
-
-      const imageHtml = s.image ? `
-        <div class="w-full aspect-video bg-slate-50 dark:bg-slate-900">
-          <img src="${s.image}" alt="${s.name}" class="w-full h-full object-contain" onerror="this.src='https://placehold.co/800x400?text=${encodeURIComponent(s.name)}'">
-        </div>
-      ` : `
-        <div class="w-full aspect-video bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center">
-          <i class="${icon} text-6xl text-slate-400"></i>
-        </div>
-      `;
-
-      const content = document.getElementById('serviceDetailContent');
-      content.innerHTML = `
-        ${imageHtml}
-        <div class="p-6 sm:p-8 space-y-6">
-          <div>
-            <div class="flex items-center space-x-2 mb-3">
-              <span class="text-xs px-3 py-1 rounded-full font-bold uppercase border ${isIg ? 'bg-pink-500/10 text-igPink border-pink-200 dark:border-pink-900' : isFb ? 'bg-blue-500/10 text-fbBlue border-blue-200 dark:border-blue-900' : 'bg-red-500/10 text-red-500 border-red-200 dark:border-red-900'}">
-                <i class="${icon} mr-1"></i>${s.category}
-              </span>
-              <span class="text-xs text-slate-400 font-mono font-bold">#${s.id}</span>
-            </div>
-            <h2 class="text-2xl font-display font-black text-slate-900 dark:text-white mb-2">${s.name}</h2>
-            <p class="text-sm text-slate-600 dark:text-slate-300">${s.description || 'Professional social media growth service with high retention and fast delivery.'}</p>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
-            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <p class="text-xs text-slate-400 font-bold uppercase">Rate per 1000</p>
-              <p class="text-2xl font-display font-black text-slate-900 dark:text-white mt-1">${symbol}${(s.rate_per_1000 * multiplier).toFixed(2)}</p>
-            </div>
-            <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <p class="text-xs text-slate-400 font-bold uppercase">Min / Max</p>
-              <p class="text-2xl font-display font-black text-slate-900 dark:text-white mt-1">${s.min_quantity} / ${s.max_quantity}</p>
-            </div>
-          </div>
-
-          <div class="flex items-center space-x-3 pt-4 border-t border-slate-200 dark:border-darkBorder">
-            <button onclick="prepareBuyNow(${s.id}); closeServiceDetail();" class="flex-1 py-3.5 bg-fbBlue text-white font-display font-bold rounded-2xl hover:bg-fbBlueHover transition">
-              <i class="fa-solid fa-cart-shopping mr-2"></i>Buy Now
-            </button>
-            <button onclick="closeServiceDetail()" class="px-6 py-3.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800 transition">
-              Close
-            </button>
-          </div>
-        </div>
-      `;
-
-      document.getElementById('serviceDetailModal').classList.remove('hidden');
-      document.body.style.overflow = 'hidden';
+      window.location.hash = 'service/' + serviceId;
     }
 
     function closeServiceDetail() {
       document.getElementById('serviceDetailModal').classList.add('hidden');
       document.body.style.overflow = '';
     }
+
+    // Override closeServiceDetail to also clear hash when closing modal
+    const originalCloseServiceDetail = closeServiceDetail;
+    closeServiceDetail = function() {
+      originalCloseServiceDetail();
+      if (window.location.hash.startsWith('#service/')) {
+        history.pushState(null, '', '#');
+      }
+    };
 
     function filterByCategory(category) {
       document.querySelectorAll('.category-pill').forEach(pill => {
