@@ -1136,7 +1136,12 @@ app.get('/admin', (req, res) => {
 });
 
 app.get('{*splat}', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+  const indexPath = path.join(__dirname, 'public', 'index.html');
+  console.log('Serving index.html from:', indexPath);
+  res.sendFile(indexPath).catch(err => {
+    console.error('Failed to serve index.html:', err);
+    res.status(500).json({ error: 'Failed to serve index.html', path: indexPath });
+  });
 });
 
 // Initialize database and start server
