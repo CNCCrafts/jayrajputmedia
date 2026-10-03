@@ -167,39 +167,41 @@ const addColumnIfMissing = async (table, column, definition) => {
   }
 };
 
-await addColumnIfMissing('services', 'provider_id', 'INTEGER');
-await addColumnIfMissing('services', 'upstream_service_id', 'TEXT');
-await addColumnIfMissing('services', 'cost_per_1000', 'REAL');
-await addColumnIfMissing('services', 'image', 'TEXT');
-await addColumnIfMissing('orders', 'upstream_order_id', 'TEXT');
-await addColumnIfMissing('orders', 'cost', 'REAL DEFAULT 0');
+(async function init() {
+  await addColumnIfMissing('services', 'provider_id', 'INTEGER');
+  await addColumnIfMissing('services', 'upstream_service_id', 'TEXT');
+  await addColumnIfMissing('services', 'cost_per_1000', 'REAL');
+  await addColumnIfMissing('services', 'image', 'TEXT');
+  await addColumnIfMissing('orders', 'upstream_order_id', 'TEXT');
+  await addColumnIfMissing('orders', 'cost', 'REAL DEFAULT 0');
 
-// Insert default Admin & demo services if empty
-const adminCheck = await pool.query('SELECT * FROM users WHERE email = ?', ['admin@jayrajputmediapower.com']);
-if (!adminCheck.rows.length) {
-  const hash = bcrypt.hashSync('admin@3360', 10);
-  const info = await pool.query(
-    `INSERT INTO users (name, email, password, role, referral_code) VALUES (?, ?, ?, ?, ?)`,
-    ['Admin Jay Rajput', 'admin@jayrajputmediapower.com', hash, 'admin', 'JRADMIN']
-  );
+  // Insert default Admin & demo services if empty
+  const adminCheck = await pool.query('SELECT * FROM users WHERE email = ?', ['admin@jayrajputmediapower.com']);
+  if (!adminCheck.rows.length) {
+    const hash = bcrypt.hashSync('admin@3360', 10);
+    const info = await pool.query(
+      `INSERT INTO users (name, email, password, role, referral_code) VALUES (?, ?, ?, ?, ?)`,
+      ['Admin Jay Rajput', 'admin@jayrajputmediapower.com', hash, 'admin', 'JRADMIN']
+    );
 
-  await pool.query(
-    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
-    ['Instagram', 'Instagram Followers [High Quality - Non Drop]', 120.00, 100, 50000, 'Instant start, 30 days refill guarantee.']
-  );
-  await pool.query(
-    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
-    ['Instagram', 'Instagram Likes [Real Active Users]', 40.00, 50, 100000, 'Fast speed, organic appearance.']
-  );
-  await pool.query(
-    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
-    ['Facebook', 'Facebook Page Likes & Followers', 180.00, 100, 20000, 'Worldwide targeting, safe delivery.']
-  );
-  await pool.query(
-    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
-    ['YouTube', 'YouTube WatchTime Hours [Monetizable]', 850.00, 500, 4000, 'Refill enabled, 100% safe.']
-  );
-}
+    await pool.query(
+      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
+      ['Instagram', 'Instagram Followers [High Quality - Non Drop]', 120.00, 100, 50000, 'Instant start, 30 days refill guarantee.']
+    );
+    await pool.query(
+      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
+      ['Instagram', 'Instagram Likes [Real Active Users]', 40.00, 50, 100000, 'Fast speed, organic appearance.']
+    );
+    await pool.query(
+      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
+      ['Facebook', 'Facebook Page Likes & Followers', 180.00, 100, 20000, 'Worldwide targeting, safe delivery.']
+    );
+    await pool.query(
+      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES (?, ?, ?, ?, ?, ?)`,
+      ['YouTube', 'YouTube WatchTime Hours [Monetizable]', 850.00, 500, 4000, 'Refill enabled, 100% safe.']
+    );
+  }
+})();
 
 // Middleware: Authentication
 const authenticateToken = (req, res, next) => {
