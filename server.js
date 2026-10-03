@@ -164,7 +164,7 @@ async function initDb() {
 
 // Lightweight migrations for columns added after the initial schema
 const addColumnIfMissing = async (table, column, definition) => {
-  const existing = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_name = ? AND column_name = ?`, [table, column]);
+  const existing = await pool.query('SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND column_name = $2', [table, column]);
   if (!existing.rows.length) {
     await pool.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
   }
