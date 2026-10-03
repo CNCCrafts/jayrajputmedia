@@ -231,6 +231,7 @@ app.post('/api/auth/register', async (req, res) => {
   if (!name || !email || !password) return res.status(400).json({ error: 'All fields are required.' });
 
   try {
+    console.log('Register attempt for:', email);
     const existing = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
     if (existing.rows.length) return res.status(400).json({ error: 'Email already registered.' });
 
@@ -238,40 +239,49 @@ app.post('/api/auth/register', async (req, res) => {
     const myRefCode = 'JR' + Math.random().toString(36).substring(2, 7).toUpperCase();
 
     const stmt = await pool.query(
-      `INSERT INTO users (name, email, password, referral_code, referred_by) VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO users (name, email, password, referral_code, referred_by) VALUES (?, ?, ?, ?, ?) RETURNING id`,
       [name, email, hash, myRefCode, referral_code || null]
     );
 
-    const token = jwt.sign({ id: stmt.rows[0].id, email, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: stmt.rows[0].id, name, email, role: 'user', referral_code: myRefCode } });
+    const userId = stmt.rows[0].id;
+    console.log('User created with ID:', userId);
+    const token = jwt.sign({ id: userId, email, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: userId, name, email, role: 'user', referral_code: myRefCode } });
   } catch (err) {
+    console.error('Register error:', err);
     res.status(500).json({ error: err.message });
   }
 });
 
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-  const user = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
-  const existingUser = user.rows[0];
-  if (!existingUser || !bcrypt.compareSync(password, existingUser.password)) {
-    return res.status(400).json({ error: 'Invalid email or password.' });
-  }
-
-  const token = jwt.sign({ id: existingUser.id, email: existingUser.email, role: existingUser.role }, JWT_SECRET, { expiresIn: '7d' });
-  res.json({
-    token,
-    user: {
-      id: existingUser.id,
-      name: existingUser.name,
-      email: existingUser.email,
-      role: existingUser.role,
-      wallet_inr: existingUser.wallet_inr,
-      wallet_usd: existingUser.wallet_usd,
-      wallet_eur: existingUser.wallet_eur,
-      currency: existingUser.currency,
-      referral_code: existingUser.referral_code
+  try {
+    console.log('Login attempt for:', email);
+    const user = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+    const existingUser = user.rows[0];
+    if (!existingUser || !bcrypt.compareSync(password, existingUser.password)) {
+      return res.status(400).json({ error: 'Invalid email or password.' });
     }
-  });
+
+    const token = jwt.sign({ id: existingUser.id, email: existingUser.email, role: existingUser.role }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({
+      token,
+      user: {
+        id: existingUser.id,
+        name: existingUser.name,
+        email: existingUser.email,
+        role: existingUser.role,
+        wallet_inr: existingUser.wallet_inr,
+        wallet_usd: existingUser.wallet_usd,
+        wallet_eur: existingUser.wallet_eur,
+        currency: existingUser.currency,
+        referral_code: existingUser.referral_code
+      }
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Google Login Mock / API integration hook
@@ -282,10 +292,11 @@ app.post('/api/auth/google', async (req, res) => {
   if (!user.rows.length) {
     const myRefCode = 'JR' + Math.random().toString(36).substring(2, 7).toUpperCase();
     const info = await pool.query(
-      `INSERT INTO users (name, email, google_id, role, referral_code) VALUES (?, ?, ?, 'user', ?)`,
+      `INSERT INTO users (name, email, google_id, role, referral_code) VALUES (?, ?, ?, 'user', ?) RETURNING id`,
       [name, email, google_id, myRefCode]
     );
-    user = await pool.query('SELECT * FROM users WHERE id = ?', [info.rows[0].id]);
+    const newUserId = info.rows[0].id;
+    user = await pool.query('SELECT * FROM users WHERE id = ?', [newUserId]);
   }
 
   const token = jwt.sign({ id: user.rows[0].id, email: user.rows[0].email, role: user.rows[0].role }, JWT_SECRET, { expiresIn: '7d' });
@@ -320,12 +331,12 @@ async function placeOrder(user, service, link, quantity, currency = 'INR') {
 
   await pool.query(`UPDATE users SET ${walletField} = ${walletField} - ? WHERE id = ?`, [totalCost, user.id]);
 
-  const info = await pool.query(
-    `INSERT INTO orders (user_id, service_id, service_name, link, quantity, charge, currency, cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [user.id, service.id, service.name, link, quantity, totalCost, currency, supplierCost]
-  );
+    const info = await pool.query(
+      `INSERT INTO orders (user_id, service_id, service_name, link, quantity, charge, currency, cost) VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      [user.id, service.id, service.name, link, quantity, totalCost, currency, supplierCost]
+    );
 
-  const orderId = info.rows[0].id;
+    const orderId = info.rows[0].id;
 
   // Referral Reward Logic (5% commission if amount >= 100 INR/equivalent)
   if (totalCost >= 100 && user.referred_by) {
@@ -401,7 +412,7 @@ app.post('/api/support/tickets', authenticateToken, async (req, res) => {
   }
 
   const info = await pool.query(
-    `INSERT INTO tickets (user_id, subject, order_id, request_type, message) VALUES (?, ?, ?, ?, ?)`,
+    `INSERT INTO tickets (user_id, subject, order_id, request_type, message) VALUES (?, ?, ?, ?, ?) RETURNING id`,
     [req.user.id, subject, order_id || 'N/A', request_type, message]
   );
 
@@ -445,7 +456,7 @@ app.get('/api/admin/services', authenticateToken, requireAdmin, async (req, res)
 app.post('/api/admin/services', authenticateToken, requireAdmin, async (req, res) => {
   const { category, name, rate_per_1000, min_quantity, max_quantity, description, image } = req.body;
   const info = await pool.query(
-    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, image) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, image) VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
     [category, name, rate_per_1000, min_quantity, max_quantity, description, image || null]
   );
   res.json({ success: true, id: info.rows[0].id });
@@ -719,7 +730,7 @@ app.post('/api/admin/providers', authenticateToken, requireAdmin, async (req, re
   }
 
   const info = await pool.query(
-    `INSERT INTO upstream_providers (name, api_url, api_key, markup_percent) VALUES (?, ?, ?, ?)`,
+    `INSERT INTO upstream_providers (name, api_url, api_key, markup_percent) VALUES (?, ?, ?, ?) RETURNING id`,
     [name, api_url.trim(), api_key.trim(), Number(markup_percent) || 0]
   );
 
@@ -1000,7 +1011,7 @@ app.post('/api/cashfree/create-order', authenticateToken, async (req, res) => {
     const orderId = `TOPUP_${Date.now()}_${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
 
     await pool.query(
-      `INSERT INTO payment_orders (order_id, user_id, amount, currency, wallet_field, payment_status) VALUES (?, ?, ?, ?, ?, 'PENDING')`,
+      `INSERT INTO payment_orders (order_id, user_id, amount, currency, wallet_field, payment_status) VALUES (?, ?, ?, ?, ?, 'PENDING') RETURNING id`,
       [orderId, user.rows[0].id, amount, currency, WALLET_BY_CURRENCY[currency] || 'wallet_inr']
     );
 
