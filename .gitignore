@@ -5,5 +5,4 @@ npm-debug.log*
 Thumbs.db
 .env
 .env.*
-!.env.example
 database.sqlite
