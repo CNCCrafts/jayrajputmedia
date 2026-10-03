@@ -12,8 +12,11 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   
 
+  <!-- Google Identity Services SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+
   <!-- Cashfree JS SDK -->
-<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+  <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
 
 <script>
   // Opens the Cashfree checkout for a wallet top-up. The wallet is only
@@ -936,23 +939,46 @@
     }
 
     async function handleGoogleSignIn() {
-      const email = prompt('Sign in with Google - Enter Email:', 'user@gmail.com');
-      if (!email) return;
+      try {
+        // Try to use Google Identity Services if available
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.id) {
+          // GIS will automatically show the popup or one-tap prompt
+          google.accounts.id.prompt((notification) => {
+            if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+              // Fallback to manual email entry
+              const email = prompt('Enter your Google email:', 'user@gmail.com');
+              if (!email) return;
+              submitGoogleAuth(email, email.split('@')[0]);
+            }
+          });
+        } else {
+          // Fallback if GIS not loaded
+          const email = prompt('Enter your Google email:', 'user@gmail.com');
+          if (!email) return;
+          submitGoogleAuth(email, email.split('@')[0]);
+        }
+      } catch (err) {
+        alert('Google Sign-In failed: ' + err.message);
+      }
+    }
 
+    async function submitGoogleAuth(email, name) {
       try {
         const res = await fetch('/api/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name: email.split('@')[0], google_id: 'google_' + Date.now() })
+          body: JSON.stringify({ email, name, google_id: 'google_' + Date.now() })
         });
         const data = await res.json();
+        if (data.error) return alert('Google Sign-In Error: ' + data.error);
+
         localStorage.setItem('jr_token', data.token);
         currentUser = data.user;
         updateUIForUser();
         closeAuthModal();
         navigateSection('home');
       } catch (err) {
-        alert(err.message);
+        alert('Google Sign-In failed: ' + err.message);
       }
     }
 

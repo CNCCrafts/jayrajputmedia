@@ -287,20 +287,47 @@ app.post('/api/auth/login', async (req, res) => {
 // Google Login Mock / API integration hook
 app.post('/api/auth/google', async (req, res) => {
   const { google_id, email, name } = req.body;
-  let user = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
-
-  if (!user.rows.length) {
-    const myRefCode = 'JR' + Math.random().toString(36).substring(2, 7).toUpperCase();
-    const info = await pool.query(
-      `INSERT INTO users (name, email, google_id, role, referral_code) VALUES (?, ?, ?, 'user', ?) RETURNING id`,
-      [name, email, google_id, myRefCode]
-    );
-    const newUserId = info.rows[0].id;
-    user = await pool.query('SELECT * FROM users WHERE id = ?', [newUserId]);
+  
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required for Google Sign-In' });
   }
 
-  const token = jwt.sign({ id: user.rows[0].id, email: user.rows[0].email, role: user.rows[0].role }, JWT_SECRET, { expiresIn: '7d' });
-  res.json({ token, user });
+  try {
+    console.log('Google Sign-In attempt for:', email);
+    let user = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
+
+    if (!user.rows.length) {
+      const myRefCode = 'JR' + Math.random().toString(36).substring(2, 7).toUpperCase();
+      const info = await pool.query(
+        `INSERT INTO users (name, email, google_id, role, referral_code) VALUES (?, ?, ?, 'user', ?) RETURNING id`,
+        [name || email.split('@')[0], email, google_id || 'google_' + Date.now(), myRefCode]
+      );
+      const newUserId = info.rows[0].id;
+      user = await pool.query('SELECT * FROM users WHERE id = ?', [newUserId]);
+      console.log('New Google user created:', email);
+    } else {
+      console.log('Existing Google user logged in:', email);
+    }
+
+    const token = jwt.sign({ id: user.rows[0].id, email: user.rows[0].email, role: user.rows[0].role }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ 
+      token, 
+      user: {
+        id: user.rows[0].id,
+        name: user.rows[0].name,
+        email: user.rows[0].email,
+        role: user.rows[0].role,
+        wallet_inr: user.rows[0].wallet_inr,
+        wallet_usd: user.rows[0].wallet_usd,
+        wallet_eur: user.rows[0].wallet_eur,
+        currency: user.rows[0].currency,
+        referral_code: user.rows[0].referral_code
+      }
+    });
+  } catch (err) {
+    console.error('Google Sign-In error:', err);
+    res.status(500).json({ error: 'Google Sign-In failed: ' + err.message });
+  }
 });
 
 // User Profile & Balance
