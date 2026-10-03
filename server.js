@@ -1113,6 +1113,21 @@ app.get('/api/wallet/payments', authenticateToken, async (req, res) => {
   res.json(rows.rows);
 });
 
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  if (req.path && req.path.startsWith('/api/')) {
+    res.status(500).json({ error: 'Internal server error', message: err.message });
+  } else {
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
@@ -1123,11 +1138,14 @@ app.get('{*splat}', (req, res) => {
 
 // Initialize database and start server
 initDb().then(() => {
+  console.log('Database initialized successfully');
   app.listen(PORT, () => {
     console.log(`🚀 Jay Rajput Media Power Server live on http://localhost:${PORT}`);
     console.log(`💳 Cashfree return/webhook origin: ${PUBLIC_URL}`);
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);
-  process.exit(1);
+  app.listen(PORT, () => {
+    console.log(`🚀 Server started on http://localhost:${PORT} but DATABASE FAILED:`, err.message);
+  });
 });
