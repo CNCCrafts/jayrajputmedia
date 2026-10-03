@@ -146,6 +146,13 @@
 </head>
 <body class="mesh-social-light dark:mesh-social-dark text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col antialiased transition-colors duration-300">
 
+  <!-- Google One Tap container -->
+  <div id="g_id_onload"
+    data-client_id="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"
+    data-callback="handleGoogleCredentialResponse"
+    data-auto_prompt="false">
+  </div>
+
   <header class="bg-white/85 dark:bg-darkCard/85 backdrop-blur-xl sticky top-0 z-40 border-b border-slate-200/80 dark:border-darkBorder transition-colors">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
       
@@ -959,6 +966,23 @@
         }
       } catch (err) {
         alert('Google Sign-In failed: ' + err.message);
+      }
+    }
+
+    // Called automatically by Google GIS when user signs in
+    async function handleGoogleCredentialResponse(response) {
+      try {
+        console.log('Google credential response received');
+        const credential = response.credential;
+        
+        // Decode the JWT token to get user info
+        const payload = JSON.parse(atob(credential.split('.')[1]));
+        console.log('Google user:', payload);
+        
+        await submitGoogleAuth(payload.email, payload.name);
+      } catch (err) {
+        console.error('Google credential error:', err);
+        alert('Google Sign-In failed. Please try again.');
       }
     }
 
