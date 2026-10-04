@@ -188,6 +188,21 @@
       object-fit: cover;
       border: 2px solid #F5BD02;
       box-shadow: 0 0 15px rgba(245, 189, 2, 0.4);
+      transition: all 0.3s ease;
+    }
+    .logo-img.logo-large {
+      width: 56px;
+      height: 56px;
+    }
+    #brandText {
+      transition: all 0.3s ease;
+    }
+    .logo-only #brandText {
+      display: none;
+    }
+    .logo-only .logo-img {
+      width: 56px;
+      height: 56px;
     }
     @media (max-width: 640px) {
       .ticker-item {
@@ -197,6 +212,14 @@
       .logo-img {
         width: 36px;
         height: 36px;
+      }
+      .logo-img.logo-large {
+        width: 44px;
+        height: 44px;
+      }
+      .logo-only .logo-img {
+        width: 44px;
+        height: 44px;
       }
     }
   </style>
@@ -232,11 +255,11 @@
           <i class="fa-solid fa-bars-staggered text-lg"></i>
         </button>
         
-        <a href="/" class="flex items-center space-x-3 group">
+        <a href="/" class="flex items-center space-x-3 group" id="brandLogo">
           <div class="relative p-0.5 rounded-full ig-gradient-bg">
             <img src="/logo.png" alt="Jay Rajput Media Power" class="logo-img bg-white dark:bg-darkCard p-0.5 object-cover" onerror="this.src='https://placehold.co/100x100?text=JR'"/>
           </div>
-          <div>
+          <div id="brandText">
             <span class="text-lg font-display font-black tracking-tight text-slate-900 dark:text-white leading-none block">Jay Rajput</span>
             <span class="text-[10px] font-bold tracking-widest ig-gradient-text uppercase mt-0.5 block">Media Power</span>
           </div>
@@ -1466,6 +1489,11 @@
 
       document.getElementById('userPrivateMenuItems').classList.remove('hidden');
       document.getElementById('heroGuestCTA').classList.add('hidden');
+
+      const brandLogo = document.getElementById('brandLogo');
+      if (brandLogo) {
+        brandLogo.classList.add('logo-only');
+      }
 
       updateWalletDisplay();
 
