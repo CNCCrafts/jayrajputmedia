@@ -636,11 +636,25 @@ async function syncProviderServices(provider) {
         );
         updated++;
       } else {
-        await client.query(
-          `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, provider_id, upstream_service_id, cost_per_1000, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-          [category, name, retailRate, min, max, description, provider.id, upstreamId, wholesaleRate, status]
+        // Also check for duplicates by normalized name + category across all providers
+        const duplicate = await client.query(
+          `SELECT id FROM services WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) AND LOWER(TRIM(category)) = LOWER(TRIM($2)) AND provider_id IS NOT NULL LIMIT 1`,
+          [name, category]
         );
-        added++;
+        if (duplicate.rows.length) {
+          // Update existing duplicate instead of inserting
+          await client.query(
+            `UPDATE services SET rate_per_1000 = $1, min_quantity = $2, max_quantity = $3, description = $4, provider_id = $5, upstream_service_id = $6, cost_per_1000 = $7, status = $8 WHERE id = $9`,
+            [retailRate, min, max, description, provider.id, upstreamId, wholesaleRate, status, duplicate.rows[0].id]
+          );
+          updated++;
+        } else {
+          await client.query(
+            `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, provider_id, upstream_service_id, cost_per_1000, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            [category, name, retailRate, min, max, description, provider.id, upstreamId, wholesaleRate, status]
+          );
+          added++;
+        }
       }
     }
     await client.query("UPDATE upstream_providers SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1", [provider.id]);
@@ -664,6 +678,42 @@ async function syncProviderServices(provider) {
 
   return { added, updated, total: list.length };
 }
+
+// Remove duplicate services keeping the newest entry
+app.post('/api/admin/services/deduplicate', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      DELETE FROM services
+      WHERE id NOT IN (
+        SELECT MAX(id)
+        FROM services
+        GROUP BY LOWER(TRIM(name)), LOWER(TRIM(category))
+        HAVING COUNT(*) > 1
+      )
+      AND provider_id IS NULL
+    `);
+    res.json({ deleted: result.rowCount, message: `Removed ${result.rowCount} duplicate in-house services.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/admin/services/deduplicate-all', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      DELETE FROM services
+      WHERE id NOT IN (
+        SELECT MAX(id)
+        FROM services
+        GROUP BY LOWER(TRIM(name)), LOWER(TRIM(category))
+        HAVING COUNT(*) > 1
+      )
+    `);
+    res.json({ deleted: result.rowCount, message: `Removed ${result.rowCount} duplicate services.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Pushes a locally created order to the upstream panel that supplies its service
 async function forwardOrderToProvider(orderId) {
