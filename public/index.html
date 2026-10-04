@@ -756,12 +756,12 @@
             <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Package Source</label>
             <div class="flex items-center gap-2">
               <label class="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition flex-1">
-                <input type="radio" name="quickPackageSource" value="inhouse" checked onchange="updateQuickOrderCategories()" class="text-fbBlue focus:ring-fbBlue">
-                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">In-House Packages</span>
+                <input type="radio" name="quickPackageSource" value="imported" checked onchange="updateQuickOrderCategories()" class="text-fbBlue focus:ring-fbBlue">
+                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">API / Imported Packages</span>
               </label>
               <label class="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition flex-1">
-                <input type="radio" name="quickPackageSource" value="imported" onchange="updateQuickOrderCategories()" class="text-fbBlue focus:ring-fbBlue">
-                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">API / Imported Packages</span>
+                <input type="radio" name="quickPackageSource" value="inhouse" onchange="updateQuickOrderCategories()" class="text-fbBlue focus:ring-fbBlue">
+                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">In-House Packages</span>
               </label>
             </div>
           </div>
@@ -827,12 +827,12 @@
             <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Package Source</label>
             <div class="flex items-center gap-2">
               <label class="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition flex-1">
-                <input type="radio" name="packageSource" value="inhouse" checked onchange="filterServicesBySource()" class="text-fbBlue focus:ring-fbBlue">
-                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">In-House Packages</span>
+                <input type="radio" name="packageSource" value="imported" checked onchange="filterServicesBySource()" class="text-fbBlue focus:ring-fbBlue">
+                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Imported Packages</span>
               </label>
               <label class="flex items-center gap-2 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition flex-1">
-                <input type="radio" name="packageSource" value="imported" onchange="filterServicesBySource()" class="text-fbBlue focus:ring-fbBlue">
-                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">Imported Packages</span>
+                <input type="radio" name="packageSource" value="inhouse" onchange="filterServicesBySource()" class="text-fbBlue focus:ring-fbBlue">
+                <span class="text-sm font-bold text-slate-700 dark:text-slate-200">In-House Packages</span>
               </label>
             </div>
           </div>
@@ -1715,7 +1715,7 @@
 
     function filterServicesBySource() {
       const selectedCat = document.getElementById('orderCategorySelect').value;
-      const source = document.querySelector('input[name="packageSource"]:checked')?.value || 'inhouse';
+      const source = document.querySelector('input[name="packageSource"]:checked')?.value || 'imported';
       
       let services = allServices.filter(s => s.category === selectedCat);
       
@@ -1731,7 +1731,7 @@
     }
 
     function updateOrderFormCategories() {
-      const source = document.querySelector('input[name="packageSource"]:checked')?.value || 'inhouse';
+      const source = document.querySelector('input[name="packageSource"]:checked')?.value || 'imported';
       let categories = [...new Set(allServices.map(s => s.category))];
       
       if (source === 'inhouse') {
@@ -1813,7 +1813,7 @@
     function filterQuickServices(query) {
       const q = query.toLowerCase();
       const category = document.getElementById('quickCategorySelect').value;
-      const source = document.querySelector('input[name="quickPackageSource"]:checked')?.value || 'inhouse';
+      const source = document.querySelector('input[name="quickPackageSource"]:checked')?.value || 'imported';
       
       let filtered = allServices;
 
@@ -1847,7 +1847,7 @@
     }
 
     function updateQuickOrderCategories() {
-      const source = document.querySelector('input[name="quickPackageSource"]:checked')?.value || 'inhouse';
+      const source = document.querySelector('input[name="quickPackageSource"]:checked')?.value || 'imported';
       let categories = [...new Set(allServices.map(s => s.category))];
       
       if (source === 'inhouse') {
