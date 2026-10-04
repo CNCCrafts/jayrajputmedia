@@ -28,6 +28,28 @@
     }
   </script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    .admin-nav-btn {
+      color: #94a3b8;
+    }
+    .admin-nav-btn:hover {
+      background: #1e293b;
+      color: #ffffff;
+    }
+    .admin-nav-btn.active {
+      background: rgba(245, 189, 2, 0.15);
+      color: #F5BD02;
+      border: 1px solid rgba(245, 189, 2, 0.4);
+    }
+    .admin-tab-panel {
+      animation: fadeIn 0.2s ease-in-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
 </head>
 <body class="bg-darkBg text-slate-100 font-sans min-h-screen antialiased flex flex-col justify-center items-center p-4">
 
@@ -58,282 +80,324 @@
     </div>
   </div>
 
-  <div id="adminDashboard" class="hidden w-full max-w-6xl space-y-8 my-8">
-    <header class="flex flex-col md:flex-row justify-between items-center bg-cardBg border border-gold/30 p-5 rounded-2xl shadow-xl gap-4">
-      <div class="flex items-center space-x-3">
-        <div class="w-10 h-10 rounded-full border border-gold flex items-center justify-center bg-black text-gold">
-          <i class="fa-solid fa-crown text-lg"></i>
-        </div>
-        <div>
-          <h1 class="text-xl font-heading font-extrabold text-gold uppercase">Jay Rajput Admin Panel</h1>
-          <p class="text-xs text-slate-400 font-mono">jayrajputmediapower.com/admin</p>
-        </div>
-      </div>
-
-      <div class="flex items-center space-x-3">
-        <a href="/" class="px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-semibold text-slate-300 hover:bg-slate-800 transition">
-          <i class="fa-solid fa-globe mr-1"></i> Live Site
-        </a>
-        <button onclick="logoutAdmin()" class="px-4 py-2 bg-red-600/20 text-red-400 border border-red-500/40 rounded-xl text-xs font-semibold hover:bg-red-600 hover:text-white transition">
-          <i class="fa-solid fa-power-off mr-1"></i> Logout
-        </button>
-      </div>
-    </header>
-
-    <section class="bg-cardBg border border-gold/30 p-6 md:p-8 rounded-3xl shadow-xl">
-      <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
-        <h2 id="formHeading" class="text-lg font-bold text-gold flex items-center space-x-2">
-          <i class="fa-solid fa-circle-plus"></i><span>Add New Service Package</span>
-        </h2>
-        <button id="cancelEditBtn" onclick="resetForm()" class="hidden text-xs text-slate-400 hover:text-red-400 underline">
-          Cancel Editing
-        </button>
-      </div>
-
-      <form id="serviceForm" onsubmit="handleServiceFormSubmit(event)" class="grid grid-cols-1 md:grid-cols-3 gap-5 text-sm">
-        <input type="hidden" id="editServiceId" value="">
-
-        <div>
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Category</label>
-          <input type="text" id="svcCategory" required placeholder="Instagram / Facebook / YouTube" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
-        </div>
-
-        <div class="md:col-span-2">
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Package Name</label>
-          <input type="text" id="svcName" required placeholder="Instagram Followers [HQ Non Drop]" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
-        </div>
-
-        <div>
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Rate per 1000 (INR ₹)</label>
-          <input type="number" step="0.01" id="svcRate" required placeholder="120.00" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
-        </div>
-
-        <div>
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Min Quantity</label>
-          <input type="number" id="svcMin" required placeholder="100" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
-        </div>
-
-        <div>
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Max Quantity</label>
-          <input type="number" id="svcMax" required placeholder="50000" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
-        </div>
-
-        <div class="md:col-span-3">
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Package Description & Specifications</label>
-          <input type="text" id="svcDesc" required placeholder="Instant start speed, 30 days refill button enabled" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
-        </div>
-
-        <div class="md:col-span-2">
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Card Image</label>
-          <select id="svcImage" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
-            <option value="">No image</option>
-          </select>
-        </div>
-
-        <div class="md:col-span-1 flex items-end">
-          <div id="svcImagePreview" class="w-full h-16 rounded-xl border border-slate-700 bg-slate-950 overflow-hidden flex items-center justify-center text-[10px] text-slate-500">
-            No image
+  <div id="adminDashboard" class="hidden w-full max-w-7xl my-8">
+    <div class="flex flex-col md:flex-row gap-6">
+      <!-- Sidebar Navigation -->
+      <aside class="md:w-64 shrink-0">
+        <div class="bg-cardBg border border-cardBorder rounded-3xl p-4 space-y-1 sticky top-6">
+          <div class="flex items-center space-x-3 px-3 py-3 mb-2">
+            <div class="w-10 h-10 rounded-xl border border-gold flex items-center justify-center bg-black text-gold">
+              <i class="fa-solid fa-crown text-lg"></i>
+            </div>
+            <div>
+              <h1 class="text-sm font-extrabold text-gold uppercase leading-tight">Jay Rajput</h1>
+              <p class="text-[10px] text-slate-400 font-mono leading-tight">Admin Panel</p>
+            </div>
           </div>
-        </div>
 
-        <div class="md:col-span-3 pt-2">
-          <button type="submit" id="submitBtn" class="w-full py-3.5 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl hover:brightness-110 shadow-lg transition duration-200 uppercase tracking-wider text-xs">
-            Save & Publish Package
-          </button>
-        </div>
-      </form>
-    </section>
+          <nav class="space-y-1">
+            <button onclick="switchAdminTab('services')" data-tab="services" class="admin-nav-btn active w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
+              <i class="fa-solid fa-box-open w-5"></i><span>Services</span>
+            </button>
+            <button onclick="switchAdminTab('orders')" data-tab="orders" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
+              <i class="fa-solid fa-receipt w-5"></i><span>Orders</span>
+              <span id="adminOrdersSidebarBadge" class="ml-auto text-[10px] bg-red-500/20 text-red-400 border border-red-500/40 px-2 py-0.5 rounded-full font-black hidden">0</span>
+            </button>
+            <button onclick="switchAdminTab('providers')" data-tab="providers" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
+              <i class="fa-solid fa-tower-broadcast w-5"></i><span>Providers</span>
+            </button>
+            <button onclick="switchAdminTab('uploads')" data-tab="uploads" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
+              <i class="fa-solid fa-cloud-arrow-up w-5"></i><span>Media</span>
+            </button>
+          </nav>
 
-    <section class="bg-cardBg border border-gold/30 p-6 md:p-8 rounded-3xl shadow-xl">
-      <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
-        <h2 class="text-lg font-bold text-gold flex items-center space-x-2">
-          <i class="fa-solid fa-tower-broadcast text-gold"></i><span>Upstream Providers (Sell via Other Panels)</span>
-        </h2>
-        <button onclick="syncAllProviders()" class="text-xs bg-gold/20 text-gold border border-gold/40 px-3 py-1 rounded-full font-bold hover:bg-gold hover:text-black transition">
-          <i class="fa-solid fa-rotate mr-1"></i> Sync All
-        </button>
-      </div>
-
-      <p class="text-xs text-slate-400 mb-5">
-        Paste another SMM panel's API URL and key. Their services and rates get imported into your catalog with your markup, and every paid order on an imported service is pushed to that panel automatically.
-      </p>
-
-      <form id="providerForm" onsubmit="handleProviderFormSubmit(event)" class="grid grid-cols-1 md:grid-cols-4 gap-5 text-sm">
-        <input type="hidden" id="editProviderId" value="">
-
-        <div>
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Provider Name</label>
-          <input type="text" id="prvName" required placeholder="MySupplierPanel" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
-        </div>
-
-        <div class="md:col-span-1">
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">API URL</label>
-          <input type="url" id="prvUrl" required placeholder="https://supplier.com/api/v2" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
-        </div>
-
-        <div>
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">API Key</label>
-          <input type="text" id="prvKey" required placeholder="e2c1f0a9..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
-        </div>
-
-        <div>
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Markup %</label>
-          <input type="number" step="0.01" id="prvMarkup" value="30" required placeholder="30" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
-        </div>
-
-        <div class="md:col-span-4 flex flex-wrap gap-3 pt-1">
-          <button type="submit" id="prvSubmitBtn" class="flex-1 min-w-[200px] py-3 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl hover:brightness-110 shadow-lg transition text-xs uppercase tracking-wider">
-            Connect &amp; Import Services
-          </button>
-          <button type="button" onclick="resetProviderForm()" id="prvCancelBtn" class="hidden px-5 py-3 bg-slate-800 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold hover:bg-slate-700 transition">
-            Cancel
-          </button>
-        </div>
-      </form>
-
-      <div class="overflow-x-auto mt-6">
-        <table class="w-full text-left text-sm text-slate-300">
-          <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
-            <tr>
-              <th class="p-3">Provider</th>
-              <th class="p-3">API URL</th>
-              <th class="p-3">Markup</th>
-              <th class="p-3">Imported</th>
-              <th class="p-3">Last Sync</th>
-              <th class="p-3 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="providersTbody" class="divide-y divide-slate-800">
-            <tr><td colspan="6" class="p-4 text-center text-xs text-slate-500">No upstream providers connected yet.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
-      <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
-        <h2 class="text-lg font-bold text-white flex items-center space-x-2">
-          <i class="fa-solid fa-list-check text-gold"></i><span>Live Service Packages</span>
-        </h2>
-        <span id="serviceCountBadge" class="text-xs bg-gold/20 text-gold border border-gold/40 px-3 py-1 rounded-full font-bold">0 Services</span>
-      </div>
-
-      <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-        <div>
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Category</label>
-          <input type="text" id="bulkCategory" placeholder="Instagram" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-gold outline-none text-sm">
-        </div>
-        <div class="md:col-span-2">
-          <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Image</label>
-          <select id="bulkImage" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-gold outline-none text-sm">
-            <option value="">Choose an image...</option>
-          </select>
-        </div>
-        <button onclick="bulkAssignImage()" class="py-2.5 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl text-xs uppercase tracking-wider hover:brightness-110 transition">
-          Assign to Category
-        </button>
-      </div>
-
-      <!-- Cloudinary Upload Section -->
-      <div class="bg-gradient-to-r from-blue-950/40 to-indigo-950/40 border border-blue-800/50 rounded-2xl p-5 mb-6">
-        <h3 class="text-sm font-bold text-blue-300 mb-3 flex items-center">
-          <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary
-        </h3>
-        <form onsubmit="handleCloudinaryUpload(event)" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-          <div class="md:col-span-1">
-            <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Image File</label>
-            <input type="file" id="cloudinaryFile" accept="image/*" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
-          </div>
-          <div class="md:col-span-1">
-            <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Assign to Category</label>
-            <input type="text" id="uploadCategory" placeholder="Instagram" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-blue-500 outline-none text-sm">
-          </div>
-          <div class="md:col-span-2">
-            <button type="submit" id="uploadCloudinaryBtn" class="w-full py-2.5 bg-blue-600 text-white font-extrabold rounded-xl text-xs uppercase tracking-wider hover:bg-blue-500 transition">
-              <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary
+          <div class="pt-3 mt-3 border-t border-slate-800 space-y-2">
+            <a href="/" class="flex items-center space-x-2 px-4 py-2.5 rounded-2xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition">
+              <i class="fa-solid fa-globe"></i><span>Live Site</span>
+            </a>
+            <button onclick="logoutAdmin()" class="w-full flex items-center space-x-2 px-4 py-2.5 rounded-2xl text-xs font-bold text-red-400 hover:bg-red-600/20 transition">
+              <i class="fa-solid fa-power-off"></i><span>Logout</span>
             </button>
           </div>
-        </form>
-        <p class="text-[10px] text-slate-500 mt-2">Uploads go to folder <code class="text-blue-400">jayrajputmedia/services</code>. After upload, the image is automatically assigned to all services in the specified category.</p>
-      </div>
-
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm text-slate-300">
-          <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
-            <tr>
-              <th class="p-3">ID</th>
-              <th class="p-3">Category</th>
-              <th class="p-3">Name</th>
-              <th class="p-3">Rate/1000</th>
-              <th class="p-3">Min / Max</th>
-              <th class="p-3">Image</th>
-              <th class="p-3">Source</th>
-              <th class="p-3 text-center">Actions</th>
-            </tr>
-          </thead>
-          <tbody id="adminServicesTbody" class="divide-y divide-slate-800">
-            </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Admin Orders Section -->
-    <section class="bg-cardBg border border-gold/30 p-6 md:p-8 rounded-3xl shadow-xl">
-      <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-3 border-b border-slate-800">
-        <div>
-          <h2 class="text-lg font-bold text-gold flex items-center space-x-2">
-            <i class="fa-solid fa-receipt"></i><span>Orders Management</span>
-          </h2>
-          <p class="text-xs text-slate-400 mt-1">View all customer orders and update their status.</p>
         </div>
-        <div class="flex items-center space-x-2">
-          <input type="text" id="adminOrdersSearch" oninput="onAdminOrdersSearch(event)" placeholder="Search orders..." class="bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none focus:border-gold w-48">
-          <select id="adminOrdersStatusFilter" onchange="filterAdminOrdersByStatus(this.value)" class="bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none focus:border-gold">
-            <option value="all">All Status</option>
-            <option value="Pending">Pending</option>
-            <option value="In Progress">In Progress</option>
-            <option value="Completed">Completed</option>
-            <option value="Canceled">Canceled</option>
-            <option value="Refunded">Refunded</option>
-          </select>
-          <button onclick="loadAdminOrders()" class="px-3 py-2 bg-gold/20 text-gold border border-gold/40 rounded-xl text-xs font-bold hover:bg-gold hover:text-black transition">
-            <i class="fa-solid fa-rotate"></i>
-          </button>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="flex-1 min-w-0 space-y-6">
+        <!-- Services Tab -->
+        <div id="admin-tab-services" class="admin-tab-panel space-y-6">
+          <section class="bg-cardBg border border-gold/30 p-6 md:p-8 rounded-3xl shadow-xl">
+            <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
+              <h2 class="text-lg font-bold text-gold flex items-center space-x-2">
+                <i class="fa-solid fa-circle-plus"></i><span>Add / Edit Service Package</span>
+              </h2>
+              <button id="cancelEditBtn" onclick="resetForm()" class="hidden text-xs text-slate-400 hover:text-red-400 underline">Cancel Editing</button>
+            </div>
+
+            <form id="serviceForm" onsubmit="handleServiceFormSubmit(event)" class="grid grid-cols-1 md:grid-cols-3 gap-5 text-sm">
+              <input type="hidden" id="editServiceId" value="">
+
+              <div>
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Category</label>
+                <input type="text" id="svcCategory" required placeholder="Instagram / Facebook / YouTube" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Package Name</label>
+                <input type="text" id="svcName" required placeholder="Instagram Followers [HQ Non Drop]" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+              </div>
+
+              <div>
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Rate per 1000 (INR ₹)</label>
+                <input type="number" step="0.01" id="svcRate" required placeholder="120.00" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+              </div>
+
+              <div>
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Min Quantity</label>
+                <input type="number" id="svcMin" required placeholder="100" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+              </div>
+
+              <div>
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Max Quantity</label>
+                <input type="number" id="svcMax" required placeholder="50000" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+              </div>
+
+              <div class="md:col-span-3">
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Package Description & Specifications</label>
+                <input type="text" id="svcDesc" required placeholder="Instant start speed, 30 days refill button enabled" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+              </div>
+
+              <div class="md:col-span-2">
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Card Image</label>
+                <select id="svcImage" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+                  <option value="">No image</option>
+                </select>
+              </div>
+
+              <div class="md:col-span-1 flex items-end">
+                <div id="svcImagePreview" class="w-full h-16 rounded-xl border border-slate-700 bg-slate-950 overflow-hidden flex items-center justify-center text-[10px] text-slate-500">
+                  No image
+                </div>
+              </div>
+
+              <div class="md:col-span-3 pt-2">
+                <button type="submit" id="submitBtn" class="w-full py-3.5 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl hover:brightness-110 shadow-lg transition duration-200 uppercase tracking-wider text-xs">
+                  Save & Publish Package
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
+            <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
+              <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-list-check text-gold"></i><span>Live Service Packages</span>
+              </h2>
+              <span id="serviceCountBadge" class="text-xs bg-gold/20 text-gold border border-gold/40 px-3 py-1 rounded-full font-bold">0 Services</span>
+            </div>
+            ...
+          </section>
         </div>
-      </div>
 
-      <div class="overflow-x-auto">
-        <table class="w-full text-left text-sm text-slate-300">
-          <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
-            <tr>
-              <th class="p-3">ID</th>
-              <th class="p-3">Customer</th>
-              <th class="p-3">Email</th>
-              <th class="p-3">Service</th>
-              <th class="p-3">Link</th>
-              <th class="p-3 text-right">Qty</th>
-              <th class="p-3 text-center">Status</th>
-              <th class="p-3">Date</th>
-              <th class="p-3 text-center">Update Status</th>
-            </tr>
-          </thead>
-          <tbody id="adminOrdersTbody" class="divide-y divide-slate-800">
-            <tr><td colspan="9" class="p-6 text-center text-xs text-slate-500">Loading orders...</td></tr>
-          </tbody>
-        </table>
-      </div>
+        <!-- Orders Tab -->
+        <div id="admin-tab-orders" class="admin-tab-panel hidden">
+          <section class="bg-cardBg border border-gold/30 p-6 md:p-8 rounded-3xl shadow-xl">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-3 border-b border-slate-800">
+              <div>
+                <h2 class="text-lg font-bold text-gold flex items-center space-x-2">
+                  <i class="fa-solid fa-receipt"></i><span>Orders Management</span>
+                </h2>
+                <p class="text-xs text-slate-400 mt-1">View all customer orders and update their status.</p>
+              </div>
+              <div class="flex items-center space-x-2">
+                <input type="text" id="adminOrdersSearch" oninput="onAdminOrdersSearch(event)" placeholder="Search orders..." class="bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none focus:border-gold w-48">
+                <select id="adminOrdersStatusFilter" onchange="filterAdminOrdersByStatus(this.value)" class="bg-slate-950 border border-slate-700 rounded-xl p-2 text-xs text-white outline-none focus:border-gold">
+                  <option value="all">All Status</option>
+                  <option value="Pending">Pending</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Canceled">Canceled</option>
+                  <option value="Refunded">Refunded</option>
+                </select>
+                <button onclick="loadAdminOrders()" class="px-3 py-2 bg-gold/20 text-gold border border-gold/40 rounded-xl text-xs font-bold hover:bg-gold hover:text-black transition">
+                  <i class="fa-solid fa-rotate"></i>
+                </button>
+              </div>
+            </div>
 
-      <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-800">
-        <button onclick="changeAdminOrdersPage(-1)" class="px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800 transition">
-          <i class="fa-solid fa-chevron-left mr-1"></i> Previous
-        </button>
-        <span id="adminOrdersPageInfo" class="text-xs text-slate-400 font-mono">Page 1</span>
-        <span class="text-xs text-slate-500">Total: <span id="adminOrdersTotalCount">0</span> orders</span>
-        <button onclick="changeAdminOrdersPage(1)" class="px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800 transition">
-          Next <i class="fa-solid fa-chevron-right ml-1"></i>
-        </button>
-      </div>
-    </section>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-slate-300">
+                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
+                  <tr>
+                    <th class="p-3">ID</th>
+                    <th class="p-3">Customer</th>
+                    <th class="p-3">Email</th>
+                    <th class="p-3">Service</th>
+                    <th class="p-3">Link</th>
+                    <th class="p-3 text-right">Qty</th>
+                    <th class="p-3 text-center">Status</th>
+                    <th class="p-3">Date</th>
+                    <th class="p-3 text-center">Update Status</th>
+                  </tr>
+                </thead>
+                <tbody id="adminOrdersTbody" class="divide-y divide-slate-800">
+                  <tr><td colspan="9" class="p-6 text-center text-xs text-slate-500">Loading orders...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-800">
+              <button onclick="changeAdminOrdersPage(-1)" class="px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800 transition">
+                <i class="fa-solid fa-chevron-left mr-1"></i> Previous
+              </button>
+              <span id="adminOrdersPageInfo" class="text-xs text-slate-400 font-mono">Page 1</span>
+              <span class="text-xs text-slate-500">Total: <span id="adminOrdersTotalCount">0</span> orders</span>
+              <button onclick="changeAdminOrdersPage(1)" class="px-4 py-2 bg-slate-900 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 hover:bg-slate-800 transition">
+                Next <i class="fa-solid fa-chevron-right ml-1"></i>
+              </button>
+            </div>
+          </section>
+        </div>
+
+        <!-- Providers Tab -->
+        <div id="admin-tab-providers" class="admin-tab-panel hidden">
+          <section class="bg-cardBg border border-gold/30 p-6 md:p-8 rounded-3xl shadow-xl">
+            <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
+              <h2 class="text-lg font-bold text-gold flex items-center space-x-2">
+                <i class="fa-solid fa-tower-broadcast text-gold"></i><span>Upstream Providers (Sell via Other Panels)</span>
+              </h2>
+              <button onclick="syncAllProviders()" class="text-xs bg-gold/20 text-gold border border-gold/40 px-3 py-1 rounded-full font-bold hover:bg-gold hover:text-black transition">
+                <i class="fa-solid fa-rotate mr-1"></i> Sync All
+              </button>
+            </div>
+
+            <p class="text-xs text-slate-400 mb-5">
+              Paste another SMM panel's API URL and key. Their services and rates get imported into your catalog with your markup, and every paid order on an imported service is pushed to that panel automatically.
+            </p>
+
+            <form id="providerForm" onsubmit="handleProviderFormSubmit(event)" class="grid grid-cols-1 md:grid-cols-4 gap-5 text-sm">
+              <input type="hidden" id="editProviderId" value="">
+
+              <div>
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Provider Name</label>
+                <input type="text" id="prvName" required placeholder="MySupplierPanel" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+              </div>
+
+              <div class="md:col-span-1">
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">API URL</label>
+                <input type="url" id="prvUrl" required placeholder="https://supplier.com/api/v2" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+              </div>
+
+              <div>
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">API Key</label>
+                <input type="text" id="prvKey" required placeholder="e2c1f0a9..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+              </div>
+
+              <div>
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Markup %</label>
+                <input type="number" step="0.01" id="prvMarkup" value="30" required placeholder="30" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+              </div>
+
+              <div class="md:col-span-4 flex flex-wrap gap-3 pt-1">
+                <button type="submit" id="prvSubmitBtn" class="flex-1 min-w-[200px] py-3 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl hover:brightness-110 shadow-lg transition text-xs uppercase tracking-wider">
+                  Connect &amp; Import Services
+                </button>
+                <button type="button" onclick="resetProviderForm()" id="prvCancelBtn" class="hidden px-5 py-3 bg-slate-800 text-slate-300 border border-slate-700 rounded-xl text-xs font-bold hover:bg-slate-700 transition">
+                  Cancel
+                </button>
+              </div>
+            </form>
+
+            <div class="overflow-x-auto mt-6">
+              <table class="w-full text-left text-sm text-slate-300">
+                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
+                  <tr>
+                    <th class="p-3">Provider</th>
+                    <th class="p-3">API URL</th>
+                    <th class="p-3">Markup</th>
+                    <th class="p-3">Imported</th>
+                    <th class="p-3">Last Sync</th>
+                    <th class="p-3 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="providersTbody" class="divide-y divide-slate-800">
+                  <tr><td colspan="6" class="p-4 text-center text-xs text-slate-500">No upstream providers connected yet.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- Media/Uploads Tab -->
+        <div id="admin-tab-uploads" class="admin-tab-panel hidden">
+          <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
+            <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
+              <h2 class="text-lg font-bold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-cloud-arrow-up text-blue-400"></i><span>Media Library & Uploads</span>
+              </h2>
+            </div>
+
+            <p class="text-xs text-slate-400 mb-5">Upload images to Cloudinary and manage your media library. Images are stored in folder <code class="text-blue-400">jayrajputmedia/services</code>.</p>
+
+            <div class="bg-gradient-to-r from-blue-950/40 to-indigo-950/40 border border-blue-800/50 rounded-2xl p-5 mb-6">
+              <h3 class="text-sm font-bold text-blue-300 mb-3 flex items-center">
+                <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary
+              </h3>
+              <form onsubmit="handleCloudinaryUpload(event)" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                <div class="md:col-span-1">
+                  <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Image File</label>
+                  <input type="file" id="cloudinaryFile" accept="image/*" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
+                </div>
+                <div class="md:col-span-1">
+                  <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Assign to Category</label>
+                  <input type="text" id="uploadCategory" placeholder="Instagram" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-blue-500 outline-none text-sm">
+                </div>
+                <div class="md:col-span-2">
+                  <button type="submit" id="uploadCloudinaryBtn" class="w-full py-2.5 bg-blue-600 text-white font-extrabold rounded-xl text-xs uppercase tracking-wider hover:bg-blue-500 transition">
+                    <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+              <div>
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Category</label>
+                <input type="text" id="bulkCategory" placeholder="Instagram" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-gold outline-none text-sm">
+              </div>
+              <div class="md:col-span-2">
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Image</label>
+                <select id="bulkImage" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-gold outline-none text-sm">
+                  <option value="">Choose an image...</option>
+                </select>
+              </div>
+              <button onclick="bulkAssignImage()" class="py-2.5 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl text-xs uppercase tracking-wider hover:brightness-110 transition">
+                Assign to Category
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-slate-300">
+                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
+                  <tr>
+                    <th class="p-3">ID</th>
+                    <th class="p-3">Category</th>
+                    <th class="p-3">Name</th>
+                    <th class="p-3">Rate/1000</th>
+                    <th class="p-3">Min / Max</th>
+                    <th class="p-3">Image</th>
+                    <th class="p-3">Source</th>
+                    <th class="p-3 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adminServicesTbody" class="divide-y divide-slate-800">
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
   </div>
 
   <script>
@@ -501,6 +565,7 @@
         loadAdminServices();
         loadServiceImages();
         loadAdminOrders();
+        switchAdminTab('services');
       } catch (err) {
         console.error(err);
       }
@@ -793,42 +858,51 @@
       if (!tbody) return;
 
       if (!adminOrders.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="p-6 text-center text-xs text-slate-500">No orders found.</td></tr>';
-        return;
+        tbody.innerHTML = '<tr><td colspan="9" class="p-6 text-center text-xs text-slate-500">No orders found.</td></tr>';
+      } else {
+        const statusColors = {
+          'Pending': 'text-amber-400 border-amber-500/40 bg-amber-500/10',
+          'In Progress': 'text-blue-400 border-blue-500/40 bg-blue-500/10',
+          'Completed': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10',
+          'Canceled': 'text-red-400 border-red-500/40 bg-red-500/10',
+          'Refunded': 'text-purple-400 border-purple-500/40 bg-purple-500/10'
+        };
+
+        tbody.innerHTML = adminOrders.map(o => `
+          <tr class="hover:bg-slate-900/40 transition">
+            <td class="p-3 text-xs font-mono text-slate-400">#${o.id}</td>
+            <td class="p-3 text-xs text-slate-300">${o.user_name || 'N/A'}</td>
+            <td class="p-3 text-xs text-slate-300">${o.user_email || 'N/A'}</td>
+            <td class="p-3 text-xs text-slate-200 font-medium">${o.service_name}</td>
+            <td class="p-3 text-xs text-slate-400">${o.link ? `<a href="${o.link}" target="_blank" class="text-fbBlue hover:underline truncate block max-w-[160px]">${o.link}</a>` : '-'}</td>
+            <td class="p-3 text-xs text-slate-300 text-right">${o.quantity.toLocaleString()}</td>
+            <td class="p-3 text-xs text-right">
+              <span class="inline-block text-[10px] font-bold uppercase px-2 py-1 rounded-full border ${statusColors[o.status] || 'text-slate-400 border-slate-600 bg-slate-800'}">${o.status}</span>
+            </td>
+            <td class="p-3 text-xs text-slate-400">${new Date(o.created_at).toLocaleDateString()}</td>
+            <td class="p-3 text-center">
+              <select onchange="updateAdminOrderStatus(${o.id}, this.value)" class="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-white outline-none focus:border-gold">
+                <option value="">Change...</option>
+                <option value="Pending" ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                <option value="In Progress" ${o.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                <option value="Completed" ${o.status === 'Completed' ? 'selected' : ''}>Completed</option>
+                <option value="Canceled" ${o.status === 'Canceled' ? 'selected' : ''}>Canceled</option>
+                <option value="Refunded" ${o.status === 'Refunded' ? 'selected' : ''}>Refunded</option>
+              </select>
+            </td>
+          </tr>
+        `).join('');
       }
 
-      const statusColors = {
-        'Pending': 'text-amber-400 border-amber-500/40 bg-amber-500/10',
-        'In Progress': 'text-blue-400 border-blue-500/40 bg-blue-500/10',
-        'Completed': 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10',
-        'Canceled': 'text-red-400 border-red-500/40 bg-red-500/10',
-        'Refunded': 'text-purple-400 border-purple-500/40 bg-purple-500/10'
-      };
-
-      tbody.innerHTML = adminOrders.map(o => `
-        <tr class="hover:bg-slate-900/40 transition">
-          <td class="p-3 text-xs font-mono text-slate-400">#${o.id}</td>
-          <td class="p-3 text-xs text-slate-300">${o.user_name || 'N/A'}</td>
-          <td class="p-3 text-xs text-slate-300">${o.user_email || 'N/A'}</td>
-          <td class="p-3 text-xs text-slate-200 font-medium">${o.service_name}</td>
-          <td class="p-3 text-xs text-slate-400">${o.link ? `<a href="${o.link}" target="_blank" class="text-fbBlue hover:underline truncate block max-w-[160px]">${o.link}</a>` : '-'}</td>
-          <td class="p-3 text-xs text-slate-300 text-right">${o.quantity.toLocaleString()}</td>
-          <td class="p-3 text-xs text-right">
-            <span class="inline-block text-[10px] font-bold uppercase px-2 py-1 rounded-full border ${statusColors[o.status] || 'text-slate-400 border-slate-600 bg-slate-800'}">${o.status}</span>
-          </td>
-          <td class="p-3 text-xs text-slate-400">${new Date(o.created_at).toLocaleDateString()}</td>
-          <td class="p-3 text-center">
-            <select onchange="updateAdminOrderStatus(${o.id}, this.value)" class="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-white outline-none focus:border-gold">
-              <option value="">Change...</option>
-              <option value="Pending" ${o.status === 'Pending' ? 'selected' : ''}>Pending</option>
-              <option value="In Progress" ${o.status === 'In Progress' ? 'selected' : ''}>In Progress</option>
-              <option value="Completed" ${o.status === 'Completed' ? 'selected' : ''}>Completed</option>
-              <option value="Canceled" ${o.status === 'Canceled' ? 'selected' : ''}>Canceled</option>
-              <option value="Refunded" ${o.status === 'Refunded' ? 'selected' : ''}>Refunded</option>
-            </select>
-          </td>
-        </tr>
-      `).join('');
+      const badge = document.getElementById('adminOrdersSidebarBadge');
+      if (badge) {
+        if (adminOrdersTotal > 0) {
+          badge.textContent = adminOrdersTotal;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
 
       const totalPagesEl = document.getElementById('adminOrdersTotalPages');
       const pageInfoEl = document.getElementById('adminOrdersPageInfo');
@@ -881,6 +955,22 @@
       adminOrdersPage += delta;
       if (adminOrdersPage < 1) adminOrdersPage = 1;
       loadAdminOrders();
+    }
+
+    function switchAdminTab(tabName) {
+      document.querySelectorAll('.admin-tab-panel').forEach(panel => panel.classList.add('hidden'));
+      document.querySelectorAll('.admin-nav-btn').forEach(btn => btn.classList.remove('active'));
+
+      const targetPanel = document.getElementById('admin-tab-' + tabName);
+      if (targetPanel) targetPanel.classList.remove('hidden');
+
+      const activeBtn = document.querySelector(`.admin-nav-btn[data-tab="${tabName}"]`);
+      if (activeBtn) activeBtn.classList.add('active');
+
+      if (tabName === 'orders') loadAdminOrders();
+      if (tabName === 'services') { loadAdminServices(); loadServiceImages(); }
+      if (tabName === 'providers') loadProviders();
+      if (tabName === 'uploads') { loadServiceImages(); loadAdminServices(); }
     }
 
     function logoutAdmin() {
