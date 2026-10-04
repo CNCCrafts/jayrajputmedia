@@ -409,6 +409,26 @@
     </div>
   </div>
 
+  <!-- Deduplication Confirmation Modal -->
+  <div id="dedupModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-darkCard w-full max-w-lg rounded-3xl border border-slate-200 dark:border-darkBorder shadow-2xl p-6 sm:p-8 space-y-5">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/40 text-red-600 flex items-center justify-center text-lg">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3 class="text-lg font-black text-slate-900 dark:text-white">Confirm Deduplication</h3>
+      </div>
+      <p class="text-sm text-slate-600 dark:text-slate-300">This action will permanently delete <span id="dedupCount" class="font-black text-red-600">0</span> duplicate services. Only the newest entry per name + category will be kept.</p>
+      <div class="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl p-4">
+        <p class="text-xs text-slate-500 dark:text-slate-400">This cannot be undone. Make sure you have a backup if needed.</p>
+      </div>
+      <div class="flex items-center space-x-3 pt-2">
+        <button onclick="confirmDeduplicate()" class="flex-1 py-3 bg-red-600 text-white font-bold rounded-2xl hover:bg-red-700 transition text-sm">Yes, Delete Duplicates</button>
+        <button onclick="closeDedupModal()" class="flex-1 py-3 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-2xl hover:bg-slate-300 dark:hover:bg-slate-600 transition text-sm">Cancel</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let adminServicesList = [];
     let providersList = [];
@@ -580,38 +600,74 @@
       }
     }
 
-    async function deduplicateAllServices() {
-      if (!confirm('Remove all duplicate services? This will keep only the newest entry for each name+category combination.')) return;
+    let deduplicateTarget = null;
+
+    async function previewDeduplicate(type) {
       const token = localStorage.getItem('jr_admin_token');
       try {
-        const res = await fetch('/api/admin/services/deduplicate-all', {
+        const endpoint = type === 'all' ? '/api/admin/services/deduplicate-all' : '/api/admin/services/deduplicate';
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
         if (data.error) return alert(data.error);
-        alert(data.message);
+        
+        const count = data.deleted || 0;
+        if (count === 0) {
+          alert('No duplicates found.');
+          return;
+        }
+        
+        deduplicateTarget = endpoint;
+        document.getElementById('dedupCount').innerText = count;
+        document.getElementById('dedupModal').classList.remove('hidden');
+      } catch (err) {
+        alert('Deduplication preview failed: ' + err.message);
+      }
+    }
+
+    async function confirmDeduplicate() {
+      if (!deduplicateTarget) return;
+      
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const res = await fetch(deduplicateTarget, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.error) return alert(data.error);
+        
+        alert(data.message || `Removed ${data.deleted} duplicates.`);
+        closeDedupModal();
         loadAdminServices();
       } catch (err) {
         alert('Deduplication failed: ' + err.message);
       }
     }
 
+    function closeDedupModal() {
+      document.getElementById('dedupModal').classList.add('hidden');
+      deduplicateTarget = null;
+    }
+
+    async function deduplicateAllServices() {
+      await previewDeduplicate('all');
+    }
+
     async function deduplicateInHouseServices() {
-      if (!confirm('Remove duplicate in-house services only? This will keep only the newest entry for each name+category combination.')) return;
-      const token = localStorage.getItem('jr_admin_token');
-      try {
-        const res = await fetch('/api/admin/services/deduplicate', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (data.error) return alert(data.error);
-        alert(data.message);
-        loadAdminServices();
-      } catch (err) {
-        alert('Deduplication failed: ' + err.message);
-      }
+      await previewDeduplicate('inhouse');
+    }
+
+    // Disable deduplication buttons during operation to prevent double-clicks
+    function setDedupButtonsEnabled(enabled) {
+      const btns = document.querySelectorAll('button[onclick*="deduplicate"]');
+      btns.forEach(btn => {
+        btn.disabled = !enabled;
+        btn.style.pointerEvents = enabled ? 'auto' : 'none';
+        btn.style.opacity = enabled ? '1' : '0.5';
+      });
     }
 
     async function loadAdminServices() {
