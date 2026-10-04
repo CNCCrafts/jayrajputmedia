@@ -143,18 +143,82 @@
       background-attachment: fixed;
     }
   </style>
+
+  <style>
+    .ticker-wrap {
+      width: 100%;
+      overflow: hidden;
+      background: linear-gradient(90deg, #0f172a 0%, #1e293b 100%);
+      border-bottom: 1px solid rgba(245, 189, 2, 0.3);
+      white-space: nowrap;
+      position: relative;
+    }
+    .ticker {
+      display: inline-block;
+      padding: 8px 0;
+      animation: ticker-scroll 30s linear infinite;
+    }
+    .ticker-item {
+      display: inline-block;
+      padding: 0 2rem;
+      font-size: 12px;
+      font-weight: 700;
+      color: #F5BD02;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .ticker-item span {
+      color: #ffffff;
+    }
+    @keyframes ticker-scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-50%); }
+    }
+    .logo-img {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #F5BD02;
+      box-shadow: 0 0 15px rgba(245, 189, 2, 0.4);
+    }
+    @media (max-width: 640px) {
+      .ticker-item {
+        font-size: 10px;
+        padding: 0 1rem;
+      }
+      .logo-img {
+        width: 36px;
+        height: 36px;
+      }
+    }
+  </style>
 </head>
 <body class="mesh-social-light dark:mesh-social-dark text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col antialiased transition-colors duration-300">
 
-  <!-- Google One Tap container -->
-  <div id="g_id_onload"
-    data-client_id="144460065869-cj42bposvevvpneci3s32qmeb72jcpho.apps.googleusercontent.com"
-    data-callback="handleGoogleCredentialResponse"
-    data-auto_prompt="false">
+  <!-- Ticker Header -->
+  <div class="ticker-wrap">
+    <div class="ticker">
+      <div class="ticker-item"><span>🔥</span> Real & Organic Services</div>
+      <div class="ticker-item"><span>|</span> Trusted Social Media Growth Partner</div>
+      <div class="ticker-item"><span>|</span> Order With Confidence</div>
+      <div class="ticker-item"><span>🚀</span> High Quality & Fast Delivery</div>
+      <div class="ticker-item"><span>|</span> 24/7 Support Available</div>
+      <div class="ticker-item"><span>💯</span> 100% Safe & Reliable</div>
+      <div class="ticker-item"><span>👑</span> JAY RAJPUT MEDIA POWER</div>
+      <div class="ticker-item"><span>🔥</span> Real & Organic Services</div>
+      <div class="ticker-item"><span>|</span> Trusted Social Media Growth Partner</div>
+      <div class="ticker-item"><span>|</span> Order With Confidence</div>
+      <div class="ticker-item"><span>🚀</span> High Quality & Fast Delivery</div>
+      <div class="ticker-item"><span>|</span> 24/7 Support Available</div>
+      <div class="ticker-item"><span>💯</span> 100% Safe & Reliable</div>
+      <div class="ticker-item"><span>👑</span> JAY RAJPUT MEDIA POWER</div>
+    </div>
   </div>
 
-  <header class="bg-white/85 dark:bg-darkCard/85 backdrop-blur-xl sticky top-0 z-40 border-b border-slate-200/80 dark:border-darkBorder transition-colors">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
+  <!-- Main Header -->
+  <header class="bg-white/85 dark:bg-darkCard/85 backdrop-blur-xl sticky top-0 z-40 border-b border-slate-200/80 dark:border-darkBorder transition-colors" style="top: 36px;">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
       
       <div class="flex items-center space-x-3 sm:space-x-4">
         <button id="menuToggleBtn" type="button" class="text-slate-700 dark:text-slate-200 hover:text-fbBlue p-2 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
@@ -163,7 +227,7 @@
         
         <a href="/" class="flex items-center space-x-3 group">
           <div class="relative p-0.5 rounded-full ig-gradient-bg">
-            <img src="/logo.png" alt="Jay Rajput Media Power" class="w-10 h-10 rounded-full bg-white dark:bg-darkCard p-0.5 object-cover" onerror="this.src='https://placehold.co/100x100?text=JR'"/>
+            <img src="/logo.png" alt="Jay Rajput Media Power" class="logo-img bg-white dark:bg-darkCard p-0.5 object-cover" onerror="this.src='https://placehold.co/100x100?text=JR'"/>
           </div>
           <div>
             <span class="text-lg font-display font-black tracking-tight text-slate-900 dark:text-white leading-none block">Jay Rajput</span>
@@ -172,18 +236,18 @@
         </a>
       </div>
 
-      <div class="flex items-center space-x-2.5 sm:space-x-3.5">
+      <div class="flex items-center space-x-2 sm:space-x-3">
         
         <div class="hidden md:flex items-center space-x-2 pr-2 border-r border-slate-200 dark:border-darkBorder">
           <span class="w-7 h-7 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-fbBlue flex items-center justify-center text-sm shadow-sm"><i class="fa-brands fa-facebook-f"></i></span>
           <span class="w-7 h-7 rounded-xl bg-pink-50 dark:bg-pink-950/50 text-igPink flex items-center justify-center text-sm shadow-sm"><i class="fa-brands fa-instagram"></i></span>
         </div>
 
-        <button id="themeToggleBtn" onclick="toggleTheme()" class="w-10 h-10 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-amber-400 flex items-center justify-center hover:scale-105 shadow-sm transition">
+        <button id="themeToggleBtn" onclick="toggleTheme()" class="w-9 h-9 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-amber-400 flex items-center justify-center hover:scale-105 shadow-sm transition">
           <i id="themeIcon" class="fa-solid fa-moon"></i>
         </button>
 
-        <div id="walletDisplay" class="hidden items-center bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-sm rounded-2xl px-3.5 py-1.5 text-xs sm:text-sm space-x-2">
+        <div id="walletDisplay" class="hidden items-center bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-sm rounded-2xl px-2.5 py-1.5 text-xs sm:text-sm space-x-2">
           <div class="w-6 h-6 rounded-lg meta-gradient-bg flex items-center justify-center text-white text-xs">
             <i class="fa-solid fa-wallet"></i>
           </div>
@@ -191,18 +255,18 @@
             <span id="walletCurrencySymbol" class="text-slate-400 font-bold text-xs">₹</span>
             <span id="walletBalanceAmount" class="font-display font-black text-slate-900 dark:text-white text-sm">0.00</span>
           </div>
-          <select id="currencySelector" onchange="changeCurrency(this.value)" class="bg-slate-100 dark:bg-slate-700 border-none text-xs text-slate-700 dark:text-slate-200 font-bold rounded-lg px-2 py-1 outline-none cursor-pointer">
-            <option value="INR">INR (₹)</option>
-            <option value="USD">USD ($)</option>
-            <option value="EUR">EUR (€)</option>
+          <select id="currencySelector" onchange="changeCurrency(this.value)" class="bg-slate-100 dark:bg-slate-700 border-none text-xs text-slate-700 dark:text-slate-200 font-bold rounded-lg px-1.5 py-1 outline-none cursor-pointer">
+            <option value="INR">INR</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
           </select>
         </div>
 
         <div id="authNavButtons" class="flex items-center space-x-2">
-          <button onclick="openAuthModal('signin')" type="button" class="px-4 py-2 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-fbBlue rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <button onclick="openAuthModal('signin')" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-fbBlue rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
             Sign In
           </button>
-          <button onclick="openAuthModal('signup')" type="button" class="px-5 py-2 text-xs sm:text-sm font-bold rounded-xl text-white meta-gradient-bg shadow-igGlow hover:opacity-95 transition-all hover:-translate-y-0.5">
+          <button onclick="openAuthModal('signup')" type="button" class="px-4 py-1.5 text-xs sm:text-sm font-bold rounded-xl text-white meta-gradient-bg shadow-igGlow hover:opacity-95 transition-all hover:-translate-y-0.5">
             Sign Up
           </button>
         </div>
