@@ -644,6 +644,16 @@ async function syncProviderServices(provider) {
       }
     }
     await client.query("UPDATE upstream_providers SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1", [provider.id]);
+
+    // Auto-assign images to newly imported services by category
+    const categories = [...new Set(list.map(item => item.category || 'Imported'))];
+    for (const category of categories) {
+      const ref = await client.query('SELECT image FROM services WHERE category = $1 AND image IS NOT NULL LIMIT 1', [category]);
+      if (ref.rows.length) {
+        await client.query('UPDATE services SET image = $1 WHERE category = $2 AND image IS NULL AND provider_id = $3', [ref.rows[0].image, category, provider.id]);
+      }
+    }
+
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');
