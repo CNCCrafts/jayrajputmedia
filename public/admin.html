@@ -798,6 +798,7 @@
             <td class="p-3 text-slate-300 font-mono">${p.service_count}</td>
             <td class="p-3 text-xs text-slate-400">${p.last_sync_at || 'Never'}</td>
             <td class="p-3 text-center space-x-2 whitespace-nowrap">
+              <button onclick="testProvider(${p.id})" class="px-3 py-1 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-xs hover:bg-blue-600 hover:text-white transition">Test</button>
               <button onclick="syncProvider(${p.id})" class="px-3 py-1 bg-gold/20 text-gold border border-gold/30 rounded-lg text-xs hover:bg-gold hover:text-black transition">Sync</button>
               <button onclick="startEditProvider(${p.id})" class="px-3 py-1 bg-slate-700/40 text-slate-200 border border-slate-600 rounded-lg text-xs hover:bg-slate-600 transition">Edit</button>
               <button onclick="deleteProvider(${p.id})" class="px-3 py-1 bg-red-600/20 text-red-400 border border-red-500/30 rounded-lg text-xs hover:bg-red-600 hover:text-white transition">Remove</button>
@@ -842,6 +843,25 @@
         btn.innerText = 'Connect & Import Services';
       } else {
         alert('Provider updated.');
+      }
+    }
+
+    async function testProvider(id) {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const res = await fetch(`/api/admin/providers/${id}/test`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) return alert('Test failed: ' + (data.error || 'unknown error'));
+
+        const method = data.method || 'GET';
+        const count = data.count || 0;
+        const raw = data.raw ? data.raw.substring(0, 500) : 'No response body';
+
+        alert(`API Test (${method})\n\nStatus: ${data.status}\nServices found: ${count}\n\nRaw response preview:\n${raw}`);
+      } catch (err) {
+        alert('Test failed: ' + err.message);
       }
     }
 

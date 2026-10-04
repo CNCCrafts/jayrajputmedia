@@ -582,7 +582,7 @@ app.post('/api/admin/upload-image', authenticateToken, requireAdmin, async (req,
 //   status   -> ?key=..&action=status&id=  -> { status: 'Pending' | 'In progress' | 'Completed' | 'Partial' | 'Canceled' }
 function providerRequest(provider, params, method = 'GET') {
   const config = {
-    timeout: 25000,
+    timeout: 30000,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
   };
 
@@ -598,12 +598,31 @@ function providerRequest(provider, params, method = 'GET') {
 
 // Pulls the full catalog + rates from an upstream panel and mirrors it into `services`
 async function syncProviderServices(provider) {
-  const response = await providerRequest(provider, { action: 'services' });
-  const body = response.data;
-  const list = Array.isArray(body) ? body : body && body.data;
+  let response;
+  let body;
+  let list;
+  let usedMethod = 'GET';
+
+  try {
+    response = await providerRequest(provider, { action: 'services' });
+    body = response.data;
+    list = Array.isArray(body) ? body : body && body.data;
+  } catch (err) {
+    console.error('GET services failed, trying POST:', err.message);
+    try {
+      response = await providerRequest(provider, { action: 'services' }, 'POST');
+      body = response.data;
+      list = Array.isArray(body) ? body : body && body.data;
+      usedMethod = 'POST';
+    } catch (postErr) {
+      console.error('POST services also failed:', postErr.message);
+      throw new Error(`Failed to fetch services from provider. GET error: ${err.message}. POST error: ${postErr.message}. Check API URL and key.`);
+    }
+  }
 
   if (!Array.isArray(list)) {
-    throw new Error('Provider did not return a service list. Check the API URL and key.');
+    const responsePreview = typeof body === 'string' ? body.substring(0, 500) : JSON.stringify(body).substring(0, 500);
+    throw new Error(`Provider did not return a service list. Expected array, got: ${responsePreview}. Check API URL: ${provider.api_url}`);
   }
 
   const markup = 1 + (Number(provider.markup_percent) || 0) / 100;
@@ -872,8 +891,50 @@ app.post('/api/admin/providers/:id/sync', authenticateToken, requireAdmin, async
     const summary = await syncProviderServices(provider.rows[0]);
     res.json({ success: true, ...summary });
   } catch (err) {
-    const detail = err.response ? (err.response.data.message || JSON.stringify(err.response.data)) : err.message;
-    res.status(502).json({ success: false, error: detail });
+    const detail = err.response ? (err.response.data?.message || JSON.stringify(err.response.data)) : err.message;
+    res.status(502).json({ success: false, error: detail, raw: err.response?.data || null });
+  }
+});
+
+app.post('/api/admin/providers/:id/test', authenticateToken, requireAdmin, async (req, res) => {
+  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = $1', [req.params.id]);
+  if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
+
+  try {
+    const response = await providerRequest(provider.rows[0], { action: 'services' });
+    const body = response.data;
+    const list = Array.isArray(body) ? body : body && body.data;
+
+    res.json({
+      success: true,
+      status: response.status,
+      method: 'GET',
+      count: list?.length || 0,
+      sample: list?.slice(0, 3) || null,
+      raw: typeof body === 'string' ? body.substring(0, 1000) : JSON.stringify(body).substring(0, 1000)
+    });
+  } catch (err) {
+    try {
+      const response = await providerRequest(provider.rows[0], { action: 'services' }, 'POST');
+      const body = response.data;
+      const list = Array.isArray(body) ? body : body && body.data;
+
+      res.json({
+        success: true,
+        status: response.status,
+        method: 'POST',
+        count: list?.length || 0,
+        sample: list?.slice(0, 3) || null,
+        raw: typeof body === 'string' ? body.substring(0, 1000) : JSON.stringify(body).substring(0, 1000)
+      });
+    } catch (postErr) {
+      res.status(502).json({
+        success: false,
+        error: postErr.message,
+        getError: err.message,
+        raw: postErr.response?.data || null
+      });
+    }
   }
 });
 
