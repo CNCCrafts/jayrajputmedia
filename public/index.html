@@ -319,7 +319,7 @@
         </div>
       </div>
 
-      <div class="p-8 sm:p-14 rounded-3xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder shadow-socialCard flex flex-col md:flex-row items-center justify-between gap-10 relative overflow-hidden transition-colors">
+      <div class="p-8 sm:p-14 rounded-3xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder shadow-socialCard flex flex-col md:flex-row items-center justify-between gap-10 relative overflow-hidden transition-colors" id="heroBranding">
         <div class="space-y-5 max-w-xl text-center md:text-left relative z-10">
           <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 bg-blue-50 dark:bg-slate-800 border border-blue-100 dark:border-slate-700 text-xs font-bold text-fbBlue dark:text-blue-400 rounded-full">
             <i class="fa-brands fa-meta"></i>
@@ -1284,7 +1284,7 @@
         currentUser = data.user;
         updateUIForUser();
         closeAuthModal();
-        navigateSection('home');
+        navigateSection('quick-order');
       } catch (err) {
         alert('Authentication error: ' + err.message);
       }
@@ -1345,7 +1345,7 @@
         currentUser = data.user;
         updateUIForUser();
         closeAuthModal();
-        navigateSection('home');
+        navigateSection('quick-order');
       } catch (err) {
         alert('Google Sign-In failed: ' + err.message);
       }
@@ -1376,6 +1376,8 @@
 
       loadApiKey();
       loadUserOrders();
+      
+      navigateSection('quick-order');
     }
 
     function updateWalletDisplay() {
@@ -1942,6 +1944,11 @@
         if (res.ok) {
           currentUser = await res.json();
           updateUIForUser();
+          
+          const heroBranding = document.getElementById('heroBranding');
+          if (heroBranding) {
+            heroBranding.style.display = 'none';
+          }
         }
       } catch (err) {
         console.error(err);
@@ -1954,6 +1961,10 @@
       loadServicesData();
       loadPaymentHistory();
       handlePaymentReturn();
+      
+      if (currentUser) {
+        navigateSection('quick-order');
+      }
     });
   </script>
 
