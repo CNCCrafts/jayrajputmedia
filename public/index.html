@@ -182,27 +182,29 @@
       100% { transform: translateX(-50%); }
     }
     .logo-img {
-      width: 42px;
-      height: 42px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       object-fit: cover;
       border: 2px solid #F5BD02;
       box-shadow: 0 0 15px rgba(245, 189, 2, 0.4);
       transition: all 0.3s ease;
+      flex-shrink: 0;
     }
     .logo-img.logo-large {
-      width: 56px;
-      height: 56px;
+      width: 52px;
+      height: 52px;
     }
     #brandText {
       transition: all 0.3s ease;
+      white-space: nowrap;
     }
     .logo-only #brandText {
       display: none;
     }
     .logo-only .logo-img {
-      width: 56px;
-      height: 56px;
+      width: 52px;
+      height: 52px;
     }
     @media (max-width: 640px) {
       .ticker-item {
@@ -214,12 +216,12 @@
         height: 36px;
       }
       .logo-img.logo-large {
-        width: 44px;
-        height: 44px;
+        width: 42px;
+        height: 42px;
       }
       .logo-only .logo-img {
-        width: 44px;
-        height: 44px;
+        width: 42px;
+        height: 42px;
       }
     }
   </style>
@@ -248,65 +250,65 @@
 
   <!-- Main Header -->
   <header class="bg-white/85 dark:bg-darkCard/85 backdrop-blur-xl sticky top-0 z-40 border-b border-slate-200/80 dark:border-darkBorder transition-colors" style="top: 36px;">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between">
+    <div class="max-w-7xl mx-auto px-2 sm:px-4 md:px-6 py-2 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
       
-      <div class="flex items-center space-x-3 sm:space-x-4">
-        <button id="menuToggleBtn" type="button" class="text-slate-700 dark:text-slate-200 hover:text-fbBlue p-2 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
-          <i class="fa-solid fa-bars-staggered text-lg"></i>
+      <div class="flex items-center space-x-2 sm:space-x-3 md:space-x-4 flex-shrink-0">
+        <button id="menuToggleBtn" type="button" class="text-slate-700 dark:text-slate-200 hover:text-fbBlue p-1.5 sm:p-2 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition flex-shrink-0">
+          <i class="fa-solid fa-bars-staggered text-base sm:text-lg"></i>
         </button>
         
-        <a href="/" class="flex items-center space-x-3 group" id="brandLogo">
-          <div class="relative p-0.5 rounded-full ig-gradient-bg">
+        <a href="/" class="flex items-center space-x-2 sm:space-x-3 group flex-shrink-0" id="brandLogo">
+          <div class="relative p-0.5 rounded-full ig-gradient-bg flex-shrink-0">
             <img src="/logo.png" alt="Jay Rajput Media Power" class="logo-img bg-white dark:bg-darkCard p-0.5 object-cover" onerror="this.src='https://placehold.co/100x100?text=JR'"/>
           </div>
-          <div id="brandText">
-            <span class="text-lg font-display font-black tracking-tight text-slate-900 dark:text-white leading-none block">Jay Rajput</span>
-            <span class="text-[10px] font-bold tracking-widest ig-gradient-text uppercase mt-0.5 block">Media Power</span>
+          <div id="brandText" class="hidden sm:block">
+            <span class="text-sm sm:text-lg font-display font-black tracking-tight text-slate-900 dark:text-white leading-none block">Jay Rajput</span>
+            <span class="text-[9px] sm:text-[10px] font-bold tracking-widest ig-gradient-text uppercase mt-0.5 block">Media Power</span>
           </div>
         </a>
       </div>
 
-      <div class="flex items-center space-x-2 sm:space-x-3">
+      <div class="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3 flex-shrink-0">
         
         <div class="hidden md:flex items-center space-x-2 pr-2 border-r border-slate-200 dark:border-darkBorder">
           <span class="w-7 h-7 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-fbBlue flex items-center justify-center text-sm shadow-sm"><i class="fa-brands fa-facebook-f"></i></span>
           <span class="w-7 h-7 rounded-xl bg-pink-50 dark:bg-pink-950/50 text-igPink flex items-center justify-center text-sm shadow-sm"><i class="fa-brands fa-instagram"></i></span>
         </div>
 
-        <button id="themeToggleBtn" onclick="toggleTheme()" class="w-9 h-9 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-amber-400 flex items-center justify-center hover:scale-105 shadow-sm transition">
-          <i id="themeIcon" class="fa-solid fa-moon"></i>
+        <button id="themeToggleBtn" onclick="toggleTheme()" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-amber-400 flex items-center justify-center hover:scale-105 shadow-sm transition flex-shrink-0">
+          <i id="themeIcon" class="fa-solid fa-moon text-xs sm:text-sm"></i>
         </button>
 
-        <div id="walletDisplay" class="hidden items-center bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-sm rounded-2xl px-2.5 py-1.5 text-xs sm:text-sm space-x-2">
-          <div class="w-6 h-6 rounded-lg meta-gradient-bg flex items-center justify-center text-white text-xs">
+        <div id="walletDisplay" class="hidden items-center bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 shadow-sm rounded-xl sm:rounded-2xl px-2 sm:px-2.5 py-1 sm:py-1.5 text-xs sm:text-sm space-x-1.5 sm:space-x-2 flex-shrink-0">
+          <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg meta-gradient-bg flex items-center justify-center text-white text-[10px] sm:text-xs flex-shrink-0">
             <i class="fa-solid fa-wallet"></i>
           </div>
-          <div>
-            <span id="walletCurrencySymbol" class="text-slate-400 font-bold text-xs">₹</span>
-            <span id="walletBalanceAmount" class="font-display font-black text-slate-900 dark:text-white text-sm">0.00</span>
+          <div class="hidden sm:block">
+            <span id="walletCurrencySymbol" class="text-slate-400 font-bold text-[10px] sm:text-xs">₹</span>
+            <span id="walletBalanceAmount" class="font-display font-black text-slate-900 dark:text-white text-xs sm:text-sm">0.00</span>
           </div>
-          <select id="currencySelector" onchange="changeCurrency(this.value)" class="bg-slate-100 dark:bg-slate-700 border-none text-xs text-slate-700 dark:text-slate-200 font-bold rounded-lg px-1.5 py-1 outline-none cursor-pointer">
+          <select id="currencySelector" onchange="changeCurrency(this.value)" class="hidden sm:block bg-slate-100 dark:bg-slate-700 border-none text-[10px] sm:text-xs text-slate-700 dark:text-slate-200 font-bold rounded-md sm:rounded-lg px-1 sm:px-1.5 py-0.5 sm:py-1 outline-none cursor-pointer">
             <option value="INR">INR</option>
             <option value="USD">USD</option>
             <option value="EUR">EUR</option>
           </select>
         </div>
 
-        <div id="authNavButtons" class="flex items-center space-x-2">
-          <button onclick="openAuthModal('signin')" type="button" class="px-3 py-1.5 text-xs sm:text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-fbBlue rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+        <div id="authNavButtons" class="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
+          <button onclick="openAuthModal('signin')" type="button" class="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 text-[10px] sm:text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-fbBlue rounded-lg sm:rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
             Sign In
           </button>
-          <button onclick="openAuthModal('signup')" type="button" class="px-4 py-1.5 text-xs sm:text-sm font-bold rounded-xl text-white meta-gradient-bg shadow-igGlow hover:opacity-95 transition-all hover:-translate-y-0.5">
+          <button onclick="openAuthModal('signup')" type="button" class="px-2 sm:px-3 md:px-5 py-1 sm:py-1.5 md:py-2 text-[10px] sm:text-xs md:text-sm font-bold rounded-lg sm:rounded-xl text-white meta-gradient-bg shadow-igGlow hover:opacity-95 transition-all hover:-translate-y-0.5">
             Sign Up
           </button>
         </div>
 
-        <div id="userProfileNav" class="hidden items-center space-x-3">
+        <div id="userProfileNav" class="hidden items-center space-x-2 sm:space-x-3 flex-shrink-0">
           <div class="text-right hidden sm:block leading-tight">
-            <span id="navUserName" class="text-xs font-bold text-slate-800 dark:text-slate-200 block"></span>
-            <span class="text-[10px] text-fbBlue font-bold uppercase tracking-wider">● Online</span>
+            <span id="navUserName" class="text-[10px] sm:text-xs font-bold text-slate-800 dark:text-slate-200 block"></span>
+            <span class="text-[9px] sm:text-[10px] text-fbBlue font-bold uppercase tracking-wider">● Online</span>
           </div>
-          <button onclick="logout()" title="Logout" type="button" class="text-xs bg-rose-50 dark:bg-rose-950/40 text-rose-600 border border-rose-200 dark:border-rose-900 p-2.5 rounded-xl hover:bg-rose-500 hover:text-white transition">
+          <button onclick="logout()" title="Logout" type="button" class="text-[10px] sm:text-xs bg-rose-50 dark:bg-rose-950/40 text-rose-600 border border-rose-200 dark:border-rose-900 p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl hover:bg-rose-500 hover:text-white transition flex-shrink-0">
             <i class="fa-solid fa-arrow-right-from-bracket"></i>
           </button>
         </div>
