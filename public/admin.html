@@ -344,12 +344,13 @@
                     <th class="p-3">API URL</th>
                     <th class="p-3">Markup</th>
                     <th class="p-3">Imported</th>
+                    <th class="p-3">Cached</th>
                     <th class="p-3">Last Sync</th>
                     <th class="p-3 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody id="providersTbody" class="divide-y divide-slate-800">
-                  <tr><td colspan="6" class="p-4 text-center text-xs text-slate-500">No upstream providers connected yet.</td></tr>
+                  <tr><td colspan="7" class="p-4 text-center text-xs text-slate-500">No upstream providers connected yet.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -453,10 +454,35 @@
            <p class="text-sm text-slate-500">Loading services...</p>
          </div>
        </div>
-     </div>
-   </div>
+      </div>
+    </div>
 
-   <script>
+    <!-- Cached Services Modal -->
+    <div id="cachedServicesModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+      <div class="bg-white dark:bg-darkCard w-full max-w-4xl rounded-3xl border border-slate-200 dark:border-darkBorder shadow-2xl max-h-[90vh] flex flex-col">
+        <div class="p-6 sm:p-8 border-b border-slate-200 dark:border-darkBorder">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-lg font-black text-slate-900 dark:text-white">Cached Services</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Services stored locally from this provider's API.</p>
+            </div>
+            <button onclick="closeCachedServicesModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+          <div class="mt-4">
+            <input type="text" id="cachedServiceSearch" oninput="filterCachedServices()" placeholder="Search cached services..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-sm text-slate-800 dark:text-white outline-none focus:border-gold">
+          </div>
+        </div>
+        <div class="flex-1 overflow-y-auto p-6 sm:p-8">
+          <div id="cachedServicesList" class="space-y-2">
+            <p class="text-sm text-slate-500">Loading cached services...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
     let adminServicesList = [];
     let providersList = [];
     let serviceImages = [];
@@ -942,10 +968,12 @@
             <td class="p-3 text-xs font-mono text-slate-400 break-all">${p.api_url}</td>
             <td class="p-3 text-gold font-mono font-bold">+${p.markup_percent}%</td>
             <td class="p-3 text-slate-300 font-mono">${p.service_count || 0}</td>
+            <td class="p-3 text-xs text-slate-400">${p.cached_count || 0} cached</td>
             <td class="p-3 text-xs text-slate-400">${p.last_sync_at ? new Date(p.last_sync_at).toLocaleString() : 'Never'}</td>
             <td class="p-3 text-center space-x-1.5 whitespace-nowrap">
               <button onclick="testProvider(${p.id})" class="px-2 py-1 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-lg text-[11px] hover:bg-blue-600 hover:text-white transition" title="Test API">Test</button>
               <button onclick="refreshProviderCache(${p.id})" class="px-2 py-1 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-[11px] hover:bg-emerald-600 hover:text-white transition" title="Refresh cached services from API">Refresh</button>
+              <button onclick="viewCachedServices(${p.id})" class="px-2 py-1 bg-purple-600/20 text-purple-400 border border-purple-500/30 rounded-lg text-[11px] hover:bg-purple-600 hover:text-white transition" title="View cached services">View Cache</button>
               <button onclick="syncProvider(${p.id})" class="px-2 py-1 bg-gold/20 text-gold border border-gold/30 rounded-lg text-[11px] hover:bg-gold hover:text-black transition" title="Import from cached services">Import</button>
               <button onclick="startEditProvider(${p.id})" class="px-2 py-1 bg-slate-700/40 text-slate-200 border border-slate-600 rounded-lg text-[11px] hover:bg-slate-600 transition" title="Edit provider">Edit</button>
               <button onclick="deleteProvider(${p.id})" class="px-2 py-1 bg-red-600/20 text-red-400 border border-red-500/30 rounded-lg text-[11px] hover:bg-red-600 hover:text-white transition" title="Remove provider">Remove</button>
@@ -1064,6 +1092,83 @@
       } catch (err) {
         alert('Sync failed: ' + err.message);
       }
+    }
+
+    let cachedServicesList = [];
+    let cachedServicesProviderId = null;
+
+    async function viewCachedServices(providerId) {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const res = await fetch(`/api/admin/providers/${providerId}/cached-services`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) return alert('Failed to load cached services: ' + (data.error || 'unknown error'));
+
+        cachedServicesList = data.services || [];
+        cachedServicesProviderId = providerId;
+
+        renderCachedServices();
+        document.getElementById('cachedServicesModal').classList.remove('hidden');
+      } catch (err) {
+        alert('Failed to load cached services: ' + err.message);
+      }
+    }
+
+    function closeCachedServicesModal() {
+      document.getElementById('cachedServicesModal').classList.add('hidden');
+      cachedServicesList = [];
+      cachedServicesProviderId = null;
+    }
+
+    function renderCachedServices() {
+      const container = document.getElementById('cachedServicesList');
+      const search = (document.getElementById('cachedServiceSearch')?.value || '').toLowerCase();
+
+      const filtered = cachedServicesList.filter(s =>
+        s.name.toLowerCase().includes(search) || s.category.toLowerCase().includes(search)
+      );
+
+      if (!filtered.length) {
+        container.innerHTML = '<p class="text-sm text-slate-500">No cached services found.</p>';
+        return;
+      }
+
+      container.innerHTML = `
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm text-slate-300">
+            <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
+              <tr>
+                <th class="p-3">ID</th>
+                <th class="p-3">Category</th>
+                <th class="p-3">Name</th>
+                <th class="p-3">Rate</th>
+                <th class="p-3">Min / Max</th>
+                <th class="p-3">Status</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800">
+              ${filtered.map(s => `
+                <tr class="hover:bg-slate-900/40 transition">
+                  <td class="p-3 text-xs font-mono text-slate-400">#${s.id}</td>
+                  <td class="p-3 text-xs text-slate-300">${s.category}</td>
+                  <td class="p-3 text-xs text-slate-200 font-medium">${s.name}</td>
+                  <td class="p-3 text-xs text-gold font-bold">₹${s.rate}</td>
+                  <td class="p-3 text-xs text-slate-400">${s.min_quantity} / ${s.max_quantity}</td>
+                  <td class="p-3 text-xs">
+                    <span class="inline-block text-[10px] font-bold uppercase px-2 py-1 rounded-full border ${s.status === 'active' ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10' : 'text-red-400 border-red-500/40 bg-red-500/10'}">${s.status}</span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function filterCachedServices() {
+      renderCachedServices();
     }
 
     function startEditProvider(id) {

@@ -858,7 +858,12 @@ app.get('/api/admin/providers', authenticateToken, requireAdmin, async (req, res
     SELECT provider_id, COUNT(*) AS service_count FROM services
     WHERE provider_id IS NOT NULL GROUP BY provider_id
   `).rows;
+  const cacheCounts = await pool.query(`
+    SELECT provider_id, COUNT(*) AS cached_count FROM provider_services
+    GROUP BY provider_id
+  `).rows;
   const map = new Map(counts.map((c) => [c.provider_id, c.service_count]));
+  const cacheMap = new Map(cacheCounts.map((c) => [c.provider_id, c.cached_count]));
 
   res.json(providers.map((p) => ({
     id: p.id,
@@ -869,7 +874,8 @@ app.get('/api/admin/providers', authenticateToken, requireAdmin, async (req, res
     status: p.status,
     last_sync_at: p.last_sync_at,
     created_at: p.created_at,
-    service_count: map.get(p.id) || 0
+    service_count: map.get(p.id) || 0,
+    cached_count: cacheMap.get(p.id) || 0
   })));
 });
 
@@ -1007,6 +1013,22 @@ app.post('/api/admin/providers/:id/refresh-cache', authenticateToken, requireAdm
     res.json({ success: true, message: `Cached ${list.length} services from provider.` });
   } catch (err) {
     res.status(502).json({ success: false, error: err.message });
+  }
+});
+
+app.get('/api/admin/providers/:id/cached-services', authenticateToken, requireAdmin, async (req, res) => {
+  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = $1', [req.params.id]);
+  if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
+
+  try {
+    const services = await pool.query(
+      'SELECT * FROM provider_services WHERE provider_id = $1 ORDER BY category, name',
+      [provider.rows[0].id]
+    );
+
+    res.json({ success: true, services: services.rows });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
