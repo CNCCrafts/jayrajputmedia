@@ -251,8 +251,11 @@
 
         <div id="userPrivateMenuItems" class="hidden pt-4 border-t border-slate-100 dark:border-darkBorder space-y-1.5">
           <p class="px-3 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">User Workspace</p>
-          <button onclick="navigateSection('new-order')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-pink-50 dark:from-slate-800 dark:to-slate-800 text-fbBlue dark:text-pink-400 border border-blue-100 dark:border-slate-700 transition text-left font-bold shadow-sm">
-            <i class="fa-solid fa-cart-plus w-5"></i><span>Place Order</span>
+          <button onclick="navigateSection('quick-order')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-pink-50 dark:from-slate-800 dark:to-slate-800 text-fbBlue dark:text-pink-400 border border-blue-100 dark:border-slate-700 transition text-left font-bold shadow-sm">
+            <i class="fa-solid fa-bolt w-5"></i><span>Quick Order</span>
+          </button>
+          <button onclick="navigateSection('services-catalog')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left">
+            <i class="fa-solid fa-layer-group w-5 text-igPink"></i><span>Services Catalog</span>
           </button>
           <button onclick="navigateSection('orders')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left">
             <i class="fa-solid fa-list-check w-5 text-fbBlue"></i><span>My Orders</span>
@@ -304,7 +307,10 @@
           <p class="text-blue-100 text-xs sm:text-sm mt-1 max-w-lg">Manage your Instagram & Facebook campaigns with instant delivery and automated refill.</p>
         </div>
         <div class="flex items-center gap-3 relative z-10">
-          <button onclick="navigateSection('services-catalog')" class="px-5 py-2.5 bg-white text-slate-900 font-bold rounded-2xl shadow-md hover:bg-slate-100 transition text-xs sm:text-sm">
+          <button onclick="navigateSection('quick-order')" class="px-5 py-2.5 bg-white text-slate-900 font-bold rounded-2xl shadow-md hover:bg-slate-100 transition text-xs sm:text-sm">
+            <i class="fa-solid fa-bolt mr-1"></i> Quick Order
+          </button>
+          <button onclick="navigateSection('services-catalog')" class="px-5 py-2.5 bg-white/90 text-slate-900 font-bold rounded-2xl shadow-md hover:bg-slate-100 transition text-xs sm:text-sm">
             Browse Store
           </button>
           <button onclick="navigateSection('add-funds')" class="px-5 py-2.5 bg-black/20 hover:bg-black/30 border border-white/20 text-white font-bold rounded-2xl backdrop-blur-md transition text-xs sm:text-sm">
@@ -633,6 +639,66 @@
         <div id="serviceDetailPage" class="bg-white dark:bg-darkCard rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard overflow-hidden">
           <!-- Content injected by JS -->
         </div>
+      </div>
+    </section>
+
+    <!-- Quick Order Form for Logged-In Users -->
+    <section id="section-quick-order" class="content-section space-y-6">
+      <div class="max-w-4xl mx-auto bg-white dark:bg-darkCard p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard">
+        <div class="flex items-center space-x-3 mb-6 pb-4 border-b border-slate-200 dark:border-darkBorder">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-pink-500 flex items-center justify-center text-white">
+            <i class="fa-solid fa-bolt"></i>
+          </div>
+          <div>
+            <h2 class="text-xl font-display font-black text-slate-900 dark:text-white">Quick Order</h2>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Search and order services instantly</p>
+          </div>
+        </div>
+
+        <form id="quickOrderForm" onsubmit="handleQuickOrder(event)" class="space-y-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Search Services</label>
+              <input type="text" id="quickServiceSearch" oninput="filterQuickServices(this.value)" placeholder="Search for followers, likes, views..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
+            </div>
+            <div>
+              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Category</label>
+              <select id="quickCategorySelect" onchange="filterQuickServicesByCategory()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white font-medium outline-none text-sm transition">
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Select Service</label>
+            <select id="quickServiceSelect" onchange="updateQuickServiceDetails()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white font-medium outline-none text-sm transition">
+              <option value="">First search or select a category</option>
+            </select>
+          </div>
+
+          <div id="quickServiceDetails" class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1 text-slate-600 dark:text-slate-300">
+            <p>Search for a service to view details and pricing.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Target URL</label>
+              <input type="url" id="quickOrderLink" required placeholder="https://instagram.com/yourprofile" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
+            </div>
+            <div>
+              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Quantity</label>
+              <input type="number" id="quickOrderQuantity" required oninput="calculateQuickOrderCharge()" placeholder="1000" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
+            </div>
+          </div>
+
+          <div class="p-4 bg-gradient-to-r from-blue-50 to-pink-50 dark:from-slate-800 dark:to-slate-800 rounded-2xl border border-blue-200 dark:border-slate-700 flex justify-between items-center">
+            <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Total Price:</span>
+            <span id="quickOrderTotal" class="text-2xl font-display font-black text-fbBlue dark:text-pink-400">₹0.00</span>
+          </div>
+
+          <button type="submit" class="w-full py-4 text-white font-display font-bold rounded-2xl meta-gradient-bg shadow-igGlow hover:opacity-95 transition">
+            Submit & Launch Order
+          </button>
+        </form>
       </div>
     </section>
 
@@ -1044,7 +1110,7 @@
     sidebarOverlay.addEventListener('click', toggleSidebar);
 
     function navigateSection(sectionId) {
-      const protectedSections = ['new-order', 'orders', 'add-funds', 'refer-earn', 'support', 'account'];
+      const protectedSections = ['quick-order', 'new-order', 'orders', 'add-funds', 'refer-earn', 'support', 'account'];
       if (protectedSections.includes(sectionId) && !currentUser) {
         openAuthModal('signin');
         toggleSidebar();
@@ -1344,6 +1410,11 @@
         const catSelect = document.getElementById('orderCategorySelect');
         catSelect.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
 
+        const quickCatSelect = document.getElementById('quickCategorySelect');
+        if (quickCatSelect) {
+          quickCatSelect.innerHTML = '<option value="all">All Categories</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
+        }
+
         filterServicesByCategory();
         renderCatalogCards(allServices);
       } catch (err) {
@@ -1557,6 +1628,101 @@
       fetchUserProfile();
       loadUserOrders();
       navigateSection('orders');
+    }
+
+    // ==================== QUICK ORDER FUNCTIONS ====================
+    function filterQuickServices(query) {
+      const q = query.toLowerCase();
+      const category = document.getElementById('quickCategorySelect').value;
+      let filtered = allServices;
+
+      if (category && category !== 'all') {
+        filtered = filtered.filter(s => s.category === category);
+      }
+
+      if (q) {
+        filtered = filtered.filter(s => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q));
+      }
+
+      const select = document.getElementById('quickServiceSelect');
+      select.innerHTML = filtered.length
+        ? filtered.map(s => `<option value="${s.id}">${s.category} - ${s.name} (₹${s.rate_per_1000}/1000)</option>`).join('')
+        : '<option value="">No services found</option>';
+
+      if (filtered.length === 1) {
+        select.value = filtered[0].id;
+        updateQuickServiceDetails();
+      }
+    }
+
+    function filterQuickServicesByCategory() {
+      filterQuickServices(document.getElementById('quickServiceSearch').value);
+    }
+
+    function updateQuickServiceDetails() {
+      const serviceId = parseInt(document.getElementById('quickServiceSelect').value);
+      const s = allServices.find(item => item.id === serviceId);
+      const detailsBox = document.getElementById('quickServiceDetails');
+
+      if (!s) {
+        detailsBox.innerHTML = '<p>Search for a service to view details and pricing.</p>';
+        document.getElementById('quickOrderTotal').innerText = '₹0.00';
+        return;
+      }
+
+      detailsBox.innerHTML = `
+        <div class="space-y-1">
+          <p><strong>Service:</strong> <span class="text-slate-900 dark:text-white font-medium">${s.name}</span></p>
+          <p><strong>Category:</strong> <span class="text-slate-700 dark:text-slate-300">${s.category}</span></p>
+          <p><strong>Rate / 1000:</strong> <span class="text-fbBlue dark:text-pink-400 font-bold">₹${s.rate_per_1000}</span></p>
+          <p><strong>Min / Max:</strong> <span class="font-semibold text-slate-800 dark:text-white">${s.min_quantity} / ${s.max_quantity}</span></p>
+          <p class="text-slate-500 italic">${s.description || 'Professional social media growth service with high retention and fast delivery.'}</p>
+        </div>
+      `;
+
+      calculateQuickOrderCharge();
+    }
+
+    function calculateQuickOrderCharge() {
+      const serviceId = parseInt(document.getElementById('quickServiceSelect').value);
+      const qty = parseInt(document.getElementById('quickOrderQuantity').value) || 0;
+      const s = allServices.find(item => item.id === serviceId);
+      if (!s) {
+        document.getElementById('quickOrderTotal').innerText = '₹0.00';
+        return;
+      }
+
+      const charge = (s.rate_per_1000 / 1000) * qty;
+      document.getElementById('quickOrderTotal').innerText = `₹${charge.toFixed(2)}`;
+    }
+
+    async function handleQuickOrder(e) {
+      e.preventDefault();
+      const token = localStorage.getItem('jr_token');
+      if (!token) return openAuthModal('signin');
+
+      const service_id = parseInt(document.getElementById('quickServiceSelect').value);
+      const link = document.getElementById('quickOrderLink').value;
+      const quantity = parseInt(document.getElementById('quickOrderQuantity').value);
+
+      if (!service_id) return alert('Please select a service.');
+      if (!link) return alert('Please enter a target URL.');
+      if (!quantity || quantity < 1) return alert('Please enter a valid quantity.');
+
+      const res = await fetch('/api/orders/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ service_id, link, quantity, currency: activeCurrency })
+      });
+      const data = await res.json();
+      if (data.error) return alert(data.error);
+
+      alert(`Order Placed Successfully! ID: #${data.order_id}`);
+      document.getElementById('quickOrderForm').reset();
+      document.getElementById('quickServiceDetails').innerHTML = '<p>Search for a service to view details and pricing.</p>';
+      document.getElementById('quickOrderTotal').innerText = '₹0.00';
+      fetchUserProfile();
+      loadUserOrders();
     }
 
     async function loadUserOrders() {
