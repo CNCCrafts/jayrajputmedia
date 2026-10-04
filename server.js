@@ -896,6 +896,98 @@ app.post('/api/admin/providers/:id/sync', authenticateToken, requireAdmin, async
   }
 });
 
+app.post('/api/admin/providers/:id/preview', authenticateToken, requireAdmin, async (req, res) => {
+  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = $1', [req.params.id]);
+  if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
+
+  try {
+    const response = await providerRequest(provider.rows[0], { action: 'services' });
+    const body = response.data;
+    const list = Array.isArray(body) ? body : body && body.data;
+
+    if (!Array.isArray(list)) {
+      return res.status(400).json({ error: 'Provider did not return a service list.' });
+    }
+
+    const normalized = list.map(item => ({
+      upstreamId: String(item.service ?? item.id ?? ''),
+      name: item.name || `Service ${item.service ?? item.id}`,
+      rate: item.rate,
+      min: item.min,
+      max: item.max,
+      category: item.category || 'Imported',
+      description: item.description || ''
+    })).filter(item => item.upstreamId);
+
+    res.json({ success: true, services: normalized });
+  } catch (err) {
+    res.status(502).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/admin/providers/:id/import-selected', authenticateToken, requireAdmin, async (req, res) => {
+  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = $1', [req.params.id]);
+  if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
+
+  const { selectedIds } = req.body;
+  if (!Array.isArray(selectedIds) || !selectedIds.length) {
+    return res.status(400).json({ error: 'No services selected.' });
+  }
+
+  try {
+    const response = await providerRequest(provider.rows[0], { action: 'services' });
+    const body = response.data;
+    const list = Array.isArray(body) ? body : body && body.data;
+
+    if (!Array.isArray(list)) {
+      return res.status(400).json({ error: 'Provider did not return a service list.' });
+    }
+
+    const markup = 1 + (Number(provider.rows[0].markup_percent) || 0) / 100;
+    let added = 0;
+    let updated = 0;
+
+    const selectedSet = new Set(selectedIds);
+
+    for (const item of list) {
+      const upstreamId = String(item.service ?? item.id ?? '');
+      if (!upstreamId || !selectedSet.has(upstreamId)) continue;
+
+      const name = item.name || `Service ${upstreamId}`;
+      const wholesaleRate = parseFloat(item.rate);
+      if (!Number.isFinite(wholesaleRate)) continue;
+
+      const retailRate = parseFloat((wholesaleRate * markup).toFixed(4));
+      const min = parseInt(item.min) || 1;
+      const max = parseInt(item.max) || 1000000;
+      const category = item.category || 'Imported';
+      const description = item.description || `Supplied by ${provider.rows[0].name}`;
+      const status = String(item.status || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
+
+      const existing = await pool.query('SELECT id FROM services WHERE provider_id = $1 AND upstream_service_id = $2', [provider.rows[0].id, upstreamId]);
+      if (existing.rows.length) {
+        await pool.query(
+          `UPDATE services SET category = $1, name = $2, rate_per_1000 = $3, min_quantity = $4, max_quantity = $5, description = $6, cost_per_1000 = $7, status = $8 WHERE id = $9`,
+          [category, name, retailRate, min, max, description, wholesaleRate, status, existing.rows[0].id]
+        );
+        updated++;
+      } else {
+        await pool.query(
+          `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, provider_id, upstream_service_id, cost_per_1000, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+          [category, name, retailRate, min, max, description, provider.rows[0].id, upstreamId, wholesaleRate, status]
+        );
+        added++;
+      }
+    }
+
+    await pool.query("UPDATE upstream_providers SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1", [provider.rows[0].id]);
+
+    res.json({ success: true, added, updated, total: selectedIds.length });
+  } catch (err) {
+    res.status(502).json({ success: false, error: err.message });
+  }
+});
+
 app.post('/api/admin/providers/:id/test', authenticateToken, requireAdmin, async (req, res) => {
   const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = $1', [req.params.id]);
   if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });

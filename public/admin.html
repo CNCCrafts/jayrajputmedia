@@ -427,9 +427,36 @@
         <button onclick="closeDedupModal()" class="flex-1 py-3 bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 font-bold rounded-2xl hover:bg-slate-300 dark:hover:bg-slate-600 transition text-sm">Cancel</button>
       </div>
     </div>
-  </div>
+   </div>
 
-  <script>
+   <!-- Service Selection Modal -->
+   <div id="serviceSelectModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+     <div class="bg-white dark:bg-darkCard w-full max-w-3xl rounded-3xl border border-slate-200 dark:border-darkBorder shadow-2xl max-h-[90vh] flex flex-col">
+       <div class="p-6 sm:p-8 border-b border-slate-200 dark:border-darkBorder">
+         <div class="flex items-center justify-between">
+           <div>
+             <h3 class="text-lg font-black text-slate-900 dark:text-white">Select Services to Import</h3>
+             <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Choose which services you want to add to your catalog. Unchecked services will not be imported.</p>
+           </div>
+           <button onclick="closeServiceSelectModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white transition">
+             <i class="fa-solid fa-xmark"></i>
+           </button>
+         </div>
+         <div class="flex flex-wrap items-center gap-2 mt-4">
+           <input type="text" id="serviceSearchInput" oninput="filterPreviewServices()" placeholder="Search services..." class="flex-1 min-w-[200px] bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-sm text-slate-800 dark:text-white outline-none focus:border-gold">
+           <button onclick="toggleAllPreviewServices()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">Toggle All</button>
+           <button onclick="importSelectedServices()" class="px-4 py-2 bg-gold text-black font-extrabold rounded-xl text-xs hover:brightness-110 transition">Import Selected</button>
+         </div>
+       </div>
+       <div class="flex-1 overflow-y-auto p-6 sm:p-8">
+         <div id="previewServicesList" class="space-y-2">
+           <p class="text-sm text-slate-500">Loading services...</p>
+         </div>
+       </div>
+     </div>
+   </div>
+
+   <script>
     let adminServicesList = [];
     let providersList = [];
     let serviceImages = [];
@@ -670,6 +697,106 @@
       });
     }
 
+    let previewServices = [];
+    let selectedServiceIds = new Set();
+
+    async function openServiceSelectModal(providerId) {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const res = await fetch(`/api/admin/providers/${providerId}/preview`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) return alert('Preview failed: ' + (data.error || 'unknown error'));
+
+        previewServices = data.services || [];
+        selectedServiceIds = new Set(previewServices.map(s => s.upstreamId));
+
+        renderPreviewServices();
+        document.getElementById('serviceSelectModal').classList.remove('hidden');
+      } catch (err) {
+        alert('Preview failed: ' + err.message);
+      }
+    }
+
+    function closeServiceSelectModal() {
+      document.getElementById('serviceSelectModal').classList.add('hidden');
+      previewServices = [];
+      selectedServiceIds.clear();
+    }
+
+    function renderPreviewServices() {
+      const container = document.getElementById('previewServicesList');
+      const search = (document.getElementById('serviceSearchInput')?.value || '').toLowerCase();
+
+      const filtered = previewServices.filter(s =>
+        s.name.toLowerCase().includes(search) || s.category.toLowerCase().includes(search)
+      );
+
+      if (!filtered.length) {
+        container.innerHTML = '<p class="text-sm text-slate-500">No services found.</p>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(s => `
+        <label class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <input type="checkbox" value="${s.upstreamId}" ${selectedServiceIds.has(s.upstreamId) ? 'checked' : ''} onchange="togglePreviewService('${s.upstreamId}')" class="mt-1 w-4 h-4 rounded border-slate-300 text-gold focus:ring-gold">
+          <div class="flex-1 min-w-0">
+            <p class="text-sm font-bold text-slate-900 dark:text-white truncate">${s.name}</p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">${s.category} • Min: ${s.min} • Max: ${s.max}</p>
+            ${s.description ? `<p class="text-xs text-slate-400 mt-1 line-clamp-2">${s.description}</p>` : ''}
+          </div>
+          <span class="text-xs font-mono font-bold text-gold whitespace-nowrap">₹${s.rate}</span>
+        </label>
+      `).join('');
+    }
+
+    function togglePreviewService(upstreamId) {
+      if (selectedServiceIds.has(upstreamId)) {
+        selectedServiceIds.delete(upstreamId);
+      } else {
+        selectedServiceIds.add(upstreamId);
+      }
+    }
+
+    function toggleAllPreviewServices() {
+      const allSelected = selectedServiceIds.size === previewServices.length;
+      if (allSelected) {
+        selectedServiceIds.clear();
+      } else {
+        selectedServiceIds = new Set(previewServices.map(s => s.upstreamId));
+      }
+      renderPreviewServices();
+    }
+
+    function filterPreviewServices() {
+      renderPreviewServices();
+    }
+
+    async function importSelectedServices() {
+      if (!selectedServiceIds.size) return alert('Please select at least one service to import.');
+
+      const token = localStorage.getItem('jr_admin_token');
+      const providerId = document.getElementById('serviceSelectModal').dataset.providerId;
+
+      try {
+        const res = await fetch(`/api/admin/providers/${providerId}/import-selected`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ selectedIds: Array.from(selectedServiceIds) })
+        });
+        const data = await res.json();
+        if (data.error) return alert(data.error);
+
+        alert(`Imported ${data.imported} services successfully!`);
+        closeServiceSelectModal();
+        loadAdminServices();
+      } catch (err) {
+        alert('Import failed: ' + err.message);
+      }
+    }
+
     async function loadAdminServices() {
       const token = localStorage.getItem('jr_admin_token');
       try {
@@ -866,21 +993,9 @@
     }
 
     async function syncProvider(id) {
-      const token = localStorage.getItem('jr_admin_token');
-      try {
-        const res = await fetch(`/api/admin/providers/${id}/sync`, {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await res.json();
-        if (!res.ok || data.success === false) return alert('Sync failed: ' + (data.error || 'unknown error'));
-
-        alert(`Sync complete.\nNew services: ${data.added}\nUpdated services: ${data.updated}\nTotal from provider: ${data.total}`);
-        await loadProviders();
-        loadAdminServices();
-      } catch (err) {
-        alert('Sync failed: ' + err.message);
-      }
+      const modal = document.getElementById('serviceSelectModal');
+      modal.dataset.providerId = id;
+      await openServiceSelectModal(id);
     }
 
     async function syncAllProviders() {
