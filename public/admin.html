@@ -701,22 +701,41 @@
     let selectedServiceIds = new Set();
 
     async function openServiceSelectModal(providerId) {
-      const token = localStorage.getItem('jr_admin_token');
+      const modal = document.getElementById('serviceSelectModal');
+      modal.dataset.providerId = providerId;
+      
+      previewServices = [];
+      selectedServiceIds.clear();
+      
+      const container = document.getElementById('previewServicesList');
+      container.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-12 space-y-3">
+          <div class="w-10 h-10 border-4 border-gold/30 border-t-gold rounded-full animate-spin"></div>
+          <p class="text-sm text-slate-500 font-medium">Fetching services from API...</p>
+          <p class="text-xs text-slate-400">This may take a moment for large catalogs</p>
+        </div>
+      `;
+      
+      document.getElementById('serviceSelectModal').classList.remove('hidden');
+      
       try {
+        const token = localStorage.getItem('jr_admin_token');
         const res = await fetch(`/api/admin/providers/${providerId}/preview`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();
-        if (!res.ok || !data.success) return alert('Preview failed: ' + (data.error || 'unknown error'));
+        if (!res.ok || !data.success) {
+          container.innerHTML = `<p class="text-sm text-red-500">Preview failed: ${data.error || 'unknown error'}</p>`;
+          return;
+        }
 
         previewServices = data.services || [];
         selectedServiceIds = new Set(previewServices.map(s => s.upstreamId));
 
         renderPreviewServices();
-        document.getElementById('serviceSelectModal').classList.remove('hidden');
       } catch (err) {
-        alert('Preview failed: ' + err.message);
+        container.innerHTML = `<p class="text-sm text-red-500">Preview failed: ${err.message}</p>`;
       }
     }
 

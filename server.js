@@ -582,7 +582,7 @@ app.post('/api/admin/upload-image', authenticateToken, requireAdmin, async (req,
 //   status   -> ?key=..&action=status&id=  -> { status: 'Pending' | 'In progress' | 'Completed' | 'Partial' | 'Canceled' }
 function providerRequest(provider, params, method = 'GET') {
   const config = {
-    timeout: 30000,
+    timeout: 60000,
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
   };
 
