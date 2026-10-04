@@ -1509,7 +1509,8 @@
         const res = await fetch('/api/services');
         allServices = await res.json();
 
-        const categories = [...new Set(allServices.map(s => s.category))];
+        const importedServices = allServices.filter(s => s.provider_id);
+        const categories = [...new Set(importedServices.map(s => s.category))];
         const catSelect = document.getElementById('orderCategorySelect');
         catSelect.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
 
@@ -1519,7 +1520,7 @@
         }
 
         filterServicesByCategory();
-        renderCatalogCards(allServices);
+        renderCatalogCards(importedServices);
       } catch (err) {
         console.error(err);
       }
@@ -1624,9 +1625,9 @@
       });
 
       if (category === 'all') {
-        renderCatalogCards(allServices);
+        renderCatalogCards(allServices.filter(s => s.provider_id));
       } else {
-        renderCatalogCards(allServices.filter(s => s.category === category));
+        renderCatalogCards(allServices.filter(s => s.category === category && s.provider_id));
       }
     }
 
@@ -1642,7 +1643,7 @@
     // Update loadServicesData to also update category filters
     function filterCatalogCards(query) {
       const q = query.toLowerCase();
-      const filtered = allServices.filter(s => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q));
+      const filtered = allServices.filter(s => s.provider_id && (s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)));
       renderCatalogCards(filtered);
     }
 
@@ -1662,7 +1663,7 @@
 
     function filterServicesByCategory() {
       const selectedCat = document.getElementById('orderCategorySelect').value;
-      const services = allServices.filter(s => s.category === selectedCat);
+      const services = allServices.filter(s => s.category === selectedCat && s.provider_id);
       const servSelect = document.getElementById('orderServiceSelect');
       servSelect.innerHTML = services.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
       updateServiceDetails();
@@ -1721,7 +1722,7 @@
     function filterQuickServices(query) {
       const q = query.toLowerCase();
       const category = document.getElementById('quickCategorySelect').value;
-      let filtered = allServices;
+      let filtered = allServices.filter(s => s.provider_id);
 
       if (category && category !== 'all') {
         filtered = filtered.filter(s => s.category === category);
