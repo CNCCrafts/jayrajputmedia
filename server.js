@@ -150,6 +150,23 @@ async function initDb() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS provider_services (
+        id SERIAL PRIMARY KEY,
+        provider_id INTEGER REFERENCES upstream_providers(id) ON DELETE CASCADE,
+        upstream_service_id TEXT,
+        name TEXT,
+        category TEXT,
+        rate REAL,
+        min_quantity INTEGER,
+        max_quantity INTEGER,
+        description TEXT,
+        status TEXT DEFAULT 'active',
+        is_selected BOOLEAN DEFAULT true,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(provider_id, upstream_service_id)
+      );
+
       CREATE TABLE IF NOT EXISTS payment_orders (
         id SERIAL PRIMARY KEY,
         order_id TEXT UNIQUE,
@@ -901,6 +918,21 @@ app.post('/api/admin/providers/:id/preview', authenticateToken, requireAdmin, as
   if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
 
   try {
+    const cached = await pool.query('SELECT * FROM provider_services WHERE provider_id = $1 ORDER BY category, name', [provider.rows[0].id]);
+    
+    if (cached.rows.length > 0) {
+      const normalized = cached.rows.map(row => ({
+        upstreamId: row.upstream_service_id,
+        name: row.name,
+        rate: row.rate,
+        min: row.min_quantity,
+        max: row.max_quantity,
+        category: row.category,
+        description: row.description || ''
+      }));
+      return res.json({ success: true, services: normalized, cached: true });
+    }
+
     const response = await providerRequest(provider.rows[0], { action: 'services' });
     const body = response.data;
     const list = Array.isArray(body) ? body : body && body.data;
@@ -919,7 +951,60 @@ app.post('/api/admin/providers/:id/preview', authenticateToken, requireAdmin, as
       description: item.description || ''
     })).filter(item => item.upstreamId);
 
-    res.json({ success: true, services: normalized });
+    res.json({ success: true, services: normalized, cached: false });
+  } catch (err) {
+    res.status(502).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/api/admin/providers/:id/refresh-cache', authenticateToken, requireAdmin, async (req, res) => {
+  const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = $1', [req.params.id]);
+  if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
+
+  try {
+    const response = await providerRequest(provider.rows[0], { action: 'services' });
+    const body = response.data;
+    const list = Array.isArray(body) ? body : body && body.data;
+
+    if (!Array.isArray(list)) {
+      return res.status(400).json({ error: 'Provider did not return a service list.' });
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('DELETE FROM provider_services WHERE provider_id = $1', [provider.rows[0].id]);
+
+      for (const item of list) {
+        const upstreamId = String(item.service ?? item.id ?? '');
+        if (!upstreamId) continue;
+
+        const name = item.name || `Service ${upstreamId}`;
+        const rate = parseFloat(item.rate);
+        if (!Number.isFinite(rate)) continue;
+
+        const min = parseInt(item.min) || 1;
+        const max = parseInt(item.max) || 1000000;
+        const category = item.category || 'Imported';
+        const description = item.description || '';
+        const status = String(item.status || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
+
+        await client.query(
+          `INSERT INTO provider_services (provider_id, upstream_service_id, name, category, rate, min_quantity, max_quantity, description, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [provider.rows[0].id, upstreamId, name, category, rate, min, max, description, status]
+        );
+      }
+
+      await client.query('UPDATE upstream_providers SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1', [provider.rows[0].id]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    res.json({ success: true, message: `Cached ${list.length} services from provider.` });
   } catch (err) {
     res.status(502).json({ success: false, error: err.message });
   }
@@ -935,34 +1020,30 @@ app.post('/api/admin/providers/:id/import-selected', authenticateToken, requireA
   }
 
   try {
-    const response = await providerRequest(provider.rows[0], { action: 'services' });
-    const body = response.data;
-    const list = Array.isArray(body) ? body : body && body.data;
+    const cachedServices = await pool.query(
+      'SELECT * FROM provider_services WHERE provider_id = $1 AND upstream_service_id = ANY($2::text[])',
+      [provider.rows[0].id, selectedIds]
+    );
 
-    if (!Array.isArray(list)) {
-      return res.status(400).json({ error: 'Provider did not return a service list.' });
+    if (!cachedServices.rows.length) {
+      return res.status(400).json({ error: 'No cached services found. Please refresh cache first.' });
     }
 
     const markup = 1 + (Number(provider.rows[0].markup_percent) || 0) / 100;
     let added = 0;
     let updated = 0;
 
-    const selectedSet = new Set(selectedIds);
-
-    for (const item of list) {
-      const upstreamId = String(item.service ?? item.id ?? '');
-      if (!upstreamId || !selectedSet.has(upstreamId)) continue;
-
-      const name = item.name || `Service ${upstreamId}`;
-      const wholesaleRate = parseFloat(item.rate);
-      if (!Number.isFinite(wholesaleRate)) continue;
+    for (const cached of cachedServices.rows) {
+      const upstreamId = cached.upstream_service_id;
+      const name = cached.name;
+      const wholesaleRate = cached.rate;
+      const min = cached.min_quantity;
+      const max = cached.max_quantity;
+      const category = cached.category;
+      const description = cached.description || `Supplied by ${provider.rows[0].name}`;
+      const status = cached.status;
 
       const retailRate = parseFloat((wholesaleRate * markup).toFixed(4));
-      const min = parseInt(item.min) || 1;
-      const max = parseInt(item.max) || 1000000;
-      const category = item.category || 'Imported';
-      const description = item.description || `Supplied by ${provider.rows[0].name}`;
-      const status = String(item.status || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
 
       const existing = await pool.query('SELECT id FROM services WHERE provider_id = $1 AND upstream_service_id = $2', [provider.rows[0].id, upstreamId]);
       if (existing.rows.length) {
