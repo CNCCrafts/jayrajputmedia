@@ -577,7 +577,14 @@ app.get('/api/admin/service-images', authenticateToken, requireAdmin, (req, res)
 // Upload image to Cloudinary (admin only)
 app.post('/api/admin/upload-image', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const result = await cloudinary.uploader.upload(req.body.image, {
+    const imageData = req.body.image;
+    if (!imageData) {
+      return res.status(400).json({ error: 'No image data provided.' });
+    }
+
+    console.log('Uploading image to Cloudinary, data length:', imageData.length);
+
+    const result = await cloudinary.uploader.upload(imageData, {
       folder: 'jayrajputmedia/services',
       resource_type: 'image',
       transformation: [
@@ -585,10 +592,12 @@ app.post('/api/admin/upload-image', authenticateToken, requireAdmin, async (req,
         { fetch_format: 'auto' }
       ]
     });
+
+    console.log('Cloudinary upload success:', result.secure_url);
     res.json({ url: result.secure_url, public_id: result.public_id });
   } catch (err) {
     console.error('Cloudinary upload error:', err);
-    res.status(500).json({ error: 'Image upload failed: ' + err.message });
+    res.status(500).json({ error: 'Image upload failed: ' + (err.message || 'Unknown error') });
   }
 });
 

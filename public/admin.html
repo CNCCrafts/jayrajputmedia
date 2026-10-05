@@ -548,8 +548,24 @@
       });
       
       const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
       return data.url;
+    }
+
+    async function uploadToCloudinaryDirect(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', 'jayrajputmedia');
+      formData.append('folder', 'jayrajputmedia/services');
+      
+      const res = await fetch('https://api.cloudinary.com/v1_1/iobtqc2g/image/upload', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || 'Upload failed');
+      return data.secure_url;
     }
 
     async function handleCloudinaryUpload(e) {
@@ -564,36 +580,44 @@
       btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Uploading...';
       
       try {
-        const reader = new FileReader();
-        reader.onload = async (event) => {
-          try {
-            const url = await uploadToCloudinary(event.target.result);
-            
-            const token = localStorage.getItem('jr_admin_token');
-            const res = await fetch('/api/admin/services/images', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-              body: JSON.stringify({ category, image: url })
-            });
-            
-            const data = await res.json();
-            if (data.error) return alert(data.error);
-            
-            alert(`Uploaded and assigned to ${data.updated} service(s) in "${category}".`);
-            fileInput.value = '';
-            document.getElementById('uploadCategory').value = '';
-            loadServiceImages();
-            loadAdminServices();
-          } catch (err) {
-            alert('Upload failed: ' + err.message);
-          } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary';
-          }
-        };
-        reader.readAsDataURL(file);
+        let url;
+        try {
+          const reader = new FileReader();
+          url = await new Promise((resolve, reject) => {
+            reader.onload = async (event) => {
+              try {
+                const uploadUrl = await uploadToCloudinary(event.target.result);
+                resolve(uploadUrl);
+              } catch (err) {
+                reject(err);
+              }
+            };
+            reader.onerror = () => reject(new Error('Failed to read file'));
+            reader.readAsDataURL(file);
+          });
+        } catch (serverErr) {
+          console.warn('Server upload failed, trying direct upload:', serverErr);
+          url = await uploadToCloudinaryDirect(file);
+        }
+        
+        const token = localStorage.getItem('jr_admin_token');
+        const res = await fetch('/api/admin/services/images', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ category, image: url })
+        });
+        
+        const data = await res.json();
+        if (data.error) return alert(data.error);
+        
+        alert(`Uploaded and assigned to ${data.updated} service(s) in "${category}".`);
+        fileInput.value = '';
+        document.getElementById('uploadCategory').value = '';
+        loadServiceImages();
+        loadAdminServices();
       } catch (err) {
         alert('Upload failed: ' + err.message);
+      } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary';
       }
