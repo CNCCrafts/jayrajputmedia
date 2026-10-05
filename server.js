@@ -31,12 +31,15 @@ app.use(cors());
 // The webhook must see the untouched request body to verify its HMAC signature,
 // so it is parsed as a raw buffer before the JSON parser runs.
 app.use('/api/cashfree/webhook', express.raw({ type: '*/*', limit: '1mb' }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '12mb' }));
+app.use(express.urlencoded({ extended: true, limit: '12mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Returns clean JSON instead of an HTML stack trace when a body cannot be parsed
 app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Image is too large to upload. Maximum size is 12MB.' });
+  }
   if (err && (err.type === 'entity.parse.failed' || err instanceof SyntaxError)) {
     return res.status(400).json({ error: 'Malformed request body. Send JSON or x-www-form-urlencoded.' });
   }
