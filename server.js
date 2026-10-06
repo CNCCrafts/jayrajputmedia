@@ -1000,8 +1000,8 @@ app.post('/api/admin/providers/:id/preview', authenticateToken, requireAdmin, as
       console.error('Cache fallback failed:', cacheErr.message);
     }
 
-    const detail = err.response ? (err.response.data?.message || JSON.stringify(err.response.data)) : err.message;
-    res.status(502).json({ success: false, error: 'Failed to fetch services from provider: ' + detail });
+    const detail = err.response ? (err.response.data?.error || err.response.data?.message || JSON.stringify(err.response.data)) : err.message;
+    res.status(502).json({ success: false, error: 'Provider API error: ' + detail + ' (check your API key)' });
   }
 });
 
