@@ -219,21 +219,29 @@ const addColumnIfMissing = async (table, column, definition) => {
 
   // Recover default in-house services if they were deleted
   const defaultServices = [
-    { category: 'Instagram', name: 'Instagram Followers [High Quality - Non Drop]', rate_per_1000: 120.00, min_quantity: 100, max_quantity: 50000, description: 'Instant start, 30 days refill guarantee.' },
-    { category: 'Instagram', name: 'Instagram Likes [Real Active Users]', rate_per_1000: 40.00, min_quantity: 50, max_quantity: 100000, description: 'Fast speed, organic appearance.' },
-    { category: 'Facebook', name: 'Facebook Page Likes & Followers', rate_per_1000: 180.00, min_quantity: 100, max_quantity: 20000, description: 'Worldwide targeting, safe delivery.' },
-    { category: 'YouTube', name: 'YouTube WatchTime Hours [Monetizable]', rate_per_1000: 850.00, min_quantity: 500, max_quantity: 4000, description: 'Refill enabled, 100% safe.' }
+    { category: 'Instagram', name: 'Instagram Followers [High Quality - Non Drop]', rate_per_1000: 120.00, min_quantity: 100, max_quantity: 50000, description: 'Instant start, 30 days refill guarantee.', image: 'https://res.cloudinary.com/iobtqc2g/image/upload/v1791301870/jayrajputmedia/services/services/service-01.jpg' },
+    { category: 'Instagram', name: 'Instagram Likes [Real Active Users]', rate_per_1000: 40.00, min_quantity: 50, max_quantity: 100000, description: 'Fast speed, organic appearance.', image: 'https://res.cloudinary.com/iobtqc2g/image/upload/v1791301871/jayrajputmedia/services/services/service-02.jpg' },
+    { category: 'Facebook', name: 'Facebook Page Likes & Followers', rate_per_1000: 180.00, min_quantity: 100, max_quantity: 20000, description: 'Worldwide targeting, safe delivery.', image: 'https://res.cloudinary.com/iobtqc2g/image/upload/v1791301871/jayrajputmedia/services/services/service-03.jpg' },
+    { category: 'YouTube', name: 'YouTube WatchTime Hours [Monetizable]', rate_per_1000: 850.00, min_quantity: 500, max_quantity: 4000, description: 'Refill enabled, 100% safe.', image: 'https://res.cloudinary.com/iobtqc2g/image/upload/v1791301872/jayrajputmedia/services/services/service-04.jpg' }
   ];
 
   const existingCount = await pool.query("SELECT COUNT(*) AS n FROM services WHERE provider_id IS NULL");
   if (parseInt(existingCount.rows[0].n) === 0) {
     for (const svc of defaultServices) {
       await pool.query(
-        `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES ($1, $2, $3, $4, $5, $6)`,
-        [svc.category, svc.name, svc.rate_per_1000, svc.min_quantity, svc.max_quantity, svc.description]
+        `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, image) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [svc.category, svc.name, svc.rate_per_1000, svc.min_quantity, svc.max_quantity, svc.description, svc.image]
       );
     }
     console.log('Recovered default in-house services.');
+  } else {
+    // Ensure existing in-house services have images
+    for (const svc of defaultServices) {
+      await pool.query(
+        `UPDATE services SET image = $1 WHERE name = $2 AND provider_id IS NULL AND (image IS NULL OR image = '')`,
+        [svc.image, svc.name]
+      );
+    }
   }
 })();
 
@@ -938,26 +946,26 @@ app.post('/api/admin/providers/:id/preview', authenticateToken, requireAdmin, as
   if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
 
   try {
-    const cached = await pool.query('SELECT * FROM provider_services WHERE provider_id = $1 ORDER BY category, name', [provider.rows[0].id]);
-    
-    if (cached.rows.length > 0) {
-      const normalized = cached.rows.map(row => ({
-        upstreamId: row.upstream_service_id,
-        name: row.name,
-        rate: row.rate,
-        min: row.min_quantity,
-        max: row.max_quantity,
-        category: row.category,
-        description: row.description || ''
-      }));
-      return res.json({ success: true, services: normalized, cached: true });
-    }
-
+    // Fetch directly from the provider API
     const response = await providerRequest(provider.rows[0], { action: 'services' });
     const body = response.data;
     const list = Array.isArray(body) ? body : body && body.data;
 
     if (!Array.isArray(list)) {
+      // Fall back to cached services if API fails
+      const cached = await pool.query('SELECT * FROM provider_services WHERE provider_id = $1 ORDER BY category, name', [provider.rows[0].id]);
+      if (cached.rows.length > 0) {
+        const normalized = cached.rows.map(row => ({
+          upstreamId: row.upstream_service_id,
+          name: row.name,
+          rate: row.rate,
+          min: row.min_quantity,
+          max: row.max_quantity,
+          category: row.category,
+          description: row.description || ''
+        }));
+        return res.json({ success: true, services: normalized, cached: true });
+      }
       return res.status(400).json({ error: 'Provider did not return a service list. Check the API URL and key.' });
     }
 
@@ -973,6 +981,25 @@ app.post('/api/admin/providers/:id/preview', authenticateToken, requireAdmin, as
 
     res.json({ success: true, services: normalized, cached: false });
   } catch (err) {
+    // Fall back to cached services on error
+    try {
+      const cached = await pool.query('SELECT * FROM provider_services WHERE provider_id = $1 ORDER BY category, name', [provider.rows[0].id]);
+      if (cached.rows.length > 0) {
+        const normalized = cached.rows.map(row => ({
+          upstreamId: row.upstream_service_id,
+          name: row.name,
+          rate: row.rate,
+          min: row.min_quantity,
+          max: row.max_quantity,
+          category: row.category,
+          description: row.description || ''
+        }));
+        return res.json({ success: true, services: normalized, cached: true });
+      }
+    } catch (cacheErr) {
+      console.error('Cache fallback failed:', cacheErr.message);
+    }
+
     const detail = err.response ? (err.response.data?.message || JSON.stringify(err.response.data)) : err.message;
     res.status(502).json({ success: false, error: 'Failed to fetch services from provider: ' + detail });
   }

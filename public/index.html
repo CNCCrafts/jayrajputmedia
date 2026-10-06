@@ -1130,6 +1130,10 @@
         <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Jay Rajput Media Power Portal</p>
       </div>
 
+      <div id="googleSignInContainer" class="w-full mb-4 flex justify-center">
+        <div id="googleSignInButton"></div>
+      </div>
+
       <button onclick="handleGoogleSignIn()" type="button" class="w-full py-3 px-4 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-2xl flex items-center justify-center space-x-3 text-slate-700 dark:text-slate-200 font-bold text-xs sm:text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition shadow-sm mb-4">
         <svg class="w-5 h-5" viewBox="0 0 24 24">
           <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -1365,6 +1369,35 @@
         toggleBtn.innerText = 'Create Account';
       }
       modal.classList.remove('hidden');
+      renderGoogleSignInButton();
+    }
+
+    function renderGoogleSignInButton() {
+      const container = document.getElementById('googleSignInButton');
+      if (!container || typeof google === 'undefined' || !google.accounts) return;
+
+      const clientId = '144460065869-cj42bposvevvpneci3s32qmeb72jcpho.apps.googleusercontent.com';
+
+      try {
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+
+        google.accounts.id.renderButton(container, {
+          type: 'standard',
+          theme: 'outline',
+          size: 'large',
+          text: 'continue_with',
+          shape: 'rectangular',
+          logo_alignment: 'left',
+          width: '100%'
+        });
+      } catch (err) {
+        console.error('Failed to render Google button:', err);
+      }
     }
 
     function closeAuthModal() {
@@ -1450,14 +1483,18 @@
           if (notification.isNotDisplayed()) {
             const reason = notification.getNotDisplayedReason();
             console.error('Google Sign-In not displayed. Reason:', reason);
-            alert('Google Sign-In is not available right now (' + reason + '). Please use email sign-in, or check that your browser allows pop-ups and third-party cookies.');
+            if (reason === 'opt_out_or_no_session') {
+              alert('No Google session found in this browser. Please click the "Continue with Google" button above to sign in with a popup, or sign in to your Google account first.');
+            } else {
+              alert('Google Sign-In is not available right now (' + reason + '). Please use the "Continue with Google" button above, or check that your browser allows pop-ups and third-party cookies.');
+            }
           } else if (notification.isSkippedMoment()) {
             console.log('Google Sign-In skipped:', notification.getSkippedReason());
           }
         });
       } catch (err) {
         console.error('Google Sign-In error:', err);
-        alert('Google Sign-In failed: ' + err.message + '. Please use email sign-in.');
+        alert('Google Sign-In failed: ' + err.message + '. Please use the "Continue with Google" button above.');
       }
     }
 
@@ -2149,6 +2186,17 @@
       loadServicesData();
       loadPaymentHistory();
       handlePaymentReturn();
+      
+      // Render Google Sign-In button when GIS SDK is ready
+      let attempts = 0;
+      const renderGoogleBtn = setInterval(() => {
+        if (typeof google !== 'undefined' && google.accounts) {
+          clearInterval(renderGoogleBtn);
+          renderGoogleSignInButton();
+        }
+        attempts++;
+        if (attempts > 20) clearInterval(renderGoogleBtn);
+      }, 500);
       
       if (currentUser) {
         navigateSection('quick-order');
