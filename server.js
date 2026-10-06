@@ -958,7 +958,7 @@ app.post('/api/admin/providers/:id/preview', authenticateToken, requireAdmin, as
     const list = Array.isArray(body) ? body : body && body.data;
 
     if (!Array.isArray(list)) {
-      return res.status(400).json({ error: 'Provider did not return a service list.' });
+      return res.status(400).json({ error: 'Provider did not return a service list. Check the API URL and key.' });
     }
 
     const normalized = list.map(item => ({
@@ -973,7 +973,8 @@ app.post('/api/admin/providers/:id/preview', authenticateToken, requireAdmin, as
 
     res.json({ success: true, services: normalized, cached: false });
   } catch (err) {
-    res.status(502).json({ success: false, error: err.message });
+    const detail = err.response ? (err.response.data?.message || JSON.stringify(err.response.data)) : err.message;
+    res.status(502).json({ success: false, error: 'Failed to fetch services from provider: ' + detail });
   }
 });
 

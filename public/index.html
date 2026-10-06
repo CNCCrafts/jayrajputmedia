@@ -1437,13 +1437,27 @@
           return;
         }
 
+        const clientId = '144460065869-cj42bposvevvpneci3s32qmeb72jcpho.apps.googleusercontent.com';
+
+        google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+
         google.accounts.id.prompt((notification) => {
           if (notification.isNotDisplayed()) {
-            alert('Google Sign-In is not available right now. Please use email sign-in.');
+            const reason = notification.getNotDisplayedReason();
+            console.error('Google Sign-In not displayed. Reason:', reason);
+            alert('Google Sign-In is not available right now (' + reason + '). Please use email sign-in, or check that your browser allows pop-ups and third-party cookies.');
+          } else if (notification.isSkippedMoment()) {
+            console.log('Google Sign-In skipped:', notification.getSkippedReason());
           }
         });
       } catch (err) {
-        alert('Google Sign-In failed: ' + err.message);
+        console.error('Google Sign-In error:', err);
+        alert('Google Sign-In failed: ' + err.message + '. Please use email sign-in.');
       }
     }
 

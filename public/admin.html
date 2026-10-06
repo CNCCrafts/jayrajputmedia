@@ -829,7 +829,14 @@
         });
         const data = await res.json();
         if (!res.ok || !data.success) {
-          container.innerHTML = `<p class="text-sm text-red-500">Preview failed: ${data.error || 'unknown error'}</p>`;
+          const errorMsg = data.error || 'unknown error';
+          container.innerHTML = `
+            <div class="text-center py-8 space-y-3">
+              <p class="text-sm text-red-500">Preview failed: ${errorMsg}</p>
+              <p class="text-xs text-slate-400">Try clicking "Refresh" on the provider row to cache services first, then click "Import" again.</p>
+              <button onclick="closeServiceSelectModal()" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-xl text-xs font-bold">Close</button>
+            </div>
+          `;
           return;
         }
 
@@ -838,7 +845,13 @@
 
         renderPreviewServices();
       } catch (err) {
-        container.innerHTML = `<p class="text-sm text-red-500">Preview failed: ${err.message}</p>`;
+        container.innerHTML = `
+          <div class="text-center py-8 space-y-3">
+            <p class="text-sm text-red-500">Preview failed: ${err.message}</p>
+            <p class="text-xs text-slate-400">Try clicking "Refresh" on the provider row to cache services first, then click "Import" again.</p>
+            <button onclick="closeServiceSelectModal()" class="px-4 py-2 bg-slate-200 dark:bg-slate-700 rounded-xl text-xs font-bold">Close</button>
+          </div>
+        `;
       }
     }
 
@@ -911,7 +924,9 @@
         const data = await res.json();
         if (data.error) return alert(data.error);
 
-        alert(`Imported ${data.imported} services successfully!`);
+        const imported = data.added || 0;
+        const updated = data.updated || 0;
+        alert(`Import complete! ${imported} new service(s) added, ${updated} existing service(s) updated.`);
         closeServiceSelectModal();
         loadAdminServices();
       } catch (err) {
@@ -1100,7 +1115,7 @@
         btn.innerText = 'Caching services...';
         
         try {
-          await refreshProviderCache(id);
+          await refreshProviderCache(id, true);
           alert('Provider added and services cached! Click "Import" to select which services to add to your catalog.');
         } catch (err) {
           alert('Provider added, but caching failed: ' + err.message);
@@ -1132,9 +1147,9 @@
       }
     }
 
-    async function refreshProviderCache(id) {
+    async function refreshProviderCache(id, skipConfirm = false) {
       const token = localStorage.getItem('jr_admin_token');
-      if (!confirm('Refresh cached services from API? This will update the local cache with the latest services from the provider.')) return;
+      if (!skipConfirm && !confirm('Refresh cached services from API? This will update the local cache with the latest services from the provider.')) return;
 
       try {
         const res = await fetch(`/api/admin/providers/${id}/refresh-cache`, {
@@ -1144,7 +1159,7 @@
         const data = await res.json();
         if (!res.ok) return alert('Refresh failed: ' + (data.error || 'unknown error'));
 
-        alert(data.message || 'Cache refreshed successfully!');
+        if (!skipConfirm) alert(data.message || 'Cache refreshed successfully!');
         await loadProviders();
       } catch (err) {
         alert('Refresh failed: ' + err.message);
