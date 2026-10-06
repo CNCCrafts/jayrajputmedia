@@ -172,11 +172,23 @@
                 <select id="svcImage" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
                   <option value="">No image</option>
                 </select>
+                <div class="mt-2">
+                  <label class="flex items-center gap-2 text-xs text-slate-400 cursor-pointer">
+                    <input type="checkbox" id="svcUploadToggle" onchange="toggleInlineUpload(this.checked)" class="w-3 h-3 rounded border-slate-600 text-gold focus:ring-gold">
+                    <span>Upload new image</span>
+                  </label>
+                  <div id="inlineUploadBox" class="hidden mt-2">
+                    <input type="file" id="svcInlineFile" accept="image/*" class="w-full text-xs text-slate-400 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500 bg-slate-950 border border-slate-700 rounded-xl p-1">
+                  </div>
+                </div>
               </div>
 
               <div class="md:col-span-1 flex items-end">
-                <div id="svcImagePreview" class="w-full h-16 rounded-xl border border-slate-700 bg-slate-950 overflow-hidden flex items-center justify-center text-[10px] text-slate-500">
-                  No image
+                <div class="w-full">
+                  <div id="svcImagePreview" class="w-full h-16 rounded-xl border border-slate-700 bg-slate-950 overflow-hidden flex items-center justify-center text-[10px] text-slate-500">
+                    No image
+                  </div>
+                  <div id="svcInlineUploadProgress" class="hidden mt-1 text-[10px] text-gold">Uploading...</div>
                 </div>
               </div>
 
@@ -567,9 +579,53 @@
       });
       
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Upload failed');
-      return data.url;
-    }
+       if (!res.ok) throw new Error(data.error || 'Upload failed');
+       return data.url;
+     }
+
+     function toggleInlineUpload(checked) {
+       const box = document.getElementById('inlineUploadBox');
+       const fileInput = document.getElementById('svcInlineFile');
+       box.classList.toggle('hidden', !checked);
+       if (!checked) {
+         fileInput.value = '';
+       }
+     }
+
+     async function handleInlineImageUpload() {
+       const fileInput = document.getElementById('svcInlineFile');
+       const file = fileInput.files[0];
+       if (!file) return;
+
+       const progressBox = document.getElementById('svcInlineUploadProgress');
+       progressBox.classList.remove('hidden');
+
+       try {
+         const reader = new FileReader();
+         const dataUrl = await new Promise((resolve, reject) => {
+           reader.onload = e => resolve(e.target.result);
+           reader.onerror = () => reject(new Error('Failed to read file.'));
+           reader.readAsDataURL(file);
+         });
+
+         const url = await uploadToCloudinary(dataUrl);
+         const select = document.getElementById('svcImage');
+         select.innerHTML = `<option value="${url}">${file.name}</option>` + select.innerHTML;
+         select.value = url;
+         updateImagePreview();
+
+         loadServiceImages();
+       } catch (err) {
+         alert('Upload failed: ' + err.message);
+       } finally {
+         progressBox.classList.add('hidden');
+         fileInput.value = '';
+         document.getElementById('svcUploadToggle').checked = false;
+         toggleInlineUpload(false);
+       }
+     }
+
+     document.getElementById('svcInlineFile').addEventListener('change', handleInlineImageUpload);
 
     async function handleCloudinaryUpload(e) {
       e.preventDefault();
@@ -934,6 +990,7 @@
       const s = adminServicesList.find(item => item.id === id);
       if (!s) return;
 
+      loadServiceImages();
       document.getElementById('editServiceId').value = s.id;
       document.getElementById('svcCategory').value = s.category;
       document.getElementById('svcName').value = s.name;
@@ -941,6 +998,9 @@
       document.getElementById('svcMin').value = s.min_quantity;
       document.getElementById('svcMax').value = s.max_quantity;
       document.getElementById('svcDesc').value = s.description;
+      document.getElementById('svcUploadToggle').checked = false;
+      document.getElementById('inlineUploadBox').classList.add('hidden');
+      document.getElementById('svcInlineFile').value = '';
       document.getElementById('svcImage').value = s.image || '';
       updateImagePreview();
 
@@ -953,6 +1013,9 @@
     function resetForm() {
       document.getElementById('serviceForm').reset();
       document.getElementById('editServiceId').value = '';
+      document.getElementById('svcUploadToggle').checked = false;
+      document.getElementById('inlineUploadBox').classList.add('hidden');
+      document.getElementById('svcInlineFile').value = '';
       document.getElementById('formHeading').innerHTML = `<i class="fa-solid fa-circle-plus"></i><span>Add New Service Package</span>`;
       document.getElementById('submitBtn').innerText = 'Save & Publish Package';
       document.getElementById('cancelEditBtn').classList.add('hidden');
