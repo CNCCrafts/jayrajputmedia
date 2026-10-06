@@ -9,7 +9,7 @@ cloudinary.config({
 });
 
 const uploadDir = 'C:\\Users\\sjsam\\Downloads\\jayrajput';
-const files = fs.readdirSync(uploadDir).filter(f => f.endsWith('.jpeg') || f.endsWith('.jpg'));
+const files = fs.readdirSync(uploadDir).filter(f => f.endsWith('.jpeg') || f.endsWith('.jpg') || f.endsWith('.JPG') || f.endsWith('.JPEG'));
 
 async function uploadAll() {
   console.log(`Found ${files.length} images to upload...`);

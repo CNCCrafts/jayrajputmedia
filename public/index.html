@@ -3,6 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Jay Rajput Media Power - Premium Instagram & Facebook growth services. Buy followers, likes, views with fast delivery, 30-day refill guarantee & 24/7 support. Trusted by 55,000+ customers." />
+  <meta name="keywords" content="instagram followers, facebook likes, youtube views, social media growth, smm panel, digital marketing, jay rajput media power, buy followers, buy likes, buy views" />
+  <meta name="author" content="Jay Rajput Media Power" />
+  <link rel="canonical" href="https://jayrajputmediapower.com/" />
   <title>Jay Rajput Media Power - Instagram & Facebook Growth</title>
   
   <link rel="icon" type="image/png" href="/logo.png" />
@@ -703,10 +707,26 @@
       </div>
 
       <!-- Category Filter Pills -->
-      <div id="categoryFilters" class="flex flex-wrap gap-2">
+      <div id="categoryFilters" class="flex flex-wrap gap-2 items-center">
         <button onclick="filterByCategory('all')" class="category-pill active px-4 py-2 rounded-full text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-900 dark:bg-white text-white dark:text-slate-900 transition" data-category="all">
           All Services
         </button>
+
+        <div class="flex items-center gap-1.5 ml-2">
+          <span class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Source:</span>
+          <label class="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+            <input type="radio" name="serviceSource" value="imported" onchange="filterBySource(this.value)" class="text-gold focus:ring-gold">
+            <span class="text-slate-600 dark:text-slate-300">Imported</span>
+          </label>
+          <label class="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+            <input type="radio" name="serviceSource" value="inhouse" onchange="filterBySource(this.value)" class="text-gold focus:ring-gold">
+            <span class="text-slate-600 dark:text-slate-300">In-House</span>
+          </label>
+          <label class="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+            <input type="radio" name="serviceSource" value="all" onchange="filterBySource(this.value)" class="text-gold focus:ring-gold" checked>
+            <span class="text-slate-600 dark:text-slate-300">All</span>
+          </label>
+        </div>
       </div>
 
       <div id="servicesCardGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -1496,7 +1516,7 @@
       activeCurrency = curr;
       updateWalletDisplay();
       calculateOrderCharge();
-      renderCatalogCards(allServices);
+      renderCatalogCards(allServices, true);
     }
 
     function logout() {
@@ -1509,8 +1529,7 @@
         const res = await fetch('/api/services');
         allServices = await res.json();
 
-        const importedServices = allServices.filter(s => s.provider_id);
-        const categories = [...new Set(importedServices.map(s => s.category))];
+        const categories = [...new Set(allServices.map(s => s.category).filter(Boolean))].sort();
         const catSelect = document.getElementById('orderCategorySelect');
         catSelect.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
 
@@ -1520,13 +1539,13 @@
         }
 
         filterServicesByCategory();
-        renderCatalogCards(importedServices);
+        renderCatalogCards(allServices, true);
       } catch (err) {
         console.error(err);
       }
     }
 
-    function renderCatalogCards(list) {
+    function renderCatalogCards(list, sortImportedFirst = false) {
       const container = document.getElementById('servicesCardGrid');
       let multiplier = 1;
       let symbol = '₹';
@@ -1538,7 +1557,17 @@
         return;
       }
 
-      container.innerHTML = list.map(s => {
+      const sortedList = sortImportedFirst
+        ? list.slice().sort((a, b) => {
+            const aImported = !!a.provider_id;
+            const bImported = !!b.provider_id;
+            if (aImported && !bImported) return -1;
+            if (!aImported && bImported) return 1;
+            return 0;
+          })
+        : list;
+
+      container.innerHTML = sortedList.map(s => {
         const isIg = s.category.toLowerCase().includes('instagram');
         const isFb = s.category.toLowerCase().includes('facebook');
         const isYt = s.category.toLowerCase().includes('youtube');
@@ -1548,6 +1577,9 @@
             ? 'bg-blue-500/10 text-fbBlue border-blue-200 dark:border-blue-900'
             : 'bg-red-500/10 text-red-500 border-red-200 dark:border-red-900';
         const icon = isIg ? 'fa-brands fa-instagram' : isFb ? 'fa-brands fa-facebook' : isYt ? 'fa-brands fa-youtube' : 'fa-solid fa-globe';
+        const sourceBadge = s.provider_id
+          ? `<span class="ml-2 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-gold/20 text-gold border border-gold/30">Imported</span>`
+          : `<span class="ml-2 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-600/30 text-slate-300 border border-slate-600/40">In-House</span>`;
 
         const imageHtml = s.image ? `
           <div class="relative w-full aspect-[4/3] sm:aspect-video bg-slate-50 dark:bg-slate-900 border-b border-slate-200/80 dark:border-darkBorder overflow-hidden cursor-pointer flex items-center justify-center" onclick="openServiceDetail(${s.id})">
@@ -1568,9 +1600,9 @@
             <div class="p-5 space-y-3 flex-1 flex flex-col">
               <div>
                 <div class="flex justify-between items-center mb-2">
-                  <span class="text-[10px] px-2.5 py-1 rounded-full font-bold uppercase border ${badgeStyle}">
-                    <i class="${icon} mr-1"></i>${s.category}
-                  </span>
+                     <span class="text-[10px] px-2.5 py-1 rounded-full font-bold uppercase border ${badgeStyle}">
+                     <i class="${icon} mr-1"></i>${s.category}
+                   </span>${sourceBadge}
                   <span class="text-[10px] text-slate-400 font-mono font-bold">#${s.id}</span>
                 </div>
                 <h3 class="text-sm font-display font-bold text-slate-900 dark:text-white leading-snug line-clamp-2">${s.name}</h3>
@@ -1617,6 +1649,7 @@
     };
 
     function filterByCategory(category) {
+      activeCategory = category;
       document.querySelectorAll('.category-pill').forEach(pill => {
         pill.classList.remove('bg-slate-900', 'dark:bg-white', 'text-white', 'dark:text-slate-900');
         if (pill.dataset.category === category) {
@@ -1624,11 +1657,17 @@
         }
       });
 
-      if (category === 'all') {
-        renderCatalogCards(allServices.filter(s => s.provider_id));
-      } else {
-        renderCatalogCards(allServices.filter(s => s.category === category && s.provider_id));
+      const source = activeSource;
+      let filtered = allServices;
+      if (category !== 'all') {
+        filtered = filtered.filter(s => s.category === category);
       }
+      if (source === 'imported') {
+        filtered = filtered.filter(s => s.provider_id);
+      } else if (source === 'inhouse') {
+        filtered = filtered.filter(s => !s.provider_id);
+      }
+      renderCatalogCards(filtered, true);
     }
 
     function updateCategoryFilters() {
@@ -1637,14 +1676,57 @@
         <button onclick="filterByCategory('all')" class="category-pill active px-4 py-2 rounded-full text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-900 dark:bg-white text-white dark:text-slate-900 transition" data-category="all">
           All Services
         </button>
+        <div class="flex items-center gap-1.5 ml-2">
+          <span class="text-[10px] uppercase font-bold text-slate-500 dark:text-slate-400">Source:</span>
+          <label class="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+            <input type="radio" name="serviceSource" value="imported" onchange="filterBySource(this.value)" class="text-gold focus:ring-gold">
+            <span class="text-slate-600 dark:text-slate-300">Imported</span>
+          </label>
+          <label class="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+            <input type="radio" name="serviceSource" value="inhouse" onchange="filterBySource(this.value)" class="text-gold focus:ring-gold">
+            <span class="text-slate-600 dark:text-slate-300">In-House</span>
+          </label>
+          <label class="flex items-center gap-1.5 text-xs font-medium cursor-pointer">
+            <input type="radio" name="serviceSource" value="all" onchange="filterBySource(this.value)" class="text-gold focus:ring-gold" checked>
+            <span class="text-slate-600 dark:text-slate-300">All</span>
+          </label>
+        </div>
       `;
+    }
+
+    let activeCategory = 'all';
+    let activeSource = 'all';
+
+    function filterBySource(source) {
+      activeSource = source;
+      const category = activeCategory;
+      let filtered = allServices;
+      if (category !== 'all') {
+        filtered = filtered.filter(s => s.category === category);
+      }
+      if (source === 'imported') {
+        filtered = filtered.filter(s => s.provider_id);
+      } else if (source === 'inhouse') {
+        filtered = filtered.filter(s => !s.provider_id);
+      }
+      renderCatalogCards(filtered, true);
     }
 
     // Update loadServicesData to also update category filters
     function filterCatalogCards(query) {
       const q = query.toLowerCase();
-      const filtered = allServices.filter(s => s.provider_id && (s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)));
-      renderCatalogCards(filtered);
+      const category = activeCategory;
+      const source = activeSource;
+      let filtered = allServices.filter(s => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q));
+      if (category !== 'all') {
+        filtered = filtered.filter(s => s.category === category);
+      }
+      if (source === 'imported') {
+        filtered = filtered.filter(s => s.provider_id);
+      } else if (source === 'inhouse') {
+        filtered = filtered.filter(s => !s.provider_id);
+      }
+      renderCatalogCards(filtered, true);
     }
 
     function prepareBuyNow(serviceId) {
@@ -1663,7 +1745,7 @@
 
     function filterServicesByCategory() {
       const selectedCat = document.getElementById('orderCategorySelect').value;
-      const services = allServices.filter(s => s.category === selectedCat && s.provider_id);
+      const services = allServices.filter(s => s.category === selectedCat);
       const servSelect = document.getElementById('orderServiceSelect');
       servSelect.innerHTML = services.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
       updateServiceDetails();
@@ -1722,7 +1804,13 @@
     function filterQuickServices(query) {
       const q = query.toLowerCase();
       const category = document.getElementById('quickCategorySelect').value;
-      let filtered = allServices.filter(s => s.provider_id);
+      let filtered = allServices.slice().sort((a, b) => {
+        const aImported = !!a.provider_id;
+        const bImported = !!b.provider_id;
+        if (aImported && !bImported) return -1;
+        if (!aImported && bImported) return 1;
+        return 0;
+      });
 
       if (category && category !== 'all') {
         filtered = filtered.filter(s => s.category === category);

@@ -207,31 +207,33 @@ const addColumnIfMissing = async (table, column, definition) => {
   await addColumnIfMissing('orders', 'upstream_order_id', 'TEXT');
   await addColumnIfMissing('orders', 'cost', 'REAL DEFAULT 0');
 
-  // Insert default Admin & demo services if empty
+  // Insert default Admin if not exists
   const adminCheck = await pool.query('SELECT * FROM users WHERE email = $1', ['admin@jayrajputmediapower.com']);
   if (!adminCheck.rows.length) {
     const hash = bcrypt.hashSync('admin@3360', 10);
-    const info = await pool.query(
+    await pool.query(
       `INSERT INTO users (name, email, password, role, referral_code) VALUES ($1, $2, $3, $4, $5)`,
       ['Admin Jay Rajput', 'admin@jayrajputmediapower.com', hash, 'admin', 'JRADMIN']
     );
+  }
 
-    await pool.query(
-      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES ($1, $2, $3, $4, $5, $6)`,
-      ['Instagram', 'Instagram Followers [High Quality - Non Drop]', 120.00, 100, 50000, 'Instant start, 30 days refill guarantee.']
-    );
-    await pool.query(
-      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES ($1, $2, $3, $4, $5, $6)`,
-      ['Instagram', 'Instagram Likes [Real Active Users]', 40.00, 50, 100000, 'Fast speed, organic appearance.']
-    );
-    await pool.query(
-      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES ($1, $2, $3, $4, $5, $6)`,
-      ['Facebook', 'Facebook Page Likes & Followers', 180.00, 100, 20000, 'Worldwide targeting, safe delivery.']
-    );
-    await pool.query(
-      `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES ($1, $2, $3, $4, $5, $6)`,
-      ['YouTube', 'YouTube WatchTime Hours [Monetizable]', 850.00, 500, 4000, 'Refill enabled, 100% safe.']
-    );
+  // Recover default in-house services if they were deleted
+  const defaultServices = [
+    { category: 'Instagram', name: 'Instagram Followers [High Quality - Non Drop]', rate_per_1000: 120.00, min_quantity: 100, max_quantity: 50000, description: 'Instant start, 30 days refill guarantee.' },
+    { category: 'Instagram', name: 'Instagram Likes [Real Active Users]', rate_per_1000: 40.00, min_quantity: 50, max_quantity: 100000, description: 'Fast speed, organic appearance.' },
+    { category: 'Facebook', name: 'Facebook Page Likes & Followers', rate_per_1000: 180.00, min_quantity: 100, max_quantity: 20000, description: 'Worldwide targeting, safe delivery.' },
+    { category: 'YouTube', name: 'YouTube WatchTime Hours [Monetizable]', rate_per_1000: 850.00, min_quantity: 500, max_quantity: 4000, description: 'Refill enabled, 100% safe.' }
+  ];
+
+  const existingCount = await pool.query("SELECT COUNT(*) AS n FROM services WHERE provider_id IS NULL");
+  if (parseInt(existingCount.rows[0].n) === 0) {
+    for (const svc of defaultServices) {
+      await pool.query(
+        `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description) VALUES ($1, $2, $3, $4, $5, $6)`,
+        [svc.category, svc.name, svc.rate_per_1000, svc.min_quantity, svc.max_quantity, svc.description]
+      );
+    }
+    console.log('Recovered default in-house services.');
   }
 })();
 
