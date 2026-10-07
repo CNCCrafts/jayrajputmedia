@@ -58,7 +58,7 @@ try {
     console.error('DATABASE_URL or POSTGRES_URL or vercel_DATABASE_URL environment variable is not set');
     throw new Error('DATABASE_URL or POSTGRES_URL environment variable is not set');
   }
-  pool = globalThis.vercelPostgres || new Pool({ connectionString });
+  pool = new Pool({ connectionString });
   console.log('Database pool created successfully');
 } catch (e) {
   console.error('Failed to create database pool:', e.message);
@@ -875,30 +875,41 @@ app.post('/api/admin/providers/sync-all', authenticateToken, requireAdmin, async
 });
 
 app.get('/api/admin/providers', authenticateToken, requireAdmin, async (req, res) => {
-  const providers = await pool.query('SELECT * FROM upstream_providers ORDER BY id DESC').rows;
-  const counts = await pool.query(`
-    SELECT provider_id, COUNT(*) AS service_count FROM services
-    WHERE provider_id IS NOT NULL GROUP BY provider_id
-  `).rows;
-  const cacheCounts = await pool.query(`
-    SELECT provider_id, COUNT(*) AS cached_count FROM provider_services
-    GROUP BY provider_id
-  `).rows;
-  const map = new Map(counts.map((c) => [c.provider_id, c.service_count]));
-  const cacheMap = new Map(cacheCounts.map((c) => [c.provider_id, c.cached_count]));
+  try {
+    const providers = await pool.query('SELECT * FROM upstream_providers ORDER BY id DESC');
+    const providersRows = providers.rows || [];
+    
+    const counts = await pool.query(`
+      SELECT provider_id, COUNT(*) AS service_count FROM services
+      WHERE provider_id IS NOT NULL GROUP BY provider_id
+    `);
+    const countsRows = counts.rows || [];
+    
+    const cacheCounts = await pool.query(`
+      SELECT provider_id, COUNT(*) AS cached_count FROM provider_services
+      GROUP BY provider_id
+    `);
+    const cacheCountsRows = cacheCounts.rows || [];
 
-  res.json(providers.map((p) => ({
-    id: p.id,
-    name: p.name,
-    api_url: p.api_url,
-    api_key: p.api_key,
-    markup_percent: p.markup_percent,
-    status: p.status,
-    last_sync_at: p.last_sync_at,
-    created_at: p.created_at,
-    service_count: map.get(p.id) || 0,
-    cached_count: cacheMap.get(p.id) || 0
-  })));
+    const map = new Map(countsRows.map((c) => [c.provider_id, c.service_count]));
+    const cacheMap = new Map(cacheCountsRows.map((c) => [c.provider_id, c.cached_count]));
+
+    res.json(providersRows.map((p) => ({
+      id: p.id,
+      name: p.name,
+      api_url: p.api_url,
+      api_key: p.api_key,
+      markup_percent: p.markup_percent,
+      status: p.status,
+      last_sync_at: p.last_sync_at,
+      created_at: p.created_at,
+      service_count: map.get(p.id) || 0,
+      cached_count: cacheMap.get(p.id) || 0
+    })));
+  } catch (err) {
+    console.error('Error in /api/admin/providers:', err);
+    res.status(500).json({ error: 'Failed to fetch providers: ' + err.message });
+  }
 });
 
 app.post('/api/admin/providers', authenticateToken, requireAdmin, async (req, res) => {
