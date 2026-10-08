@@ -949,7 +949,7 @@
             <td class="p-3 text-gold font-mono font-bold">₹${s.rate_per_1000}</td>
             <td class="p-3 text-xs text-slate-400">${s.min_quantity} - ${s.max_quantity}</td>
             <td class="p-3">${s.image
-              ? `<img src="${s.image}" onerror="this.outerHTML='<span class=\'text-slate-500 text-xs\'>none</span>'" class="w-20 h-14 object-contain bg-slate-950/60 rounded-lg border border-slate-700 p-0.5">`
+              ? `<img src="${s.image}" onerror="this.outerHTML='<span class=\'text-slate-500 text-xs\'>none</span>'" class="w-28 h-20 object-contain object-center bg-slate-950/60 rounded-lg border border-slate-700 p-0.5">`
               : '<span class="text-slate-500 text-xs">none</span>'}</td>
             <td class="p-3 text-xs">${s.provider_id
               ? `<span class="text-gold font-bold">${(providersList.find(p => p.id === s.provider_id) || {}).name || 'Provider'}</span>`
