@@ -888,12 +888,15 @@
 
       const token = localStorage.getItem('jr_admin_token');
       const providerId = document.getElementById('serviceSelectModal').dataset.providerId;
+      // The preview fetched full service data straight from the provider API,
+      // so send the selected services with it — no cache refresh needed.
+      const selectedServices = previewServices.filter(s => selectedServiceIds.has(s.upstreamId));
 
       try {
         const res = await fetch(`/api/admin/providers/${providerId}/import-selected`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ selectedIds: Array.from(selectedServiceIds) })
+          body: JSON.stringify({ services: selectedServices })
         });
         const data = await res.json();
         if (data.error) return alert(data.error);

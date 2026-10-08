@@ -1089,36 +1089,55 @@ app.post('/api/admin/providers/:id/import-selected', authenticateToken, requireA
   const provider = await pool.query('SELECT * FROM upstream_providers WHERE id = $1', [req.params.id]);
   if (!provider.rows.length) return res.status(404).json({ error: 'Provider not found.' });
 
-  const { selectedIds } = req.body;
-  if (!Array.isArray(selectedIds) || !selectedIds.length) {
-    return res.status(400).json({ error: 'No services selected.' });
-  }
+  const { selectedIds, services } = req.body;
 
   try {
-    const cachedServices = await pool.query(
-      'SELECT * FROM provider_services WHERE provider_id = $1 AND upstream_service_id = ANY($2::text[])',
-      [provider.rows[0].id, selectedIds]
-    );
-
-    if (!cachedServices.rows.length) {
-      return res.status(400).json({ error: 'No cached services found. Please refresh cache first.' });
+    // The preview popup fetches services straight from the provider API,
+    // so selected services arrive with full data and can be imported
+    // without a cache refresh. When only IDs are sent, fall back to the
+    // cached provider_services table.
+    let rows;
+    if (Array.isArray(services) && services.length) {
+      rows = services.map(s => ({
+        upstream_service_id: String(s.upstreamId ?? s.upstream_service_id ?? s.service ?? s.id ?? ''),
+        name: s.name,
+        category: s.category,
+        rate: s.rate,
+        min_quantity: s.min ?? s.min_quantity,
+        max_quantity: s.max ?? s.max_quantity,
+        description: s.description,
+        status: 'active'
+      })).filter(r => r.upstream_service_id);
+    } else {
+      if (!Array.isArray(selectedIds) || !selectedIds.length) {
+        return res.status(400).json({ error: 'No services selected.' });
+      }
+      const cachedServices = await pool.query(
+        'SELECT * FROM provider_services WHERE provider_id = $1 AND upstream_service_id = ANY($2::text[])',
+        [provider.rows[0].id, selectedIds]
+      );
+      if (!cachedServices.rows.length) {
+        return res.status(400).json({ error: 'No cached services found. Please refresh cache first.' });
+      }
+      rows = cachedServices.rows;
     }
 
     const markup = 1 + (Number(provider.rows[0].markup_percent) || 0) / 100;
     let added = 0;
     let updated = 0;
 
-    for (const cached of cachedServices.rows) {
-      const upstreamId = cached.upstream_service_id;
-      const name = cached.name;
-      const wholesaleRate = cached.rate;
-      const min = cached.min_quantity;
-      const max = cached.max_quantity;
-      const category = cached.category;
-      const description = cached.description || `Supplied by ${provider.rows[0].name}`;
-      const status = cached.status;
+    for (const row of rows) {
+      const upstreamId = String(row.upstream_service_id);
+      const name = row.name || `Service ${upstreamId}`;
+      const wholesaleRate = parseFloat(row.rate);
+      if (!Number.isFinite(wholesaleRate)) continue;
 
       const retailRate = parseFloat((wholesaleRate * markup).toFixed(4));
+      const min = parseInt(row.min_quantity) || 1;
+      const max = parseInt(row.max_quantity) || 1000000;
+      const category = row.category || 'Imported';
+      const description = row.description || `Supplied by ${provider.rows[0].name}`;
+      const status = row.status || 'active';
 
       const existing = await pool.query('SELECT id FROM services WHERE provider_id = $1 AND upstream_service_id = $2', [provider.rows[0].id, upstreamId]);
       if (existing.rows.length) {
@@ -1128,17 +1147,30 @@ app.post('/api/admin/providers/:id/import-selected', authenticateToken, requireA
         );
         updated++;
       } else {
-        await pool.query(
-          `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, provider_id, upstream_service_id, cost_per_1000, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-          [category, name, retailRate, min, max, description, provider.rows[0].id, upstreamId, wholesaleRate, status]
+        // Also check for duplicates by normalized name + category across all providers
+        const duplicate = await pool.query(
+          `SELECT id FROM services WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) AND LOWER(TRIM(category)) = LOWER(TRIM($2)) AND provider_id IS NOT NULL LIMIT 1`,
+          [name, category]
         );
-        added++;
+        if (duplicate.rows.length) {
+          await pool.query(
+            `UPDATE services SET rate_per_1000 = $1, min_quantity = $2, max_quantity = $3, description = $4, provider_id = $5, upstream_service_id = $6, cost_per_1000 = $7, status = $8 WHERE id = $9`,
+            [retailRate, min, max, description, provider.rows[0].id, upstreamId, wholesaleRate, status, duplicate.rows[0].id]
+          );
+          updated++;
+        } else {
+          await pool.query(
+            `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, provider_id, upstream_service_id, cost_per_1000, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+            [category, name, retailRate, min, max, description, provider.rows[0].id, upstreamId, wholesaleRate, status]
+          );
+          added++;
+        }
       }
     }
 
     await pool.query("UPDATE upstream_providers SET last_sync_at = CURRENT_TIMESTAMP WHERE id = $1", [provider.rows[0].id]);
 
-    res.json({ success: true, added, updated, total: selectedIds.length });
+    res.json({ success: true, added, updated, total: rows.length });
   } catch (err) {
     res.status(502).json({ success: false, error: err.message });
   }
