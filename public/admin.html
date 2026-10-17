@@ -1472,6 +1472,7 @@
       if (tabName === 'appearance') loadAppearance();
     }
 
+    async function applyThemeToSite(id){const t=localStorage.getItem("jr_admin_token");try{const r=await fetch("/api/admin/settings/themes/"+id+"/apply",{method:"POST",headers:{"Authorization":"Bearer "+t}});const d=await r.json();if(d.error){alert(d.error);return;}alert("Theme applied");loadAppearance();}catch(e){alert(e.message);}}
     function logoutAdmin() {
       localStorage.removeItem('jr_admin_token');
       location.reload();
