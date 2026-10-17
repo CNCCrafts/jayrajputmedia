@@ -158,6 +158,26 @@
           </section>
         </div>
 
+        <!-- Users Tab -->
+        <div id="admin-tab-users" class="admin-tab-panel hidden">
+          <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 pb-3 border-b border-slate-800 gap-3">
+              <h2 class="text-lg font-bold text-white flex items-center space-x-2"><i class="fa-solid fa-users text-emerald-400"></i><span>Users</span></h2>
+              <div class="flex gap-2 flex-wrap">
+                <input id="usersSearch" type="text" placeholder="Search email/name" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 outline-none" oninput="loadUsers()">
+                <button onclick="showUserAddModal()" class="px-3 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500"><i class="fa-solid fa-plus mr-1"></i>Add User</button>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-slate-300">
+                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800"><tr><th class="p-3">ID</th><th class="p-3">Name/Email</th><th class="p-3">Role</th><th class="p-3">Status</th><th class="p-3">Wallet (INR/USD/EUR)</th><th class="p-3">Joined</th><th class="p-3 text-center">Actions</th></tr></thead>
+                <tbody id="usersTbody" class="divide-y divide-slate-800"></tbody>
+              </table>
+            </div>
+            <div id="usersPagination" class="flex justify-between items-center mt-3 text-xs text-slate-400"></div>
+          </section>
+        </div>
+
         <!-- Services Tab -->
         <div id="admin-tab-services" class="admin-tab-panel space-y-6">
           <section class="bg-cardBg border border-gold/30 p-6 md:p-8 rounded-3xl shadow-xl">
@@ -421,9 +441,55 @@
               </h2>
             </div>
 
-            <p class="text-xs text-slate-400 mb-5">Upload images to Cloudinary and manage your media library. Images are stored in folder <code class="text-blue-400">jayrajputmedia/services</code>.</p>
+        <!-- Payments Tab -->
+        <div id="admin-tab-payments" class="admin-tab-panel hidden">
+          <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
+            <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
+              <h2 class="text-lg font-bold text-white flex items-center space-x-2"><i class="fa-solid fa-credit-card text-amber-400"></i><span>Payments</span></h2>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-slate-300">
+                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800"><tr><th class="p-3">Order ID</th><th class="p-3">User</th><th class="p-3">Amount</th><th class="p-3">Currency</th><th class="p-3">Status</th><th class="p-3">Gateway Order ID</th><th class="p-3">Created</th></tr></thead>
+                <tbody id="paymentsTbody" class="divide-y divide-slate-800"></tbody>
+              </table>
+            </div>
+            <div id="paymentsPagination" class="flex justify-between items-center mt-3 text-xs text-slate-400"></div>
+          </section>
+        </div>
 
-            <div class="bg-gradient-to-r from-blue-950/40 to-indigo-950/40 border border-blue-800/50 rounded-2xl p-5 mb-6">
+        <!-- Tickets Tab -->
+        <div id="admin-tab-tickets" class="admin-tab-panel hidden">
+          <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
+            <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
+              <h2 class="text-lg font-bold text-white flex items-center space-x-2"><i class="fa-solid fa-ticket text-rose-400"></i><span>Tickets</span></h2>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-slate-300">
+                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800"><tr><th class="p-3">ID</th><th class="p-3">User</th><th class="p-3">Subject</th><th class="p-3">Status</th><th class="p-3">Priority</th><th class="p-3">Created</th><th class="p-3">Last Update</th><th class="p-3 text-center">Actions</th></tr></thead>
+                <tbody id="ticketsTbody" class="divide-y divide-slate-800"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+
+        <!-- Appearance Tab -->
+        <div id="admin-tab-appearance" class="admin-tab-panel hidden">
+          <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
+            <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
+              <h2 class="text-lg font-bold text-white flex items-center space-x-2"><i class="fa-solid fa-palette text-purple-400"></i><span>Appearance &amp; Themes</span></h2>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
+                <h3 class="text-sm font-bold text-gold mb-2">Active Settings</h3>
+                <pre id="appearanceActive" class="text-xs text-slate-300 bg-slate-950 p-3 rounded-xl overflow-x-auto">Loading...</pre>
+              </div>
+              <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
+                <h3 class="text-sm font-bold text-gold mb-2">Themes</h3>
+                <div id="themesList" class="flex flex-col gap-2 text-xs text-slate-300"></div>
+              </div>
+            </div>
+          </section>
+        </div>
               <h3 class="text-sm font-bold text-blue-300 mb-3 flex items-center">
                 <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary
               </h3>
