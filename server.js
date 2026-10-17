@@ -184,6 +184,53 @@ async function initDb() {
         updated_at TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
       );
+
+      CREATE TABLE IF NOT EXISTS user_logins (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users (id),
+        ip TEXT,
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS user_service_prices (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users (id),
+        service_id INTEGER REFERENCES services (id),
+        custom_rate_per_1000 REAL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, service_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS ticket_replies (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER REFERENCES tickets (id),
+        sender_user_id INTEGER REFERENCES users (id),
+        is_admin BOOLEAN DEFAULT false,
+        message TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS site_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT
+      );
+
+      CREATE TABLE IF NOT EXISTS site_themes (
+        id SERIAL PRIMARY KEY,
+        name TEXT UNIQUE,
+        label TEXT,
+        palette_json TEXT,
+        banner_url TEXT,
+        is_active BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        name TEXT UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `);
     console.log('Database tables created successfully');
   } finally {
@@ -206,6 +253,8 @@ const addColumnIfMissing = async (table, column, definition) => {
   await addColumnIfMissing('services', 'image', 'TEXT');
   await addColumnIfMissing('orders', 'upstream_order_id', 'TEXT');
   await addColumnIfMissing('orders', 'cost', 'REAL DEFAULT 0');
+  await addColumnIfMissing('users', 'status', "TEXT DEFAULT 'active'");
+  await addColumnIfMissing('tickets', 'resolved_at', 'TIMESTAMP');
 
   // Insert default Admin if not exists
   const adminCheck = await pool.query('SELECT * FROM users WHERE email = $1', ['admin@jayrajputmediapower.com']);
@@ -243,6 +292,28 @@ const addColumnIfMissing = async (table, column, definition) => {
       );
     }
   }
+
+  // Seed default site themes if none exist
+  const themeCount = await pool.query("SELECT COUNT(*) AS n FROM site_themes");
+  if (parseInt(themeCount.rows[0].n) === 0) {
+    const defaultThemes = [
+      ['Default', 'Default', '{"primary":"#1e40af","accent":"#f59e0b","bg":"#ffffff","text":"#1f2937"}', null, true],
+      ['Diwali', 'Festive', '{"primary":"#d97706","accent":"#eab308","bg":"#fffff7","text":"#78350f"}', null, false],
+      ['Holi', 'Festive', '{"primary":"#ec4899","accent":"#a855f7","bg":"#fff0f6","text":"#7c2d7c"}', null, false],
+      ['Eid', 'Festive', '{"primary":"#0f766e","accent":"#2dd36f","bg":"#ecfdf5","text":"#064e35"}', null, false],
+      ['Christmas', 'Festive', '{"primary":"#b91c1c","accent":"#f59e0b","bg":"#ffeff1","text":"#7f1d1d"}', null, false]
+    ];
+    for (const t of defaultThemes) {
+      await pool.query(
+        `INSERT INTO site_themes (name, label, palette_json, banner_url, is_active) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (name) DO NOTHING`,
+        t
+      );
+    }
+  }
+
+  await pool.query(
+    `INSERT INTO site_settings (key, value) VALUES ('active_theme', 'Default') ON CONFLICT (key) DO NOTHING`
+  );
 })();
 
 // Middleware: Authentication
@@ -303,6 +374,11 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     const token = jwt.sign({ id: existingUser.id, email: existingUser.email, role: existingUser.role }, JWT_SECRET, { expiresIn: '7d' });
+
+    // Best-effort sign-in log (enables Admin > Users > Sign-in history). Non-blocking.
+    pool.query('INSERT INTO user_logins (user_id, ip, user_agent) VALUES ($1, $2, $3)',
+      [existingUser.id, req.ip || req.socket.remoteAddress || 'unknown', req.get('User-Agent') || '']).catch(() => {});
+
     res.json({
       token,
       user: {
@@ -1282,13 +1358,329 @@ app.put('/api/admin/orders/:id/status', authenticateToken, requireAdmin, async (
   const { status } = req.body;
   if (!status) return res.status(400).json({ error: 'Status is required.' });
 
-  const allowedStatuses = ['Pending', 'In Progress', 'Completed', 'Canceled', 'Refunded'];
-  if (!allowedStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status.' });
+  const allowedStatuses = ['Awaiting', 'Pending', 'Processing', 'In Progress', 'Inprogress', 'Completed', 'Cancelled', 'Failed', 'Canceled', 'Refunded'];
+  const statusSet = [...new Set(allowedStatuses)];
+  if (!statusSet.includes(status)) return res.status(400).json({ error: 'Invalid status.' });
 
   const result = await pool.query('UPDATE orders SET status = $1 WHERE id = $2 RETURNING *', [status, req.params.id]);
   if (!result.rows.length) return res.status(404).json({ error: 'Order not found.' });
 
   res.json({ order: result.rows[0] });
+});
+
+// ==================== ADMIN DASHBOARD ====================
+app.get('/api/admin/dashboard', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const userCount = await pool.query("SELECT COUNT(*) AS n FROM users WHERE role = 'user'");
+    const activeServices = await pool.query("SELECT COUNT(*) AS n FROM services WHERE status = 'active'");
+    const totalOrders = await pool.query('SELECT COUNT(*) AS n FROM orders');
+    const todayOrders = await pool.query("SELECT COUNT(*) AS n FROM orders WHERE created_at >= CURRENT_DATE");
+    const revenueTotal = await pool.query("SELECT COALESCE(SUM(charge),0) AS n FROM orders WHERE status = 'Completed'");
+    const revenueToday = await pool.query("SELECT COALESCE(SUM(charge),0) AS n FROM orders WHERE created_at >= CURRENT_DATE AND status = 'Completed'");
+    const pendingOrders = await pool.query("SELECT COUNT(*) AS n FROM orders WHERE status IN ('Awaiting','Pending','Processing','In Progress')");
+    const recentOrders = await pool.query(
+      `SELECT o.id, o.service_name, o.charge, o.currency, o.status, o.created_at, u.name AS user_name, u.email AS user_email
+       FROM orders o JOIN users u ON o.user_id = u.id ORDER BY o.id DESC LIMIT 8`
+    );
+    res.json({
+      users: parseInt(userCount.rows[0].n),
+      active_services: parseInt(activeServices.rows[0].n),
+      orders_total: parseInt(totalOrders.rows[0].n),
+      orders_today: parseInt(todayOrders.rows[0].n),
+      revenue_total: parseFloat(revenueTotal.rows[0].n),
+      revenue_today: parseFloat(revenueToday.rows[0].n),
+      pending_orders: parseInt(pendingOrders.rows[0].n),
+      recent_orders: recentOrders.rows
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== ADMIN USERS ====================
+app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+  const { q, page = 1, limit = 50 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+  const params = [];
+  let where = 'WHERE role = \'user\'';
+  if (q) {
+    where += ` AND (name ILIKE $${params.length + 1} OR email ILIKE $${params.length + 1})`;
+    params.push(`%${q}%`);
+  }
+  const countRes = await pool.query(`SELECT COUNT(*) AS total FROM users ${where}`, params);
+  const total = parseInt(countRes.rows[0].total);
+  const usersRes = await pool.query(
+    `SELECT id, name, email, role, wallet_inr, wallet_usd, wallet_eur, currency, status, referral_code, referred_by, created_at
+     FROM users ${where} ORDER BY id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, parseInt(limit), offset]
+  );
+  res.json({ users: usersRes.rows, total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
+});
+
+app.post('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
+  const { name, email, password, role = 'user' } = req.body;
+  if (!name || !email || !password) return res.status(400).json({ error: 'Name, email and password are required.' });
+  const existing = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+  if (existing.rows.length) return res.status(400).json({ error: 'Email already registered.' });
+  const hash = bcrypt.hashSync(password, 10);
+  const refCode = 'JR' + Math.random().toString(36).substring(2, 7).toUpperCase();
+  const info = await pool.query(
+    `INSERT INTO users (name, email, password, role, referral_code, status) VALUES ($1, $2, $3, $4, $5, 'active') RETURNING id`,
+    [name, email, hash, role, refCode]
+  );
+  res.status(201).json({ id: info.rows[0].id, name, email, role, referral_code: refCode });
+});
+
+app.put('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const { name, email, role } = req.body;
+  const updates = [];
+  const values = [];
+  let i = 1;
+  if (name !== undefined) { updates.push(`name = $${i++}`); values.push(name); }
+  if (email !== undefined) { updates.push(`email = $${i++}`); values.push(email); }
+  if (role !== undefined) { updates.push(`role = $${i++}`); values.push(role); }
+  if (!updates.length) return res.status(400).json({ error: 'No updatable fields provided.' });
+  values.push(req.params.id);
+  const result = await pool.query(`UPDATE users SET ${updates.join(', ')} WHERE id = $${i} RETURNING id, name, email, role`, values);
+  if (!result.rows.length) return res.status(404).json({ error: 'User not found.' });
+  res.json({ user: result.rows[0] });
+});
+
+app.put('/api/admin/users/:id/password', authenticateToken, requireAdmin, async (req, res) => {
+  const { password } = req.body;
+  if (!password || password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  const hash = bcrypt.hashSync(password, 10);
+  const result = await pool.query('UPDATE users SET password = $1 WHERE id = $2 RETURNING id', [hash, req.params.id]);
+  if (!result.rows.length) return res.status(404).json({ error: 'User not found.' });
+  res.json({ success: true });
+});
+
+app.post('/api/admin/users/:id/impersonate', authenticateToken, requireAdmin, async (req, res) => {
+  const target = await pool.query('SELECT id, email, name, role FROM users WHERE id = $1', [req.params.id]);
+  if (!target.rows.length) return res.status(404).json({ error: 'User not found.' });
+  const user = target.rows[0];
+  const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '8h' });
+  // Audit log (best-effort)
+  try {
+    await pool.query('INSERT INTO user_logins (user_id, ip, user_agent, created_at) VALUES ($1, $2, $3, CURRENT_TIMESTAMP)',
+      [user.id, req.ip || 'admin-impersonate', req.get('User-Agent') || 'admin']);
+  } catch (e) { /* log-only */ }
+  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role } });
+});
+
+app.get('/api/admin/users/:id/logins', authenticateToken, requireAdmin, async (req, res) => {
+  const rows = await pool.query('SELECT ip, user_agent, created_at FROM user_logins WHERE user_id = $1 ORDER BY created_at DESC LIMIT 100', [req.params.id]);
+  res.json({ logins: rows.rows });
+});
+
+app.patch('/api/admin/users/:id/suspend', authenticateToken, requireAdmin, async (req, res) => {
+  const { suspended } = req.body;
+  const status = suspended ? 'suspended' : 'active';
+  const result = await pool.query('UPDATE users SET status = $1 WHERE id = $2 RETURNING id, status', [status, req.params.id]);
+  if (!result.rows.length) return res.status(404).json({ error: 'User not found.' });
+  res.json({ user: result.rows[0] });
+});
+
+// ==================== SERVICES: duplicate + categories ====================
+app.post('/api/admin/services/:id/duplicate', authenticateToken, requireAdmin, async (req, res) => {
+  const original = await pool.query('SELECT category, name, rate_per_1000, min_quantity, max_quantity, description, image, status FROM services WHERE id = $1', [req.params.id]);
+  if (!original.rows.length) return res.status(404).json({ error: 'Service not found.' });
+  const s = original.rows[0];
+  const dup = await pool.query(
+    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, image, status)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+    [s.category, `${s.name} (copy)`, s.rate_per_1000, s.min_quantity, s.max_quantity, s.description, s.image, s.status]
+  );
+  res.status(201).json({ service: dup.rows[0] });
+});
+
+app.get('/api/admin/categories', authenticateToken, requireAdmin, async (req, res) => {
+  const rows = await pool.query('SELECT id, name FROM categories ORDER BY name');
+  res.json({ categories: rows.rows });
+});
+
+app.post('/api/admin/categories', authenticateToken, requireAdmin, async (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Category name is required.' });
+  try {
+    const result = await pool.query('INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id, name', [name.trim()]);
+    res.status(201).json({ category: result.rows[0] });
+  } catch (err) {
+    res.status(409).json({ error: 'Category already exists.' });
+  }
+});
+
+// ==================== ADMIN PAYMENTS LEDGER ====================
+app.get('/api/admin/payments', authenticateToken, requireAdmin, async (req, res) => {
+  const { q, status, page = 1, limit = 50 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+  const params = [];
+  let where = 'WHERE 1=1';
+  if (status && status !== 'all') {
+    where += ` AND po.payment_status = $${params.length + 1}`;
+    params.push(status);
+  }
+  if (q) {
+    where += ` AND (po.order_id ILIKE $${params.length + 1} OR u.name ILIKE $${params.length + 1} OR u.email ILIKE $${params.length + 1} OR po.amount::text ILIKE $${params.length + 1})`;
+    params.push(`%${q}%`);
+  }
+  const countRes = await pool.query(
+    `SELECT COUNT(*) AS total FROM payment_orders po JOIN users u ON po.user_id = u.id ${where}`,
+    params
+  );
+  const total = parseInt(countRes.rows[0].total);
+  const rows = await pool.query(
+    `SELECT po.order_id, po.amount, po.currency, po.payment_status, po.credited, po.created_at, po.updated_at,
+            u.id AS user_id, u.name AS user_name, u.email AS user_email
+     FROM payment_orders po JOIN users u ON po.user_id = u.id ${where} ORDER BY po.id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, parseInt(limit), offset]
+  );
+  res.json({ payments: rows.rows, total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
+});
+
+// User-facing: deposit (top-up) history for the signed-in customer
+app.get('/api/wallet/payments', authenticateToken, async (req, res) => {
+  const rows = await pool.query(
+    `SELECT order_id, amount, currency, payment_status, credited, created_at FROM payment_orders
+     WHERE user_id = $1 ORDER BY id DESC LIMIT 50`,
+    [req.user.id]
+  );
+  res.json(rows.rows);
+});
+
+// ==================== SUPPORT TICKETS (admin + user replies) ====================
+app.get('/api/admin/tickets', authenticateToken, requireAdmin, async (req, res) => {
+  const { status, q, page = 1, limit = 50 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+  const params = [];
+  let where = 'WHERE 1=1';
+  if (status && status !== 'all') {
+    where += ` AND t.status = $${params.length + 1}`;
+    params.push(status);
+  }
+  if (q) {
+    where += ` AND (t.subject ILIKE $${params.length + 1} OR t.message ILIKE $${params.length + 1} OR u.email ILIKE $${params.length + 1})`;
+    params.push(`%${q}%`);
+  }
+  const countRes = await pool.query(`SELECT COUNT(*) AS total FROM tickets t JOIN users u ON t.user_id = u.id ${where}`, params);
+  const total = parseInt(countRes.rows[0].total);
+  const rows = await pool.query(
+    `SELECT t.id, t.user_id, t.subject, t.message, t.request_type, t.status, t.order_id, t.created_at,
+            u.name AS user_name, u.email AS user_email
+     FROM tickets t JOIN users u ON t.user_id = u.id ${where} ORDER BY t.id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    [...params, parseInt(limit), offset]
+  );
+  res.json({ tickets: rows.rows, total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
+});
+
+app.get('/api/admin/tickets/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const ticket = await pool.query('SELECT t.*, u.name AS user_name, u.email AS user_email FROM tickets t JOIN users u ON t.user_id = u.id WHERE t.id = $1', [req.params.id]);
+  if (!ticket.rows.length) return res.status(404).json({ error: 'Ticket not found.' });
+  const replies = await pool.query(
+    `SELECT tr.id, tr.sender_user_id, tr.is_admin, tr.message, tr.created_at, u.name AS sender_name
+     FROM ticket_replies tr JOIN users u ON tr.sender_user_id = u.id WHERE tr.ticket_id = $1 ORDER BY tr.id ASC`,
+    [req.params.id]
+  );
+  ticket.rows[0].replies = replies.rows;
+  res.json(ticket.rows[0]);
+});
+
+app.post('/api/admin/tickets/:id/reply', authenticateToken, requireAdmin, async (req, res) => {
+  const { message, status } = req.body;
+  if (!message) return res.status(400).json({ error: 'Reply message is required.' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(
+      `INSERT INTO ticket_replies (ticket_id, sender_user_id, is_admin, message) VALUES ($1, $2, true, $3)`,
+      [req.params.id, req.user.id, message]
+    );
+    if (status) {
+      await client.query('UPDATE tickets SET status = $1 WHERE id = $2', [status, req.params.id]);
+    }
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    return res.status(500).json({ error: err.message });
+  } finally {
+    client.release();
+  }
+  res.json({ success: true });
+});
+
+app.post('/api/support/tickets/:id/reply', authenticateToken, async (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ error: 'Reply message is required.' });
+  const ticket = await pool.query('SELECT * FROM tickets WHERE id = $1 AND user_id = $2', [req.params.id, req.user.id]);
+  if (!ticket.rows.length) return res.status(404).json({ error: 'Ticket not found.' });
+  await pool.query(
+    `INSERT INTO ticket_replies (ticket_id, sender_user_id, is_admin, message) VALUES ($1, $2, false, $3)`,
+    [req.params.id, req.user.id, message]
+  );
+  res.status(201).json({ success: true });
+});
+
+app.put('/api/admin/tickets/:id/status', authenticateToken, requireAdmin, async (req, res) => {
+  const { status } = req.body;
+  const allowed = ['Open', 'In Progress', 'Resolved', 'Closed'];
+  if (!allowed.includes(status)) return res.status(400).json({ error: 'Invalid status.' });
+  const result = await pool.query('UPDATE tickets SET resolved_at = CASE WHEN $2 IN (\'Resolved\',\'Closed\') THEN CURRENT_TIMESTAMP ELSE resolved_at END, status = $1 WHERE id = $3 RETURNING *', [status, status, req.params.id]);
+  if (!result.rows.length) return res.status(404).json({ error: 'Ticket not found.' });
+  res.json({ ticket: result.rows[0] });
+});
+
+// ==================== APPEARANCE: site themes ====================
+// Public: returns the active theme palette so the site can apply it
+app.get('/api/settings', async (req, res) => {
+  try {
+    const setting = await pool.query("SELECT value FROM site_settings WHERE key = 'active_theme'");
+    const activeName = setting.rows.length ? setting.rows[0].value : 'Default';
+    const theme = await pool.query('SELECT name, label, palette_json, banner_url, is_active FROM site_themes WHERE name = $1', [activeName]);
+    if (!theme.rows.length) {
+      return res.json({ active_theme: 'Default', palette: {}, banner_url: null });
+    }
+    res.json({
+      active_theme: theme.rows[0].name,
+      label: theme.rows[0].label,
+      palette: theme.rows[0].palette_json ? JSON.parse(theme.rows[0].palette_json) : {},
+      banner_url: theme.rows[0].banner_url
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/settings/appearance', authenticateToken, requireAdmin, async (req, res) => {
+  const setting = await pool.query("SELECT value FROM site_settings WHERE key = 'active_theme'");
+  const activeName = setting.rows.length ? setting.rows[0].value : 'Default';
+  const themes = await pool.query('SELECT id, name, label, palette_json, banner_url, is_active FROM site_themes ORDER BY id');
+  res.json({ active_theme: activeName, themes: themes.rows });
+});
+
+app.put('/api/admin/settings/appearance', authenticateToken, requireAdmin, async (req, res) => {
+  const { active_theme } = req.body;
+  if (!active_theme) return res.status(400).json({ error: 'active_theme is required.' });
+  await pool.query(`INSERT INTO site_settings (key, value) VALUES ('active_theme', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`, [active_theme]);
+  res.json({ success: true, active_theme });
+});
+
+app.get('/api/admin/settings/themes', authenticateToken, requireAdmin, async (req, res) => {
+  const rows = await pool.query('SELECT id, name, label, palette_json, banner_url, is_active FROM site_themes ORDER BY id');
+  res.json({ themes: rows.rows });
+});
+
+app.post('/api/admin/settings/themes', authenticateToken, requireAdmin, async (req, res) => {
+  const { name, label, palette_json, banner_url } = req.body;
+  if (!name || !palette_json) return res.status(400).json({ error: 'name and palette_json are required.' });
+  try {
+    const result = await pool.query(
+      `INSERT INTO site_themes (name, label, palette_json, banner_url, is_active) VALUES ($1, $2, $3, $4, false) RETURNING id, name, label, palette_json, banner_url, is_active`,
+      [name, label || name, palette_json, banner_url || null]
+    );
+    res.status(201).json({ theme: result.rows[0] });
+  } catch (err) {
+    res.status(409).json({ error: 'Theme name already exists.' });
+  }
 });
 
 // ==================== RESELLER API (sell our services to other sites) ====================
