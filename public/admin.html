@@ -96,6 +96,12 @@
           </div>
 
           <nav class="space-y-1">
+            <button onclick="switchAdminTab('dashboard')" data-tab="dashboard" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
+              <i class="fa-solid fa-gauge-high w-5 text-blue-400"></i><span>Dashboard</span>
+            </button>
+            <button onclick="switchAdminTab('users')" data-tab="users" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
+              <i class="fa-solid fa-users w-5 text-emerald-400"></i><span>Users</span>
+            </button>
             <button onclick="switchAdminTab('services')" data-tab="services" class="admin-nav-btn active w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
               <i class="fa-solid fa-box-open w-5"></i><span>Services</span>
             </button>
@@ -103,11 +109,20 @@
               <i class="fa-solid fa-receipt w-5"></i><span>Orders</span>
               <span id="adminOrdersSidebarBadge" class="ml-auto text-[10px] bg-red-500/20 text-red-400 border border-red-500/40 px-2 py-0.5 rounded-full font-black hidden">0</span>
             </button>
+            <button onclick="switchAdminTab('payments')" data-tab="payments" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
+              <i class="fa-solid fa-credit-card w-5 text-amber-400"></i><span>Payments</span>
+            </button>
+            <button onclick="switchAdminTab('tickets')" data-tab="tickets" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
+              <i class="fa-solid fa-ticket w-5 text-rose-400"></i><span>Tickets</span>
+            </button>
             <button onclick="switchAdminTab('providers')" data-tab="providers" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
               <i class="fa-solid fa-tower-broadcast w-5"></i><span>Providers</span>
             </button>
             <button onclick="switchAdminTab('uploads')" data-tab="uploads" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
-              <i class="fa-solid fa-cloud-arrow-up w-5"></i><span>Media</span>
+              <i class="fa-solid fa-cloud-arrow-up w-5 text-blue-400"></i><span>Uploads</span>
+            </button>
+            <button onclick="switchAdminTab('appearance')" data-tab="appearance" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
+              <i class="fa-solid fa-palette w-5 text-purple-400"></i><span>Appearance</span>
             </button>
           </nav>
 
@@ -124,6 +139,25 @@
 
       <!-- Main Content -->
       <main class="flex-1 min-w-0 space-y-6">
+        <!-- Dashboard Tab -->
+        <div id="admin-tab-dashboard" class="admin-tab-panel hidden">
+          <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
+            <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
+              <h2 class="text-lg font-bold text-white flex items-center space-x-2"><i class="fa-solid fa-gauge-high text-gold"></i><span>Dashboard</span></h2>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+              <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4"><div class="text-xs text-slate-400">Users (active)</div><div id="dashUsers" class="text-2xl font-black text-gold">0</div></div>
+              <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4"><div class="text-xs text-slate-400">Active Services</div><div id="dashServices" class="text-2xl font-black text-gold">0</div></div>
+              <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4"><div class="text-xs text-slate-400">Total Orders</div><div id="dashOrders" class="text-2xl font-black text-gold">0</div></div>
+              <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4"><div class="text-xs text-slate-400">Pending Orders</div><div id="dashPending" class="text-2xl font-black text-gold">0</div></div>
+              <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4"><div class="text-xs text-slate-400">Revenue Today</div><div id="dashRevenueToday" class="text-2xl font-black text-gold">₹0.00</div></div>
+              <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4"><div class="text-xs text-slate-400">Revenue Total</div><div id="dashRevenueTotal" class="text-2xl font-black text-gold">₹0.00</div></div>
+            </div>
+            <h3 class="text-sm font-bold text-gold mb-2">Recent Orders</h3>
+            <div class="overflow-x-auto"><table class="w-full text-left text-sm text-slate-300"><thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800"><tr><th class="p-2">ID</th><th class="p-2">Service</th><th class="p-2">User</th><th class="p-2">Charge</th><th class="p-2">Status</th></tr></thead><tbody id="dashRecentOrders" class="divide-y divide-slate-800"></tbody></table></div>
+          </section>
+        </div>
+
         <!-- Services Tab -->
         <div id="admin-tab-services" class="admin-tab-panel space-y-6">
           <section class="bg-cardBg border border-gold/30 p-6 md:p-8 rounded-3xl shadow-xl">
@@ -1043,6 +1077,33 @@
       loadAdminServices();
     }
 
+    // ==================== ADMIN DASHBOARD ====================
+    async function loadDashboard() {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const res = await fetch('/api/admin/dashboard', { headers: { 'Authorization': `Bearer ${token}` } });
+        const d = await res.json();
+        document.getElementById('dashUsers').textContent = d.users ?? 0;
+        document.getElementById('dashServices').textContent = d.active_services ?? 0;
+        document.getElementById('dashOrders').textContent = d.orders_total ?? 0;
+        document.getElementById('dashPending').textContent = d.pending_orders ?? 0;
+        document.getElementById('dashRevenueToday').textContent = `₹${Number(d.revenue_today || 0).toFixed(2)}`;
+        document.getElementById('dashRevenueTotal').textContent = `₹${Number(d.revenue_total || 0).toFixed(2)}`;
+        const tbody = document.getElementById('dashRecentOrders');
+        tbody.innerHTML = (d.recent_orders || []).map(o => `
+          <tr class="hover:bg-slate-900/40">
+            <td class="p-2 text-xs text-slate-400">#${o.id}</td>
+            <td class="p-2 text-xs text-slate-300 truncate max-w-[200px]">${o.service_name}</td>
+            <td class="p-2 text-xs text-slate-300">${o.user_email}</td>
+            <td class="p-2 text-xs text-gold font-mono">₹${Number(o.charge).toFixed(2)}</td>
+            <td class="p-2 text-xs text-slate-400">${o.status}</td>
+          </tr>
+        `).join('') || '<tr><td colspan="5" class="p-3 text-center text-xs text-slate-500">No recent orders.</td></tr>';
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     // ==================== UPSTREAM PROVIDERS ====================
     async function loadProviders() {
       const token = localStorage.getItem('jr_admin_token');
@@ -1338,6 +1399,11 @@
       if (tabName === 'services') { loadAdminServices(); loadServiceImages(); }
       if (tabName === 'providers') loadProviders();
       if (tabName === 'uploads') { loadServiceImages(); loadAdminServices(); }
+      if (tabName === 'dashboard') loadDashboard();
+      if (tabName === 'users') loadUsers();
+      if (tabName === 'payments') loadPayments();
+      if (tabName === 'tickets') loadTickets();
+      if (tabName === 'appearance') loadAppearance();
     }
 
     function logoutAdmin() {
