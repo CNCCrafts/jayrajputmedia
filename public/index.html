@@ -2256,6 +2256,9 @@
       window.open(whatsappURL, '_blank');
     });
   </script>
+
+    async function applyTheme(){try{const r=await fetch("/api/settings");const st=await r.json();const pl=st.palette||{};const root=document.documentElement;root.style.setProperty("--primary",pl.primary||"#1e40af");root.style.setProperty("--accent",pl.accent||"#f59e0b");root.style.setProperty("--bg",pl.bg||"#ffffff");root.style.setProperty("--text",pl.text||"#1f2937");}catch(e){}};
+    document.addEventListener("DOMContentLoaded",function(){applyTheme();});
 </body>
 </html>
 
