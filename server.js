@@ -1667,7 +1667,18 @@ app.put('/api/admin/settings/appearance', authenticateToken, requireAdmin, async
 app.get('/api/admin/settings/themes', authenticateToken, requireAdmin, async (req, res) => {
   const rows = await pool.query('SELECT id, name, label, palette_json, banner_url, is_active FROM site_themes ORDER BY id');
   res.json({ themes: rows.rows });
+}app.post('/api/admin/settings/themes/:id/apply', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const id=req.params.id;
+    await pool.query('UPDATE site_themes SET is_active=false');
+    await pool.query('UPDATE site_themes SET is_active=true WHERE id=', [id]);
+    res.json({success:true});
+  } catch (e) {
+    res.status(500).json({error:e.message});
+  }
 });
+
+);
 
 app.post('/api/admin/settings/themes', authenticateToken, requireAdmin, async (req, res) => {
   const { name, label, palette_json, banner_url } = req.body;
