@@ -210,6 +210,82 @@
       width: 52px;
       height: 52px;
     }
+    :root {
+      --theme-primary: #1e40af;
+      --theme-accent: #f59e0b;
+      --theme-bg: #ffffff;
+      --theme-text: #1f2937;
+      --theme-surface: #ffffff;
+      --theme-body-font: "Plus Jakarta Sans", sans-serif;
+      --theme-heading-font: Outfit, sans-serif;
+    }
+    body {
+      font-family: var(--theme-body-font) !important;
+    }
+    body h1,
+    body h2,
+    body h3,
+    body h4,
+    body .font-display {
+      font-family: var(--theme-heading-font) !important;
+    }
+    body .meta-gradient-bg,
+    body .ig-gradient-bg {
+      background: linear-gradient(135deg, var(--theme-primary), var(--theme-accent)) !important;
+    }
+    body [class*="text-fbBlue"] {
+      color: var(--theme-primary) !important;
+    }
+    body [class*="text-igPink"],
+    body [class*="text-igPurple"] {
+      color: var(--theme-accent) !important;
+    }
+    body [class*="bg-fbBlue"],
+    body [class*="bg-purple-600"] {
+      background-color: var(--theme-primary) !important;
+    }
+    html:not(.dark) body {
+      background-color: var(--theme-bg) !important;
+      color: var(--theme-text) !important;
+    }
+    html:not(.dark) body [class*="bg-white"],
+    html:not(.dark) body [class*="dark:bg-darkCard"] {
+      background-color: var(--theme-surface) !important;
+    }
+    html:not(.dark) body [class*="border-slate-200"],
+    html:not(.dark) body [class*="dark:border-darkBorder"] {
+      border-color: color-mix(in srgb, var(--theme-primary) 18%, #cbd5e1) !important;
+    }
+    html:not(.dark) body header {
+      background-color: color-mix(in srgb, var(--theme-surface) 90%, transparent) !important;
+    }
+    body[data-theme-layout="minimal"] .ticker-wrap {
+      display: none;
+    }
+    body[data-theme-layout="minimal"] main {
+      max-width: 64rem;
+    }
+    body[data-theme-layout="minimal"] #heroBranding {
+      border-radius: 1.25rem;
+      box-shadow: none;
+    }
+    body[data-theme-layout="editorial"] main {
+      max-width: 90rem;
+    }
+    body[data-theme-layout="editorial"] .ticker-wrap {
+      background: linear-gradient(90deg, var(--theme-primary), var(--theme-accent));
+      border-bottom-color: var(--theme-accent);
+    }
+    body[data-theme-layout="editorial"] .ticker-item {
+      color: #ffffff;
+    }
+    body[data-theme-layout="editorial"] #heroBranding {
+      min-height: 26rem;
+      border-radius: 1.5rem;
+    }
+    body[data-theme-layout="editorial"] #section-home > .grid {
+      grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    }
     @media (max-width: 640px) {
       .ticker-item {
         font-size: 10px;
@@ -395,6 +471,9 @@
   <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
     
     <section id="section-home" class="content-section space-y-12">
+      <div id="siteThemeBannerWrap" class="hidden overflow-hidden rounded-3xl border border-slate-200 dark:border-darkBorder shadow-socialCard">
+        <img id="siteThemeBanner" class="w-full max-h-56 object-cover" alt="Storefront theme banner">
+      </div>
       
       <div id="userWelcomeBanner" class="hidden p-6 sm:p-8 rounded-3xl meta-gradient-bg text-white shadow-igGlow flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
         <div class="relative z-10">
@@ -1211,6 +1290,44 @@
         icon.className = 'fa-solid fa-moon text-slate-700';
       }
       localStorage.setItem('jr_theme', mode);
+    }
+
+    async function applySiteTheme() {
+      try {
+        const response = await fetch('/api/settings');
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load the storefront theme.');
+        const palette = data.palette || {};
+        const root = document.documentElement;
+        const validColor = (value, fallback) => /^#[0-9a-fA-F]{6}$/.test(value || '') ? value : fallback;
+        root.style.setProperty('--theme-primary', validColor(palette.primary, '#1e40af'));
+        root.style.setProperty('--theme-accent', validColor(palette.accent, '#f59e0b'));
+        root.style.setProperty('--theme-bg', validColor(palette.bg, '#ffffff'));
+        root.style.setProperty('--theme-text', validColor(palette.text, '#1f2937'));
+        root.style.setProperty('--theme-surface', validColor(palette.surface, validColor(palette.bg, '#ffffff')));
+        const supportedFonts = ['Plus Jakarta Sans', 'Outfit', 'Georgia', 'Arial'];
+        const bodyFont = supportedFonts.includes(palette.font) ? palette.font : 'Plus Jakarta Sans';
+        const headingFont = supportedFonts.includes(palette.headingFont) ? palette.headingFont : 'Outfit';
+        root.style.setProperty('--theme-body-font', `"${bodyFont}", sans-serif`);
+        root.style.setProperty('--theme-heading-font', `"${headingFont}", sans-serif`);
+
+        const layout = ['classic', 'minimal', 'editorial'].includes(data.layout) ? data.layout : 'classic';
+        document.body.dataset.themeLayout = layout;
+        const bannerWrap = document.getElementById('siteThemeBannerWrap');
+        const bannerImage = document.getElementById('siteThemeBanner');
+        if (data.banner_url) {
+          const bannerUrl = new URL(data.banner_url, window.location.origin);
+          if (['http:', 'https:'].includes(bannerUrl.protocol)) {
+            bannerImage.src = bannerUrl.toString();
+            bannerWrap.classList.remove('hidden');
+          }
+        } else {
+          bannerImage.removeAttribute('src');
+          bannerWrap.classList.add('hidden');
+        }
+      } catch (error) {
+        console.error('Could not apply the public theme pack:', error);
+      }
     }
 
     const menuToggleBtn = document.getElementById('menuToggleBtn');
@@ -2186,6 +2303,7 @@
 
     window.addEventListener('DOMContentLoaded', async () => {
       initTheme();
+      applySiteTheme();
       await fetchUserProfile();
       loadServicesData();
       loadPaymentHistory();
@@ -2257,8 +2375,6 @@
     });
   </script>
 
-    async function applyTheme(){try{const r=await fetch("/api/settings");const st=await r.json();const pl=st.palette||{};const root=document.documentElement;root.style.setProperty("--primary",pl.primary||"#1e40af");root.style.setProperty("--accent",pl.accent||"#f59e0b");root.style.setProperty("--bg",pl.bg||"#ffffff");root.style.setProperty("--text",pl.text||"#1f2937");}catch(e){}};
-    document.addEventListener("DOMContentLoaded",function(){applyTheme();});
 </body>
 </html>
 

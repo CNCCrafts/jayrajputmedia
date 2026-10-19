@@ -476,16 +476,108 @@
         <div id="admin-tab-appearance" class="admin-tab-panel hidden">
           <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
             <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
-              <h2 class="text-lg font-bold text-white flex items-center space-x-2"><i class="fa-solid fa-palette text-purple-400"></i><span>Appearance &amp; Themes</span></h2>
-            </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
-                <h3 class="text-sm font-bold text-gold mb-2">Active Settings</h3>
-                <pre id="appearanceActive" class="text-xs text-slate-300 bg-slate-950 p-3 rounded-xl overflow-x-auto">Loading...</pre>
+              <div>
+                <h2 class="text-lg font-bold text-white flex items-center space-x-2"><i class="fa-solid fa-palette text-purple-400"></i><span>Appearance &amp; Theme Packs</span></h2>
+                <p class="text-xs text-slate-400 mt-1">Preview storefront styles, customize a pack, then publish it to the public website.</p>
               </div>
-              <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
-                <h3 class="text-sm font-bold text-gold mb-2">Themes</h3>
-                <div id="themesList" class="flex flex-col gap-2 text-xs text-slate-300"></div>
+            </div>
+            <p id="appearanceStatus" class="hidden text-xs rounded-xl px-3 py-2 mb-5" role="status" aria-live="polite"></p>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+              <div class="space-y-5">
+                <form id="themeForm" class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 space-y-4">
+                  <div>
+                    <h3 class="text-sm font-bold text-gold">Build a custom theme pack</h3>
+                    <p class="text-[11px] text-slate-400 mt-1">Changes update the preview as you edit. Save first, then choose Apply to publish.</p>
+                  </div>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label class="text-[11px] text-slate-400">Pack name
+                      <input id="themeName" required maxlength="60" placeholder="Ocean Breeze" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none focus:border-purple-500">
+                    </label>
+                    <label class="text-[11px] text-slate-400">Display label
+                      <input id="themeLabel" required maxlength="80" placeholder="Summer Collection" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none focus:border-purple-500">
+                    </label>
+                  </div>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <label class="text-[11px] text-slate-400">Primary
+                      <input id="themePrimary" type="color" value="#1e40af" class="mt-1 block h-10 w-full rounded-lg border border-slate-700 bg-slate-900 p-1">
+                    </label>
+                    <label class="text-[11px] text-slate-400">Accent
+                      <input id="themeAccent" type="color" value="#f59e0b" class="mt-1 block h-10 w-full rounded-lg border border-slate-700 bg-slate-900 p-1">
+                    </label>
+                    <label class="text-[11px] text-slate-400">Page background
+                      <input id="themeBg" type="color" value="#ffffff" class="mt-1 block h-10 w-full rounded-lg border border-slate-700 bg-slate-900 p-1">
+                    </label>
+                    <label class="text-[11px] text-slate-400">Text
+                      <input id="themeText" type="color" value="#1f2937" class="mt-1 block h-10 w-full rounded-lg border border-slate-700 bg-slate-900 p-1">
+                    </label>
+                    <label class="text-[11px] text-slate-400">Card surface
+                      <input id="themeSurface" type="color" value="#ffffff" class="mt-1 block h-10 w-full rounded-lg border border-slate-700 bg-slate-900 p-1">
+                    </label>
+                    <label class="text-[11px] text-slate-400">Page template
+                      <select id="themeLayout" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none focus:border-purple-500">
+                        <option value="classic">Classic storefront</option>
+                        <option value="minimal">Minimal studio</option>
+                        <option value="editorial">Editorial spotlight</option>
+                      </select>
+                    </label>
+                    <label class="text-[11px] text-slate-400">Body font
+                      <select id="themeFont" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none focus:border-purple-500">
+                        <option>Plus Jakarta Sans</option>
+                        <option>Outfit</option>
+                        <option>Georgia</option>
+                        <option>Arial</option>
+                      </select>
+                    </label>
+                    <label class="text-[11px] text-slate-400">Heading font
+                      <select id="themeHeadingFont" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none focus:border-purple-500">
+                        <option>Outfit</option>
+                        <option>Plus Jakarta Sans</option>
+                        <option>Georgia</option>
+                        <option>Arial</option>
+                      </select>
+                    </label>
+                    <label class="text-[11px] text-slate-400 sm:col-span-2">Optional banner image URL
+                      <input id="themeBannerUrl" type="url" maxlength="500" placeholder="https://example.com/banner.jpg" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none focus:border-purple-500">
+                    </label>
+                  </div>
+                  <button type="submit" class="w-full py-2.5 bg-purple-600 text-white font-bold rounded-xl text-xs hover:bg-purple-500 transition">
+                    <i class="fa-solid fa-floppy-disk mr-1"></i> Save Theme Pack
+                  </button>
+                </form>
+
+                <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-bold text-gold">Live storefront preview</h3>
+                    <span id="themePreviewLayout" class="text-[10px] uppercase tracking-wide text-slate-400">Classic template</span>
+                  </div>
+                  <div id="themePreview" class="overflow-hidden rounded-2xl border p-4 transition-colors">
+                    <img id="themePreviewBanner" class="hidden w-full h-24 object-cover rounded-xl mb-3" alt="Theme banner preview">
+                    <div id="themePreviewSurface" class="rounded-xl border p-4">
+                      <div class="flex items-center justify-between gap-3">
+                        <div>
+                          <p id="themePreviewLabel" class="text-[10px] uppercase tracking-widest opacity-70">Your storefront</p>
+                          <h4 id="themePreviewHeading" class="text-lg font-bold">Grow your audience</h4>
+                        </div>
+                        <button type="button" id="themePreviewButton" class="shrink-0 px-4 py-2 rounded-xl text-xs font-bold text-white">Explore services</button>
+                      </div>
+                      <p class="text-xs opacity-75 mt-3">A sample of your selected colors and typography.</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-5">
+                <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
+                  <h3 class="text-sm font-bold text-gold mb-2">Currently published</h3>
+                  <div id="appearanceActive" class="text-sm text-slate-200">Loading...</div>
+                </div>
+                <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4">
+                  <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-bold text-gold">Available theme packs</h3>
+                    <button type="button" onclick="loadAppearance()" class="text-[11px] text-slate-400 hover:text-white"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+                  </div>
+                  <div id="themesList" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-300"></div>
+                </div>
               </div>
             </div>
           </section>
@@ -1144,7 +1236,226 @@
     }
 
     // ==================== ADMIN DASHBOARD ====================
-        async function loadUsers(){const t=localStorage.getItem("jr_admin_token");try{const r=await fetch("/api/admin/users",{headers:{"Authorization":"Bearer "+t}});const d=await r.json();const tb=document.getElementById("usersTbody");tb.innerHTML=(d.users||[]).map(function(x){return "<tr><td class=\"p-3 text-xs\">#"+x.id+"</td><td class=\"p-3 text-xs\">"+(x.name||"")+"<br>"+x.email+"</td><td class=\"p-3 text-xs\">"+x.role+"</td><td class=\"p-3 text-xs\">"+(x.status||"active")+"</td><td class=\"p-3 text-xs\">"+(x.wallet_inr||0)+"</td></tr>";}).join("")||"<tr><td colspan=\"5\" class=\"p-3 text-xs\">No users</td></tr>";}catch(e){console.error(e);}}; async function loadPayments(){const t=localStorage.getItem("jr_admin_token");try{const r=await fetch("/api/admin/payments",{headers:{"Authorization":"Bearer "+t}});const d=await r.json();const tb=document.getElementById("paymentsTbody");tb.innerHTML=(d.payments||[]).map(function(x){return "<tr><td class=\"p-3 text-xs\">"+(x.order_id||"")+"</td><td class=\"p-3 text-xs\">"+(x.user_email||"")+"</td><td class=\"p-3 text-xs\">"+Number(x.amount).toFixed(2)+"</td><td class=\"p-3 text-xs\">"+x.currency+"</td><td class=\"p-3 text-xs\">"+x.payment_status+"</td></tr>";}).join("")||"<tr><td colspan=\"5\" class=\"p-3 text-xs\">No payments</td></tr>";}catch(e){console.error(e);}}; async function loadTickets(){const t=localStorage.getItem("jr_admin_token");try{const r=await fetch("/api/admin/tickets",{headers:{"Authorization":"Bearer "+t}});const d=await r.json();const tb=document.getElementById("ticketsTbody");tb.innerHTML=(d.tickets||[]).map(function(x){return "<tr><td class=\"p-3 text-xs\">#"+x.id+"</td><td class=\"p-3 text-xs\">"+(x.user_email||"")+"</td><td class=\"p-3 text-xs\">"+x.subject+"</td><td class=\"p-3 text-xs\">"+x.status+"</td><td class=\"p-3 text-xs\">"+(x.priority||"medium")+"</td></tr>";}).join("")||"<tr><td colspan=\"5\" class=\"p-3 text-xs\">No tickets</td></tr>";}catch(e){console.error(e);}}; async function loadAppearance(){const t=localStorage.getItem("jr_admin_token");try{const r=await fetch("/api/admin/settings/themes",{headers:{"Authorization":"Bearer "+t}});const d=await r.json();const list=document.getElementById("themesList");list.innerHTML=(d.themes||[]).map(function(x){return "<div class=\"flex items-center justify-between bg-slate-900 border border-slate-800 rounded-xl p-2\"><div>"+x.label+" ("+x.name+")"+(x.is_active?" ACTIVE":"")+"</div><button onclick=\"applyThemeToSite("+x.id+")\" class=\"px-2 py-1 bg-purple-600 text-white rounded-lg text-xs\">Apply</button></div>";}).join("");document.getElementById("appearanceActive").textContent=JSON.stringify(d.themes?.find(function(y){return y.is_active;})||d,null,2);}catch(e){console.error(e);}};
+    async function loadUsers() {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const response = await fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        const tbody = document.getElementById('usersTbody');
+        tbody.innerHTML = (data.users || []).map((user) => `<tr><td class="p-3 text-xs">#${user.id}</td><td class="p-3 text-xs">${user.name || ''}<br>${user.email}</td><td class="p-3 text-xs">${user.role}</td><td class="p-3 text-xs">${user.status || 'active'}</td><td class="p-3 text-xs">${user.wallet_inr || 0}</td></tr>`).join('') || '<tr><td colspan="5" class="p-3 text-xs">No users</td></tr>';
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function loadPayments() {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const response = await fetch('/api/admin/payments', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        const tbody = document.getElementById('paymentsTbody');
+        tbody.innerHTML = (data.payments || []).map((payment) => `<tr><td class="p-3 text-xs">${payment.order_id || ''}</td><td class="p-3 text-xs">${payment.user_email || ''}</td><td class="p-3 text-xs">${Number(payment.amount).toFixed(2)}</td><td class="p-3 text-xs">${payment.currency}</td><td class="p-3 text-xs">${payment.payment_status}</td></tr>`).join('') || '<tr><td colspan="5" class="p-3 text-xs">No payments</td></tr>';
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    async function loadTickets() {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const response = await fetch('/api/admin/tickets', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        const tbody = document.getElementById('ticketsTbody');
+        tbody.innerHTML = (data.tickets || []).map((ticket) => `<tr><td class="p-3 text-xs">#${ticket.id}</td><td class="p-3 text-xs">${ticket.user_email || ''}</td><td class="p-3 text-xs">${ticket.subject}</td><td class="p-3 text-xs">${ticket.status}</td><td class="p-3 text-xs">${ticket.priority || 'medium'}</td></tr>`).join('') || '<tr><td colspan="5" class="p-3 text-xs">No tickets</td></tr>';
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    function setAppearanceStatus(message, isError = false) {
+      const status = document.getElementById('appearanceStatus');
+      status.textContent = message;
+      status.className = `text-xs rounded-xl px-3 py-2 mb-5 ${isError ? 'bg-red-500/10 text-red-300 border border-red-500/30' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'}`;
+    }
+
+    function getThemePalette(theme) {
+      try {
+        return typeof theme.palette_json === 'string' ? JSON.parse(theme.palette_json) : (theme.palette_json || {});
+      } catch (error) {
+        console.error('Could not read theme palette:', error);
+        return {};
+      }
+    }
+
+    function renderThemePacks(themes) {
+      const list = document.getElementById('themesList');
+      list.replaceChildren();
+      if (!themes.length) {
+        list.textContent = 'No theme packs have been saved yet.';
+        return;
+      }
+
+      themes.forEach((theme) => {
+        const palette = getThemePalette(theme);
+        const card = document.createElement('article');
+        card.className = `rounded-xl border p-3 space-y-3 ${theme.is_active ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-800 bg-slate-900/70'}`;
+
+        const heading = document.createElement('div');
+        heading.className = 'flex items-start justify-between gap-2';
+        const titleWrap = document.createElement('div');
+        const title = document.createElement('h4');
+        title.className = 'font-bold text-white';
+        title.textContent = theme.label || theme.name;
+        const subtitle = document.createElement('p');
+        subtitle.className = 'text-[10px] text-slate-400 mt-0.5';
+        subtitle.textContent = `${theme.name} · ${(theme.layout || 'classic')} template`;
+        titleWrap.append(title, subtitle);
+        heading.append(titleWrap);
+        if (theme.is_active) {
+          const activeTag = document.createElement('span');
+          activeTag.className = 'shrink-0 text-[9px] uppercase tracking-wide rounded-full px-2 py-1 bg-emerald-500/15 text-emerald-300';
+          activeTag.textContent = 'Published';
+          heading.append(activeTag);
+        }
+
+        const swatches = document.createElement('div');
+        swatches.className = 'flex gap-2';
+        ['primary', 'accent', 'bg', 'text'].forEach((key) => {
+          const swatch = document.createElement('span');
+          swatch.className = 'h-5 w-5 rounded-full border border-white/20';
+          swatch.title = `${key}: ${palette[key] || 'not set'}`;
+          swatch.style.backgroundColor = palette[key] || '#334155';
+          swatches.append(swatch);
+        });
+
+        const actions = document.createElement('div');
+        actions.className = 'flex gap-2';
+        const previewButton = document.createElement('button');
+        previewButton.type = 'button';
+        previewButton.className = 'flex-1 px-2 py-1.5 rounded-lg border border-slate-700 text-slate-200 text-[11px] hover:bg-slate-800';
+        previewButton.textContent = 'Preview / Customize';
+        previewButton.addEventListener('click', () => previewThemePack(theme));
+        const applyButton = document.createElement('button');
+        applyButton.type = 'button';
+        applyButton.className = 'flex-1 px-2 py-1.5 rounded-lg bg-purple-600 text-white text-[11px] font-bold hover:bg-purple-500 disabled:opacity-50';
+        applyButton.textContent = theme.is_active ? 'Published' : 'Apply';
+        applyButton.disabled = Boolean(theme.is_active);
+        applyButton.addEventListener('click', () => applyThemeToSite(theme.id));
+        actions.append(previewButton, applyButton);
+
+        card.append(heading, swatches, actions);
+        list.append(card);
+      });
+    }
+
+    async function loadAppearance() {
+      const token = localStorage.getItem('jr_admin_token');
+      const active = document.getElementById('appearanceActive');
+      active.textContent = 'Loading published theme...';
+      try {
+        const response = await fetch('/api/admin/settings/themes', { headers: { Authorization: `Bearer ${token}` } });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load theme packs.');
+        const themes = Array.isArray(data.themes) ? data.themes : [];
+        const activeTheme = themes.find((theme) => theme.is_active);
+        active.textContent = activeTheme ? `${activeTheme.label || activeTheme.name} · ${activeTheme.name} · ${(activeTheme.layout || 'classic')} template` : 'No theme is published yet.';
+        renderThemePacks(themes);
+      } catch (error) {
+        active.textContent = 'Theme packs are unavailable.';
+        setAppearanceStatus(error.message, true);
+      }
+    }
+
+    function updateThemePreview() {
+      const palette = {
+        primary: document.getElementById('themePrimary').value,
+        accent: document.getElementById('themeAccent').value,
+        bg: document.getElementById('themeBg').value,
+        text: document.getElementById('themeText').value,
+        surface: document.getElementById('themeSurface').value
+      };
+      const layout = document.getElementById('themeLayout').value;
+      const preview = document.getElementById('themePreview');
+      const previewSurface = document.getElementById('themePreviewSurface');
+      preview.style.backgroundColor = palette.bg;
+      preview.style.color = palette.text;
+      preview.style.borderColor = palette.accent;
+      preview.style.fontFamily = document.getElementById('themeFont').value;
+      previewSurface.style.backgroundColor = palette.surface;
+      previewSurface.style.borderColor = palette.primary;
+      document.getElementById('themePreviewHeading').style.fontFamily = document.getElementById('themeHeadingFont').value;
+      document.getElementById('themePreviewButton').style.background = `linear-gradient(135deg, ${palette.primary}, ${palette.accent})`;
+      document.getElementById('themePreviewLabel').textContent = document.getElementById('themeLabel').value || 'Your storefront';
+      document.getElementById('themePreviewLayout').textContent = `${layout} template`;
+      const banner = document.getElementById('themePreviewBanner');
+      const bannerUrl = document.getElementById('themeBannerUrl').value.trim();
+      try {
+        const parsed = new URL(bannerUrl);
+        if (['http:', 'https:'].includes(parsed.protocol)) {
+          banner.src = parsed.toString();
+          banner.classList.remove('hidden');
+        } else {
+          banner.classList.add('hidden');
+        }
+      } catch {
+        banner.removeAttribute('src');
+        banner.classList.add('hidden');
+      }
+      preview.dataset.layout = layout;
+      preview.style.borderRadius = layout === 'minimal' ? '0.75rem' : '1rem';
+      preview.style.padding = layout === 'editorial' ? '1.5rem' : '1rem';
+    }
+
+    function previewThemePack(theme) {
+      const palette = getThemePalette(theme);
+      document.getElementById('themeName').value = `${theme.name} Custom`;
+      document.getElementById('themeLabel').value = `${theme.label || theme.name} Custom`;
+      document.getElementById('themePrimary').value = palette.primary || '#1e40af';
+      document.getElementById('themeAccent').value = palette.accent || '#f59e0b';
+      document.getElementById('themeBg').value = palette.bg || '#ffffff';
+      document.getElementById('themeText').value = palette.text || '#1f2937';
+      document.getElementById('themeSurface').value = palette.surface || '#ffffff';
+      document.getElementById('themeFont').value = palette.font || 'Plus Jakarta Sans';
+      document.getElementById('themeHeadingFont').value = palette.headingFont || 'Outfit';
+      document.getElementById('themeLayout').value = ['classic', 'minimal', 'editorial'].includes(theme.layout) ? theme.layout : 'classic';
+      document.getElementById('themeBannerUrl').value = theme.banner_url || '';
+      updateThemePreview();
+    }
+
+    async function saveThemePack(event) {
+      event.preventDefault();
+      const token = localStorage.getItem('jr_admin_token');
+      const payload = {
+        name: document.getElementById('themeName').value.trim(),
+        label: document.getElementById('themeLabel').value.trim(),
+        layout: document.getElementById('themeLayout').value,
+        banner_url: document.getElementById('themeBannerUrl').value.trim() || null,
+        palette_json: {
+          primary: document.getElementById('themePrimary').value,
+          accent: document.getElementById('themeAccent').value,
+          bg: document.getElementById('themeBg').value,
+          text: document.getElementById('themeText').value,
+          surface: document.getElementById('themeSurface').value,
+          font: document.getElementById('themeFont').value,
+          headingFont: document.getElementById('themeHeadingFont').value
+        }
+      };
+      try {
+        const response = await fetch('/api/admin/settings/themes', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not save the theme pack.');
+        setAppearanceStatus(`Saved "${data.theme.label}". Preview it or apply it from the theme list.`);
+        document.getElementById('themeName').value = '';
+        document.getElementById('themeLabel').value = '';
+        await loadAppearance();
+      } catch (error) {
+        setAppearanceStatus(error.message, true);
+      }
+    }
     async function loadDashboard() {
       const token = localStorage.getItem('jr_admin_token');
       try {
@@ -1473,7 +1784,21 @@
       if (tabName === 'appearance') loadAppearance();
     }
 
-    async function applyThemeToSite(id){const t=localStorage.getItem("jr_admin_token");try{const r=await fetch("/api/admin/settings/themes/"+id+"/apply",{method:"POST",headers:{"Authorization":"Bearer "+t}});const d=await r.json();if(d.error){alert(d.error);return;}alert("Theme applied");loadAppearance();}catch(e){alert(e.message);}}
+    async function applyThemeToSite(id) {
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const response = await fetch(`/api/admin/settings/themes/${id}/apply`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not publish this theme.');
+        setAppearanceStatus(`"${data.active_theme}" is now published on the public website.`);
+        await loadAppearance();
+      } catch (error) {
+        setAppearanceStatus(error.message, true);
+      }
+    }
     function logoutAdmin() {
       localStorage.removeItem('jr_admin_token');
       location.reload();
@@ -1481,6 +1806,11 @@
 
     document.getElementById('svcImage').addEventListener('change', updateImagePreview);
 
+    document.getElementById('themeForm').addEventListener('submit', saveThemePack);
+    ['themeName', 'themeLabel', 'themePrimary', 'themeAccent', 'themeBg', 'themeText', 'themeSurface', 'themeFont', 'themeHeadingFont', 'themeLayout', 'themeBannerUrl']
+      .forEach((id) => document.getElementById(id).addEventListener('input', updateThemePreview));
+    document.getElementById('themeLayout').addEventListener('change', updateThemePreview);
+    updateThemePreview();
     window.addEventListener('DOMContentLoaded', checkAdminAuth);  </script>
 </body>
 </html>
