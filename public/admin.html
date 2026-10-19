@@ -1806,6 +1806,15 @@
 
     document.getElementById('svcImage').addEventListener('change', updateImagePreview);
 
+    function normalizeAdminTabPanels() {
+      const main = document.querySelector('#adminDashboard main');
+      ['payments', 'tickets', 'appearance'].forEach((tabName) => {
+        const panel = document.getElementById(`admin-tab-${tabName}`);
+        if (main && panel && panel.parentElement !== main) main.appendChild(panel);
+      });
+    }
+
+    normalizeAdminTabPanels();
     document.getElementById('themeForm').addEventListener('submit', saveThemePack);
     ['themeName', 'themeLabel', 'themePrimary', 'themeAccent', 'themeBg', 'themeText', 'themeSurface', 'themeFont', 'themeHeadingFont', 'themeLayout', 'themeBannerUrl']
       .forEach((id) => document.getElementById(id).addEventListener('input', updateThemePreview));
