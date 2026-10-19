@@ -440,6 +440,48 @@
                 <i class="fa-solid fa-cloud-arrow-up text-blue-400"></i><span>Media Library & Uploads</span>
               </h2>
             </div>
+            <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 mb-6">
+              <h3 class="text-sm font-bold text-blue-300 mb-3 flex items-center">
+                <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary
+              </h3>
+              <form onsubmit="handleCloudinaryUpload(event)" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                <div class="md:col-span-1">
+                  <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Image File</label>
+                  <input type="file" id="cloudinaryFile" accept="image/*" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
+                </div>
+                <div class="md:col-span-1">
+                  <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Assign to Category</label>
+                  <select id="uploadCategory" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-blue-500 outline-none text-sm">
+                    <option value="">Loading categories...</option>
+                  </select>
+                </div>
+                <div class="md:col-span-2">
+                  <button type="submit" id="uploadCloudinaryBtn" class="w-full py-2.5 bg-blue-600 text-white font-extrabold rounded-xl text-xs uppercase tracking-wider hover:bg-blue-500 transition">
+                    <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+              <div>
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Category</label>
+                <select id="bulkCategory" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-gold outline-none text-sm">
+                  <option value="">Loading categories...</option>
+                </select>
+              </div>
+              <div class="md:col-span-2">
+                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Image</label>
+                <select id="bulkImage" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-gold outline-none text-sm">
+                  <option value="">Choose an image...</option>
+                </select>
+              </div>
+              <button onclick="bulkAssignImage()" class="py-2.5 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl text-xs uppercase tracking-wider hover:brightness-110 transition">
+                Assign to Category
+              </button>
+            </div>
+          </section>
+        </div>
 
         <!-- Payments Tab -->
         <div id="admin-tab-payments" class="admin-tab-panel hidden">
@@ -579,47 +621,6 @@
                   <div id="themesList" class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-slate-300"></div>
                 </div>
               </div>
-            </div>
-          </section>
-        </div>
-              <h3 class="text-sm font-bold text-blue-300 mb-3 flex items-center">
-                <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary
-              </h3>
-              <form onsubmit="handleCloudinaryUpload(event)" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-                <div class="md:col-span-1">
-                  <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Image File</label>
-                  <input type="file" id="cloudinaryFile" accept="image/*" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2 text-white text-xs file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-500">
-                </div>
-                <div class="md:col-span-1">
-                  <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Assign to Category</label>
-                  <select id="uploadCategory" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-blue-500 outline-none text-sm">
-                    <option value="">Loading categories...</option>
-                  </select>
-                </div>
-                <div class="md:col-span-2">
-                  <button type="submit" id="uploadCloudinaryBtn" class="w-full py-2.5 bg-blue-600 text-white font-extrabold rounded-xl text-xs uppercase tracking-wider hover:bg-blue-500 transition">
-                    <i class="fa-solid fa-cloud-arrow-up mr-2"></i>Upload to Cloudinary
-                  </button>
-                </div>
-              </form>
-            </div>
-
-            <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4 mb-6 grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
-              <div>
-                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Category</label>
-                <select id="bulkCategory" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-gold outline-none text-sm">
-                  <option value="">Loading categories...</option>
-                </select>
-              </div>
-              <div class="md:col-span-2">
-                <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Image</label>
-                <select id="bulkImage" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white focus:border-gold outline-none text-sm">
-                  <option value="">Choose an image...</option>
-                </select>
-              </div>
-              <button onclick="bulkAssignImage()" class="py-2.5 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl text-xs uppercase tracking-wider hover:brightness-110 transition">
-                Assign to Category
-              </button>
             </div>
           </section>
         </div>
