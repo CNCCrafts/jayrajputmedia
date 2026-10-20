@@ -491,7 +491,7 @@
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-sm text-slate-300">
-                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800"><tr><th class="p-3">Order ID</th><th class="p-3">User</th><th class="p-3">Amount</th><th class="p-3">Currency</th><th class="p-3">Status</th><th class="p-3">Gateway Order ID</th><th class="p-3">Created</th></tr></thead>
+                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800"><tr><th class="p-3">Order / Transaction</th><th class="p-3">User</th><th class="p-3">Amount</th><th class="p-3">Currency</th><th class="p-3">Status</th><th class="p-3">Method</th><th class="p-3">Created</th><th class="p-3 text-center">Actions</th></tr></thead>
                 <tbody id="paymentsTbody" class="divide-y divide-slate-800"></tbody>
               </table>
             </div>
@@ -625,6 +625,34 @@
           </section>
         </div>
       </main>
+    </div>
+  </div>
+
+  <div id="userAddModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-cardBg w-full max-w-md rounded-3xl border border-cardBorder shadow-2xl p-6 sm:p-8 space-y-5">
+      <div class="flex items-center justify-between">
+        <h3 class="text-lg font-black text-white">Add Customer</h3>
+        <button type="button" onclick="closeUserAddModal()" class="text-slate-400 hover:text-white" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="userAddForm" onsubmit="handleUserAdd(event)" class="space-y-4">
+        <div>
+          <label for="newUserName" class="block text-xs uppercase font-bold text-slate-400 mb-1">Name</label>
+          <input id="newUserName" type="text" required maxlength="120" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-gold">
+        </div>
+        <div>
+          <label for="newUserEmail" class="block text-xs uppercase font-bold text-slate-400 mb-1">Email</label>
+          <input id="newUserEmail" type="email" required maxlength="254" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-gold">
+        </div>
+        <div>
+          <label for="newUserPassword" class="block text-xs uppercase font-bold text-slate-400 mb-1">Temporary Password</label>
+          <input id="newUserPassword" type="password" required minlength="6" autocomplete="new-password" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-gold">
+        </div>
+        <p id="userAddError" class="hidden text-xs text-red-300" role="alert"></p>
+        <div class="flex gap-3 pt-1">
+          <button type="button" onclick="closeUserAddModal()" class="flex-1 py-3 bg-slate-800 text-slate-200 font-bold rounded-xl">Cancel</button>
+          <button id="userAddSubmit" type="submit" class="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500">Create Customer</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -1237,13 +1265,57 @@
     }
 
     // ==================== ADMIN DASHBOARD ====================
+    function showUserAddModal() {
+      document.getElementById('userAddForm').reset();
+      document.getElementById('userAddError').classList.add('hidden');
+      document.getElementById('userAddModal').classList.remove('hidden');
+      document.getElementById('newUserName').focus();
+    }
+
+    function closeUserAddModal() {
+      document.getElementById('userAddModal').classList.add('hidden');
+    }
+
+    async function handleUserAdd(event) {
+      event.preventDefault();
+      const submit = document.getElementById('userAddSubmit');
+      const error = document.getElementById('userAddError');
+      submit.disabled = true;
+      submit.textContent = 'Creating...';
+      error.classList.add('hidden');
+
+      try {
+        const response = await fetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('jr_admin_token')}` },
+          body: JSON.stringify({
+            name: document.getElementById('newUserName').value.trim(),
+            email: document.getElementById('newUserEmail').value.trim(),
+            password: document.getElementById('newUserPassword').value,
+            role: 'user'
+          })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not create customer.');
+        closeUserAddModal();
+        await loadUsers();
+        alert(`Customer ${data.email} was created successfully.`);
+      } catch (err) {
+        error.textContent = err.message;
+        error.classList.remove('hidden');
+      } finally {
+        submit.disabled = false;
+        submit.textContent = 'Create Customer';
+      }
+    }
+
     async function loadUsers() {
       const token = localStorage.getItem('jr_admin_token');
       try {
         const response = await fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
         const tbody = document.getElementById('usersTbody');
-        tbody.innerHTML = (data.users || []).map((user) => `<tr><td class="p-3 text-xs">#${user.id}</td><td class="p-3 text-xs">${user.name || ''}<br>${user.email}</td><td class="p-3 text-xs">${user.role}</td><td class="p-3 text-xs">${user.status || 'active'}</td><td class="p-3 text-xs">${user.wallet_inr || 0}</td></tr>`).join('') || '<tr><td colspan="5" class="p-3 text-xs">No users</td></tr>';
+        tbody.innerHTML = (data.users || []).map((user) => `<tr><td class="p-3 text-xs">#${user.id}</td><td class="p-3 text-xs">${user.name || ''}<br>${user.email}</td><td class="p-3 text-xs">${user.role}</td><td class="p-3 text-xs">${user.status || 'active'}</td><td class="p-3 text-xs">${Number(user.wallet_inr || 0).toFixed(2)} / ${Number(user.wallet_usd || 0).toFixed(2)} / ${Number(user.wallet_eur || 0).toFixed(2)}</td><td class="p-3 text-xs">${user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</td><td class="p-3 text-center text-xs">—</td></tr>`).join('') || '<tr><td colspan="7" class="p-3 text-xs">No users</td></tr>';
       } catch (error) {
         console.error(error);
       }
@@ -1255,9 +1327,35 @@
         const response = await fetch('/api/admin/payments', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
         const tbody = document.getElementById('paymentsTbody');
-        tbody.innerHTML = (data.payments || []).map((payment) => `<tr><td class="p-3 text-xs">${payment.order_id || ''}</td><td class="p-3 text-xs">${payment.user_email || ''}</td><td class="p-3 text-xs">${Number(payment.amount).toFixed(2)}</td><td class="p-3 text-xs">${payment.currency}</td><td class="p-3 text-xs">${payment.payment_status}</td></tr>`).join('') || '<tr><td colspan="5" class="p-3 text-xs">No payments</td></tr>';
+        tbody.innerHTML = (data.payments || []).map((payment) => {
+          const canRefund = payment.record_type === 'payment' && payment.payment_status === 'PAID' && payment.credited && !payment.refunded;
+          const action = canRefund
+            ? `<button onclick="refundPayment('${encodeURIComponent(payment.order_id)}', this)" class="px-2 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-lg text-xs hover:bg-amber-500/20">Refund to Wallet</button>`
+            : (payment.record_type === 'payment' && payment.refunded ? '<span class="text-xs text-emerald-400">Refunded</span>' : '—');
+          return `<tr><td class="p-3 text-xs font-mono">${payment.order_id || ''}</td><td class="p-3 text-xs">${payment.user_name || ''}<br>${payment.user_email || ''}</td><td class="p-3 text-xs">${Number(payment.amount).toFixed(2)}</td><td class="p-3 text-xs">${payment.currency}</td><td class="p-3 text-xs">${payment.payment_status}</td><td class="p-3 text-xs">${payment.payment_method || ''}</td><td class="p-3 text-xs">${payment.created_at ? new Date(payment.created_at).toLocaleString() : ''}</td><td class="p-3 text-center">${action}</td></tr>`;
+        }).join('') || '<tr><td colspan="8" class="p-3 text-xs">No payments or wallet transactions</td></tr>';
       } catch (error) {
         console.error(error);
+      }
+    }
+
+    async function refundPayment(orderId, button) {
+      if (!confirm('Add this deposit amount to the customer’s wallet? This wallet credit can only be applied once.')) return;
+      button.disabled = true;
+      button.textContent = 'Processing...';
+      try {
+        const response = await fetch(`/api/admin/payments/${orderId}/refund`, {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('jr_admin_token')}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not refund this deposit.');
+        alert(data.message);
+        await loadPayments();
+      } catch (error) {
+        alert(error.message);
+        button.disabled = false;
+        button.textContent = 'Refund to Wallet';
       }
     }
 

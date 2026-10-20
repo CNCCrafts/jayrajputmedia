@@ -180,6 +180,7 @@ async function initDb() {
         payment_status TEXT DEFAULT 'PENDING',
         payment_session_id TEXT,
         credited INTEGER DEFAULT 0,
+        refunded INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
@@ -257,6 +258,7 @@ async function initializeAppData() {
   await addColumnIfMissing('users', 'status', "TEXT DEFAULT 'active'");
   await addColumnIfMissing('tickets', 'resolved_at', 'TIMESTAMP');
   await addColumnIfMissing('site_themes', 'layout', "TEXT NOT NULL DEFAULT 'classic'");
+  await addColumnIfMissing('payment_orders', 'refunded', 'INTEGER DEFAULT 0');
 
   // Insert default Admin if not exists
   const adminCheck = await pool.query('SELECT * FROM users WHERE email = $1', ['admin@jayrajputmediapower.com']);
@@ -1534,32 +1536,108 @@ app.get('/api/admin/payments', authenticateToken, requireAdmin, async (req, res)
   const params = [];
   let where = 'WHERE 1=1';
   if (status && status !== 'all') {
-    where += ` AND po.payment_status = $${params.length + 1}`;
+    where += ` AND payment_status = $${params.length + 1}`;
     params.push(status);
   }
   if (q) {
-    where += ` AND (po.order_id ILIKE $${params.length + 1} OR u.name ILIKE $${params.length + 1} OR u.email ILIKE $${params.length + 1} OR po.amount::text ILIKE $${params.length + 1})`;
+    where += ` AND (order_id ILIKE $${params.length + 1} OR user_name ILIKE $${params.length + 1} OR user_email ILIKE $${params.length + 1} OR amount::text ILIKE $${params.length + 1})`;
     params.push(`%${q}%`);
   }
+  const ledger = `
+    WITH payment_ledger AS (
+      SELECT po.order_id, po.amount, po.currency, po.payment_status, po.credited, po.refunded,
+             po.created_at, po.updated_at, u.id AS user_id, u.name AS user_name, u.email AS user_email,
+             'Cashfree' AS payment_method, 'payment' AS record_type
+      FROM payment_orders po JOIN users u ON po.user_id = u.id
+      UNION ALL
+      SELECT 'WALLET-' || t.id::text AS order_id, t.amount, t.currency, UPPER(COALESCE(t.status, 'COMPLETED')) AS payment_status,
+             1 AS credited, 0 AS refunded, t.created_at, NULL AS updated_at,
+             u.id AS user_id, u.name AS user_name, u.email AS user_email, COALESCE(t.payment_method, 'Wallet transaction') AS payment_method,
+             'transaction' AS record_type
+      FROM transactions t JOIN users u ON t.user_id = u.id
+      WHERE COALESCE(t.payment_method, '') <> 'Cashfree'
+    )
+  `;
   const countRes = await pool.query(
-    `SELECT COUNT(*) AS total FROM payment_orders po JOIN users u ON po.user_id = u.id ${where}`,
+    `${ledger} SELECT COUNT(*) AS total FROM payment_ledger ${where}`,
     params
   );
   const total = parseInt(countRes.rows[0].total);
   const rows = await pool.query(
-    `SELECT po.order_id, po.amount, po.currency, po.payment_status, po.credited, po.created_at, po.updated_at,
-            u.id AS user_id, u.name AS user_name, u.email AS user_email
-     FROM payment_orders po JOIN users u ON po.user_id = u.id ${where} ORDER BY po.id DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+    `${ledger} SELECT order_id, amount, currency, payment_status, credited, refunded, created_at, updated_at,
+            user_id, user_name, user_email, payment_method, record_type
+     FROM payment_ledger ${where} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
     [...params, parseInt(limit), offset]
   );
   res.json({ payments: rows.rows, total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
 });
 
+app.post('/api/admin/payments/:orderId/refund', authenticateToken, requireAdmin, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const payment = await client.query(
+      `SELECT order_id, user_id, amount, currency, payment_status, credited, refunded
+       FROM payment_orders WHERE order_id = $1 FOR UPDATE`,
+      [req.params.orderId]
+    );
+    if (!payment.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Payment not found.' });
+    }
+
+    const record = payment.rows[0];
+    if (record.payment_status !== 'PAID' || !record.credited) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Only paid and credited deposits can be refunded to the wallet.' });
+    }
+    if (record.refunded) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'This deposit has already been refunded to the wallet.' });
+    }
+
+    const amount = Number(record.amount);
+    const walletField = WALLET_BY_CURRENCY[record.currency] || 'wallet_inr';
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error(`Invalid refund amount for payment ${record.order_id}`);
+    }
+
+    const userUpdate = await client.query(
+      `UPDATE users SET ${walletField} = ${walletField} + $1 WHERE id = $2`,
+      [amount, record.user_id]
+    );
+    if (userUpdate.rowCount !== 1) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Customer account not found.' });
+    }
+    await client.query('UPDATE payment_orders SET refunded = 1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $1', [record.order_id]);
+    await client.query(
+      `INSERT INTO transactions (user_id, amount, currency, payment_method, status)
+       VALUES ($1, $2, $3, 'Admin wallet refund', 'Completed')`,
+      [record.user_id, amount, record.currency]
+    );
+    await client.query('COMMIT');
+    res.json({ success: true, message: `Added ${amount.toFixed(2)} ${record.currency} to the customer's wallet.` });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Admin wallet refund failed:', err);
+    res.status(500).json({ error: 'Could not refund this deposit to the customer wallet.' });
+  } finally {
+    client.release();
+  }
+});
+
 // User-facing: deposit (top-up) history for the signed-in customer
 app.get('/api/wallet/payments', authenticateToken, async (req, res) => {
   const rows = await pool.query(
-    `SELECT order_id, amount, currency, payment_status, credited, created_at FROM payment_orders
-     WHERE user_id = $1 ORDER BY id DESC LIMIT 50`,
+    `SELECT 'TXN-' || id::text AS order_id, COALESCE(payment_method, 'Wallet transaction') AS description,
+            amount, currency, UPPER(COALESCE(status, 'COMPLETED')) AS payment_status,
+            TRUE AS credited, created_at
+     FROM transactions WHERE user_id = $1
+     UNION ALL
+     SELECT order_id, 'Wallet deposit' AS description, amount, currency, payment_status, (credited = 1) AS credited, created_at
+     FROM payment_orders WHERE user_id = $1 AND credited = 0
+     ORDER BY created_at DESC LIMIT 50`,
     [req.user.id]
   );
   res.json(rows.rows);
@@ -2123,15 +2201,6 @@ app.post('/api/cashfree/webhook', async (req, res) => {
     console.error('Cashfree Webhook Error:', error.message);
     res.status(500).json({ success: false, error: 'Webhook processing failed' });
   }
-});
-
-/** Deposit history for the signed-in user */
-app.get('/api/wallet/payments', authenticateToken, async (req, res) => {
-  const rows = await pool.query(`
-    SELECT order_id, amount, currency, payment_status, credited, created_at
-    FROM payment_orders WHERE user_id = $1 ORDER BY id DESC LIMIT 50
-  `, [req.user.id]);
-  res.json(rows.rows);
 });
 
 // Global error handler
