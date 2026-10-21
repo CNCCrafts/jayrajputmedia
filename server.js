@@ -1706,11 +1706,21 @@ app.get('/api/admin/tickets/:id', authenticateToken, requireAdmin, async (req, r
 });
 
 app.post('/api/admin/tickets/:id/reply', authenticateToken, requireAdmin, async (req, res) => {
-  const { message, status } = req.body;
+  const message = req.body && typeof req.body.message === 'string' ? req.body.message.trim() : '';
+  const { status } = req.body || {};
   if (!message) return res.status(400).json({ error: 'Reply message is required.' });
+  if (message.length > 5000) return res.status(400).json({ error: 'Reply message cannot exceed 5000 characters.' });
+  if (status && !['Open', 'In Progress', 'Resolved', 'Closed'].includes(status)) {
+    return res.status(400).json({ error: 'Invalid status.' });
+  }
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const ticket = await client.query('SELECT id FROM tickets WHERE id = $1 FOR UPDATE', [req.params.id]);
+    if (!ticket.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Ticket not found.' });
+    }
     await client.query(
       `INSERT INTO ticket_replies (ticket_id, sender_user_id, is_admin, message) VALUES ($1, $2, true, $3)`,
       [req.params.id, req.user.id, message]

@@ -507,7 +507,7 @@
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-sm text-slate-300">
-                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800"><tr><th class="p-3">ID</th><th class="p-3">User</th><th class="p-3">Subject</th><th class="p-3">Status</th><th class="p-3">Priority</th><th class="p-3">Created</th><th class="p-3">Last Update</th><th class="p-3 text-center">Actions</th></tr></thead>
+                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800"><tr><th class="p-3">ID</th><th class="p-3">User</th><th class="p-3">Subject</th><th class="p-3">Status</th><th class="p-3">Created</th><th class="p-3 text-center">Actions</th></tr></thead>
                 <tbody id="ticketsTbody" class="divide-y divide-slate-800"></tbody>
               </table>
             </div>
@@ -651,6 +651,28 @@
         <div class="flex gap-3 pt-1">
           <button type="button" onclick="closeUserAddModal()" class="flex-1 py-3 bg-slate-800 text-slate-200 font-bold rounded-xl">Cancel</button>
           <button id="userAddSubmit" type="submit" class="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500">Create Customer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="ticketConversationModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-cardBg w-full max-w-2xl max-h-[90vh] rounded-3xl border border-cardBorder shadow-2xl flex flex-col">
+      <div class="p-6 border-b border-slate-800 flex items-center justify-between">
+        <div>
+          <h3 id="ticketConversationTitle" class="text-lg font-black text-white">Ticket conversation</h3>
+          <p id="ticketConversationMeta" class="text-xs text-slate-400 mt-1"></p>
+        </div>
+        <button type="button" onclick="closeTicketConversation()" class="text-slate-400 hover:text-white" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div id="ticketConversationMessages" class="p-6 space-y-4 overflow-y-auto flex-1"></div>
+      <form id="ticketReplyForm" onsubmit="submitTicketReply(event)" class="p-6 border-t border-slate-800 space-y-3">
+        <label for="ticketReplyMessage" class="block text-xs uppercase font-bold text-slate-400">Add a comment</label>
+        <textarea id="ticketReplyMessage" required maxlength="5000" rows="3" placeholder="Write a reply to the customer..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-gold"></textarea>
+        <p id="ticketReplyError" class="hidden text-xs text-red-300" role="alert"></p>
+        <div class="flex justify-end gap-3">
+          <button type="button" onclick="closeTicketConversation()" class="px-4 py-2 bg-slate-800 text-slate-200 font-bold rounded-xl text-sm">Close</button>
+          <button id="ticketReplySubmit" type="submit" class="px-4 py-2 bg-rose-600 text-white font-bold rounded-xl text-sm hover:bg-rose-500">Send Comment</button>
         </div>
       </form>
     </div>
@@ -1374,9 +1396,140 @@
         const response = await fetch('/api/admin/tickets', { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
         const tbody = document.getElementById('ticketsTbody');
-        tbody.innerHTML = (data.tickets || []).map((ticket) => `<tr><td class="p-3 text-xs">#${ticket.id}</td><td class="p-3 text-xs">${ticket.user_email || ''}</td><td class="p-3 text-xs">${ticket.subject}</td><td class="p-3 text-xs">${ticket.status}</td><td class="p-3 text-xs">${ticket.priority || 'medium'}</td></tr>`).join('') || '<tr><td colspan="5" class="p-3 text-xs">No tickets</td></tr>';
+        if (!response.ok) throw new Error(data.error || 'Could not load tickets.');
+        tbody.innerHTML = (data.tickets || []).map((ticket) => {
+          const statuses = [
+            ['Open', 'Open'],
+            ['In Progress', 'In Progress'],
+            ['Resolved', 'Completed'],
+            ['Closed', 'Closed']
+          ];
+          const statusOptions = statuses.map(([value, label]) => `<option value="${value}" ${ticket.status === value ? 'selected' : ''}>${label}</option>`).join('');
+          return `<tr>
+            <td class="p-3 text-xs">#${ticket.id}</td>
+            <td class="p-3 text-xs">${escapeTicketHtml(ticket.user_email || '')}</td>
+            <td class="p-3 text-xs">${escapeTicketHtml(ticket.subject || '')}</td>
+            <td class="p-3"><select aria-label="Ticket #${ticket.id} status" data-current-status="${escapeTicketHtml(ticket.status || 'Open')}" onfocus="this.dataset.previousStatus=this.value" onchange="updateTicketStatus(${ticket.id}, this)" class="bg-slate-950 border border-slate-700 rounded-lg px-2 py-1 text-xs text-white focus:border-gold outline-none">${statusOptions}</select></td>
+            <td class="p-3 text-xs">${ticket.created_at ? new Date(ticket.created_at).toLocaleString() : ''}</td>
+            <td class="p-3 text-center"><button type="button" onclick="openTicketConversation(${ticket.id})" class="px-2 py-1 bg-rose-500/10 text-rose-300 border border-rose-500/30 rounded-lg text-xs hover:bg-rose-500/20">Comments</button></td>
+          </tr>`;
+        }).join('') || '<tr><td colspan="6" class="p-3 text-xs">No tickets</td></tr>';
       } catch (error) {
-        console.error(error);
+        console.error('Could not load tickets:', error);
+      }
+    }
+
+    function escapeTicketHtml(value) {
+      return String(value).replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      })[character]);
+    }
+
+    async function updateTicketStatus(ticketId, select) {
+      const previousStatus = select.dataset.previousStatus || select.dataset.currentStatus;
+      select.disabled = true;
+      try {
+        const response = await fetch(`/api/admin/tickets/${ticketId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('jr_admin_token')}` },
+          body: JSON.stringify({ status: select.value })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not update ticket status.');
+        select.dataset.currentStatus = data.ticket.status;
+        select.dataset.previousStatus = data.ticket.status;
+      } catch (error) {
+        select.value = previousStatus;
+        alert(error.message);
+      } finally {
+        select.disabled = false;
+      }
+    }
+
+    async function openTicketConversation(ticketId) {
+      const modal = document.getElementById('ticketConversationModal');
+      modal.dataset.ticketId = ticketId;
+      document.getElementById('ticketConversationTitle').textContent = `Ticket #${ticketId}`;
+      document.getElementById('ticketConversationMeta').textContent = '';
+      document.getElementById('ticketConversationMessages').innerHTML = '<p class="text-sm text-slate-400">Loading conversation...</p>';
+      document.getElementById('ticketReplyMessage').value = '';
+      document.getElementById('ticketReplyError').classList.add('hidden');
+      modal.classList.remove('hidden');
+      await loadTicketConversation(ticketId);
+    }
+
+    async function loadTicketConversation(ticketId) {
+      const container = document.getElementById('ticketConversationMessages');
+      try {
+        const response = await fetch(`/api/admin/tickets/${ticketId}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('jr_admin_token')}` }
+        });
+        const ticket = await response.json();
+        if (!response.ok) throw new Error(ticket.error || 'Could not load ticket conversation.');
+        document.getElementById('ticketConversationTitle').textContent = `Ticket #${ticket.id}: ${ticket.subject || ''}`;
+        document.getElementById('ticketConversationMeta').textContent = `${ticket.user_name || ticket.user_email || 'Customer'} · ${ticket.status}`;
+        const messages = [
+          { name: ticket.user_name || ticket.user_email || 'Customer', message: ticket.message, created_at: ticket.created_at },
+          ...(ticket.replies || []).map((reply) => ({
+            name: reply.is_admin ? (reply.sender_name || 'Admin') : (reply.sender_name || 'Customer'),
+            message: reply.message,
+            created_at: reply.created_at
+          }))
+        ];
+        container.innerHTML = messages.map((item) => `
+          <article class="bg-slate-950/70 border border-slate-800 rounded-2xl p-4">
+            <div class="flex justify-between gap-3 mb-2">
+              <span class="text-xs font-bold text-gold">${escapeTicketHtml(item.name)}</span>
+              <time class="text-[11px] text-slate-500">${item.created_at ? escapeTicketHtml(new Date(item.created_at).toLocaleString()) : ''}</time>
+            </div>
+            <p class="text-sm text-slate-200 whitespace-pre-wrap break-words">${escapeTicketHtml(item.message || '')}</p>
+          </article>
+        `).join('');
+      } catch (error) {
+        container.innerHTML = `<p class="text-sm text-red-300">${escapeTicketHtml(error.message)}</p>`;
+      }
+    }
+
+    function closeTicketConversation() {
+      document.getElementById('ticketConversationModal').classList.add('hidden');
+    }
+
+    async function submitTicketReply(event) {
+      event.preventDefault();
+      const modal = document.getElementById('ticketConversationModal');
+      const ticketId = modal.dataset.ticketId;
+      const messageInput = document.getElementById('ticketReplyMessage');
+      const errorElement = document.getElementById('ticketReplyError');
+      const submit = document.getElementById('ticketReplySubmit');
+      const message = messageInput.value.trim();
+      errorElement.classList.add('hidden');
+      if (!message) {
+        errorElement.textContent = 'Enter a comment before sending.';
+        errorElement.classList.remove('hidden');
+        return;
+      }
+      submit.disabled = true;
+      submit.textContent = 'Sending...';
+      try {
+        const response = await fetch(`/api/admin/tickets/${ticketId}/reply`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('jr_admin_token')}` },
+          body: JSON.stringify({ message })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not send comment.');
+        messageInput.value = '';
+        await loadTicketConversation(ticketId);
+      } catch (error) {
+        errorElement.textContent = error.message;
+        errorElement.classList.remove('hidden');
+      } finally {
+        submit.disabled = false;
+        submit.textContent = 'Send Comment';
       }
     }
 
