@@ -1328,10 +1328,11 @@
         const data = await response.json();
         const tbody = document.getElementById('paymentsTbody');
         tbody.innerHTML = (data.payments || []).map((payment) => {
-          const canRefund = payment.record_type === 'payment' && payment.payment_status === 'PAID' && payment.credited && !payment.refunded;
+          const remainingAmount = Math.max(Number(payment.amount || 0) - Number(payment.refunded_amount || 0), 0);
+          const canRefund = payment.record_type === 'payment' && payment.payment_status === 'PAID' && payment.credited && !payment.refunded && remainingAmount > 0;
           const action = canRefund
-            ? `<button onclick="refundPayment('${encodeURIComponent(payment.order_id)}', this)" class="px-2 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-lg text-xs hover:bg-amber-500/20">Refund to Wallet</button>`
-            : (payment.record_type === 'payment' && payment.refunded ? '<span class="text-xs text-emerald-400">Refunded</span>' : '—');
+            ? `<button onclick="refundPayment('${encodeURIComponent(payment.order_id)}', ${remainingAmount.toFixed(2)}, this)" class="px-2 py-1 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded-lg text-xs hover:bg-amber-500/20">${Number(payment.refunded_amount || 0) > 0 ? 'Refund Remaining' : 'Refund to Wallet'}</button>`
+            : (payment.record_type === 'payment' && Number(payment.refunded_amount || 0) > 0 && !payment.refunded ? '<span class="text-xs text-amber-300">Partially Refunded</span>' : (payment.record_type === 'payment' && payment.refunded ? '<span class="text-xs text-emerald-400">Refunded</span>' : '—'));
           return `<tr><td class="p-3 text-xs font-mono">${payment.order_id || ''}</td><td class="p-3 text-xs">${payment.user_name || ''}<br>${payment.user_email || ''}</td><td class="p-3 text-xs">${Number(payment.amount).toFixed(2)}</td><td class="p-3 text-xs">${payment.currency}</td><td class="p-3 text-xs">${payment.payment_status}</td><td class="p-3 text-xs">${payment.payment_method || ''}</td><td class="p-3 text-xs">${payment.created_at ? new Date(payment.created_at).toLocaleString() : ''}</td><td class="p-3 text-center">${action}</td></tr>`;
         }).join('') || '<tr><td colspan="8" class="p-3 text-xs">No payments or wallet transactions</td></tr>';
       } catch (error) {
@@ -1339,14 +1340,22 @@
       }
     }
 
-    async function refundPayment(orderId, button) {
-      if (!confirm('Add this deposit amount to the customer’s wallet? This wallet credit can only be applied once.')) return;
+    async function refundPayment(orderId, remainingAmount, button) {
+      const amount = prompt(`Enter the amount to refund to the customer’s wallet (up to ${remainingAmount.toFixed(2)}):`, remainingAmount.toFixed(2));
+      if (amount === null) return;
+      const refundAmount = Number(amount);
+      if (!Number.isFinite(refundAmount) || refundAmount <= 0 || refundAmount > remainingAmount || Math.abs(refundAmount * 100 - Math.round(refundAmount * 100)) > 0.000001) {
+        alert(`Enter an amount greater than zero, with no more than two decimal places, and no more than ${remainingAmount.toFixed(2)}.`);
+        return;
+      }
+      if (!confirm(`Add ${refundAmount.toFixed(2)} to the customer’s wallet?`)) return;
       button.disabled = true;
       button.textContent = 'Processing...';
       try {
         const response = await fetch(`/api/admin/payments/${orderId}/refund`, {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('jr_admin_token')}` }
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('jr_admin_token')}` },
+          body: JSON.stringify({ amount: refundAmount })
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Could not refund this deposit.');

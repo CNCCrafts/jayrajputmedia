@@ -181,6 +181,7 @@ async function initDb() {
         payment_session_id TEXT,
         credited INTEGER DEFAULT 0,
         refunded INTEGER DEFAULT 0,
+        refunded_amount REAL DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
@@ -259,6 +260,7 @@ async function initializeAppData() {
   await addColumnIfMissing('tickets', 'resolved_at', 'TIMESTAMP');
   await addColumnIfMissing('site_themes', 'layout', "TEXT NOT NULL DEFAULT 'classic'");
   await addColumnIfMissing('payment_orders', 'refunded', 'INTEGER DEFAULT 0');
+  await addColumnIfMissing('payment_orders', 'refunded_amount', 'REAL DEFAULT 0');
 
   // Insert default Admin if not exists
   const adminCheck = await pool.query('SELECT * FROM users WHERE email = $1', ['admin@jayrajputmediapower.com']);
@@ -1545,13 +1547,13 @@ app.get('/api/admin/payments', authenticateToken, requireAdmin, async (req, res)
   }
   const ledger = `
     WITH payment_ledger AS (
-      SELECT po.order_id, po.amount, po.currency, po.payment_status, po.credited, po.refunded,
+      SELECT po.order_id, po.amount, po.currency, po.payment_status, po.credited, po.refunded, po.refunded_amount,
              po.created_at, po.updated_at, u.id AS user_id, u.name AS user_name, u.email AS user_email,
              'Cashfree' AS payment_method, 'payment' AS record_type
       FROM payment_orders po JOIN users u ON po.user_id = u.id
       UNION ALL
       SELECT 'WALLET-' || t.id::text AS order_id, t.amount, t.currency, UPPER(COALESCE(t.status, 'COMPLETED')) AS payment_status,
-             1 AS credited, 0 AS refunded, t.created_at, NULL AS updated_at,
+             1 AS credited, 0 AS refunded, 0 AS refunded_amount, t.created_at, NULL AS updated_at,
              u.id AS user_id, u.name AS user_name, u.email AS user_email, COALESCE(t.payment_method, 'Wallet transaction') AS payment_method,
              'transaction' AS record_type
       FROM transactions t JOIN users u ON t.user_id = u.id
@@ -1564,7 +1566,7 @@ app.get('/api/admin/payments', authenticateToken, requireAdmin, async (req, res)
   );
   const total = parseInt(countRes.rows[0].total);
   const rows = await pool.query(
-    `${ledger} SELECT order_id, amount, currency, payment_status, credited, refunded, created_at, updated_at,
+    `${ledger} SELECT order_id, amount, currency, payment_status, credited, refunded, refunded_amount, created_at, updated_at,
             user_id, user_name, user_email, payment_method, record_type
      FROM payment_ledger ${where} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
     [...params, parseInt(limit), offset]
@@ -1577,7 +1579,7 @@ app.post('/api/admin/payments/:orderId/refund', authenticateToken, requireAdmin,
   try {
     await client.query('BEGIN');
     const payment = await client.query(
-      `SELECT order_id, user_id, amount, currency, payment_status, credited, refunded
+      `SELECT order_id, user_id, amount, currency, payment_status, credited, refunded, refunded_amount
        FROM payment_orders WHERE order_id = $1 FOR UPDATE`,
       [req.params.orderId]
     );
@@ -1591,16 +1593,32 @@ app.post('/api/admin/payments/:orderId/refund', authenticateToken, requireAdmin,
       await client.query('ROLLBACK');
       return res.status(400).json({ error: 'Only paid and credited deposits can be refunded to the wallet.' });
     }
-    if (record.refunded) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({ error: 'This deposit has already been refunded to the wallet.' });
-    }
-
-    const amount = Number(record.amount);
+    const totalAmount = Number(record.amount);
+    const refundedAmount = Number(record.refunded_amount || 0);
+    const totalCents = Math.round(totalAmount * 100);
+    const refundedCents = Math.round(refundedAmount * 100);
+    const remainingCents = totalCents - refundedCents;
     const walletField = WALLET_BY_CURRENCY[record.currency] || 'wallet_inr';
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (!Number.isFinite(totalAmount) || totalCents <= 0 || !Number.isFinite(refundedAmount) || refundedCents < 0) {
       throw new Error(`Invalid refund amount for payment ${record.order_id}`);
     }
+    if (record.refunded || remainingCents <= 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'This deposit has already been fully refunded to the wallet.' });
+    }
+
+    const requestedAmount = !req.body || req.body.amount === undefined ? remainingCents / 100 : Number(req.body.amount);
+    const amountCents = Math.round(requestedAmount * 100);
+    if (!Number.isFinite(requestedAmount) || amountCents <= 0 || Math.abs(requestedAmount - amountCents / 100) > 0.000001) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'Enter a refund amount greater than zero with no more than two decimal places.' });
+    }
+    if (amountCents > remainingCents) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: `The refund amount cannot exceed the remaining ${(remainingCents / 100).toFixed(2)} ${record.currency}.` });
+    }
+    const amount = amountCents / 100;
+    const newRefundedCents = refundedCents + amountCents;
 
     const userUpdate = await client.query(
       `UPDATE users SET ${walletField} = ${walletField} + $1 WHERE id = $2`,
@@ -1610,14 +1628,21 @@ app.post('/api/admin/payments/:orderId/refund', authenticateToken, requireAdmin,
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Customer account not found.' });
     }
-    await client.query('UPDATE payment_orders SET refunded = 1, updated_at = CURRENT_TIMESTAMP WHERE order_id = $1', [record.order_id]);
+    await client.query(
+      'UPDATE payment_orders SET refunded_amount = $1, refunded = $2, updated_at = CURRENT_TIMESTAMP WHERE order_id = $3',
+      [newRefundedCents / 100, newRefundedCents >= totalCents ? 1 : 0, record.order_id]
+    );
     await client.query(
       `INSERT INTO transactions (user_id, amount, currency, payment_method, status)
        VALUES ($1, $2, $3, 'Admin wallet refund', 'Completed')`,
       [record.user_id, amount, record.currency]
     );
     await client.query('COMMIT');
-    res.json({ success: true, message: `Added ${amount.toFixed(2)} ${record.currency} to the customer's wallet.` });
+    const remainingAfterRefund = Math.max(totalCents - newRefundedCents, 0) / 100;
+    res.json({
+      success: true,
+      message: `Added ${amount.toFixed(2)} ${record.currency} to the customer's wallet.${remainingAfterRefund > 0 ? ` ${remainingAfterRefund.toFixed(2)} ${record.currency} remains refundable.` : ''}`
+    });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Admin wallet refund failed:', err);
