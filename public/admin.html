@@ -49,6 +49,24 @@
       from { opacity: 0; transform: translateY(4px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    .occasion-greeting-track {
+      display: flex;
+      width: max-content;
+      animation: appearance-greeting-scroll 24s linear infinite;
+    }
+    @keyframes appearance-greeting-scroll {
+      to { transform: translateX(-50%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .occasion-greeting-track {
+        animation: none;
+        width: auto;
+        justify-content: center;
+      }
+      .occasion-greeting-track span[aria-hidden="true"] {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body class="bg-darkBg text-slate-100 font-sans min-h-screen antialiased flex flex-col justify-center items-center p-4">
@@ -578,8 +596,8 @@
                         <option>Arial</option>
                       </select>
                     </label>
-                    <label class="text-[11px] text-slate-400 sm:col-span-2">Optional banner image URL
-                      <input id="themeBannerUrl" type="url" maxlength="500" placeholder="https://example.com/banner.jpg" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none focus:border-purple-500">
+                    <label class="text-[11px] text-slate-400 sm:col-span-2">Occasion greeting (animated scrolling text)
+                      <input id="themeOccasionMessage" type="text" maxlength="240" placeholder="Happy Diwali! Wishing you joy and success from Jay Rajput Media Power" class="mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none focus:border-purple-500">
                     </label>
                   </div>
                   <button type="submit" class="w-full py-2.5 bg-purple-600 text-white font-bold rounded-xl text-xs hover:bg-purple-500 transition">
@@ -593,7 +611,9 @@
                     <span id="themePreviewLayout" class="text-[10px] uppercase tracking-wide text-slate-400">Classic template</span>
                   </div>
                   <div id="themePreview" class="overflow-hidden rounded-2xl border p-4 transition-colors">
-                    <img id="themePreviewBanner" class="hidden w-full h-24 object-cover rounded-xl mb-3" alt="Theme banner preview">
+                    <div id="themePreviewGreeting" class="hidden overflow-hidden rounded-lg mb-3 py-2 text-white text-xs font-bold whitespace-nowrap" aria-label="Animated occasion greeting preview">
+                      <div class="occasion-greeting-track"><span></span><span aria-hidden="true"></span></div>
+                    </div>
                     <div id="themePreviewSurface" class="rounded-xl border p-4">
                       <div class="flex items-center justify-between gap-3">
                         <div>
@@ -1775,7 +1795,7 @@
         });
 
         const actions = document.createElement('div');
-        actions.className = 'flex gap-2';
+        actions.className = 'flex flex-wrap gap-2';
         const previewButton = document.createElement('button');
         previewButton.type = 'button';
         previewButton.className = 'flex-1 px-2 py-1.5 rounded-lg border border-slate-700 text-slate-200 text-[11px] hover:bg-slate-800';
@@ -1787,7 +1807,14 @@
         applyButton.textContent = theme.is_active ? 'Published' : 'Apply';
         applyButton.disabled = Boolean(theme.is_active);
         applyButton.addEventListener('click', () => applyThemeToSite(theme.id));
-        actions.append(previewButton, applyButton);
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'px-2 py-1.5 rounded-lg border border-red-500/30 text-red-300 text-[11px] hover:bg-red-500/10 disabled:opacity-50';
+        deleteButton.textContent = 'Delete';
+        deleteButton.disabled = themes.length <= 1;
+        deleteButton.title = themes.length <= 1 ? 'The last theme pack cannot be deleted.' : '';
+        deleteButton.addEventListener('click', () => deleteThemePack(theme));
+        actions.append(previewButton, applyButton, deleteButton);
 
         card.append(heading, swatches, actions);
         list.append(card);
@@ -1833,19 +1860,22 @@
       document.getElementById('themePreviewButton').style.background = `linear-gradient(135deg, ${palette.primary}, ${palette.accent})`;
       document.getElementById('themePreviewLabel').textContent = document.getElementById('themeLabel').value || 'Your storefront';
       document.getElementById('themePreviewLayout').textContent = `${layout} template`;
-      const banner = document.getElementById('themePreviewBanner');
-      const bannerUrl = document.getElementById('themeBannerUrl').value.trim();
-      try {
-        const parsed = new URL(bannerUrl);
-        if (['http:', 'https:'].includes(parsed.protocol)) {
-          banner.src = parsed.toString();
-          banner.classList.remove('hidden');
-        } else {
-          banner.classList.add('hidden');
-        }
-      } catch {
-        banner.removeAttribute('src');
-        banner.classList.add('hidden');
+      const greeting = document.getElementById('themePreviewGreeting');
+      const greetingText = document.getElementById('themeOccasionMessage').value.trim();
+      const greetingTrack = greeting.querySelector('.occasion-greeting-track');
+      greetingTrack.replaceChildren();
+      if (greetingText) {
+        [false, true].forEach((isDuplicate) => {
+          const item = document.createElement('span');
+          item.className = 'inline-block px-8';
+          item.textContent = greetingText;
+          if (isDuplicate) item.setAttribute('aria-hidden', 'true');
+          greetingTrack.append(item);
+        });
+        greeting.style.background = `linear-gradient(90deg, ${palette.primary}, ${palette.accent})`;
+        greeting.classList.remove('hidden');
+      } else {
+        greeting.classList.add('hidden');
       }
       preview.dataset.layout = layout;
       preview.style.borderRadius = layout === 'minimal' ? '0.75rem' : '1rem';
@@ -1864,7 +1894,7 @@
       document.getElementById('themeFont').value = palette.font || 'Plus Jakarta Sans';
       document.getElementById('themeHeadingFont').value = palette.headingFont || 'Outfit';
       document.getElementById('themeLayout').value = ['classic', 'minimal', 'editorial'].includes(theme.layout) ? theme.layout : 'classic';
-      document.getElementById('themeBannerUrl').value = theme.banner_url || '';
+      document.getElementById('themeOccasionMessage').value = theme.occasion_message || '';
       updateThemePreview();
     }
 
@@ -1875,7 +1905,7 @@
         name: document.getElementById('themeName').value.trim(),
         label: document.getElementById('themeLabel').value.trim(),
         layout: document.getElementById('themeLayout').value,
-        banner_url: document.getElementById('themeBannerUrl').value.trim() || null,
+        occasion_message: document.getElementById('themeOccasionMessage').value.trim(),
         palette_json: {
           primary: document.getElementById('themePrimary').value,
           accent: document.getElementById('themeAccent').value,
@@ -2245,6 +2275,27 @@
         setAppearanceStatus(error.message, true);
       }
     }
+
+    async function deleteThemePack(theme) {
+      const activeWarning = theme.is_active
+        ? '\n\nThis theme is currently published. Another saved theme will be published automatically.'
+        : '';
+      if (!confirm(`Delete the "${theme.label || theme.name}" theme pack? This cannot be undone.${activeWarning}`)) return;
+      try {
+        const response = await fetch(`/api/admin/settings/themes/${theme.id}`, {
+          method: 'DELETE',
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('jr_admin_token') }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not delete this theme pack.');
+        setAppearanceStatus(data.active_theme
+          ? 'Deleted "' + data.deleted_theme + '". "' + data.active_theme + '" is now published.'
+          : 'Deleted "' + data.deleted_theme + '".');
+        await loadAppearance();
+      } catch (error) {
+        setAppearanceStatus(error.message, true);
+      }
+    }
     function logoutAdmin() {
       localStorage.removeItem('jr_admin_token');
       location.reload();
@@ -2262,7 +2313,7 @@
 
     normalizeAdminTabPanels();
     document.getElementById('themeForm').addEventListener('submit', saveThemePack);
-    ['themeName', 'themeLabel', 'themePrimary', 'themeAccent', 'themeBg', 'themeText', 'themeSurface', 'themeFont', 'themeHeadingFont', 'themeLayout', 'themeBannerUrl']
+    ['themeName', 'themeLabel', 'themePrimary', 'themeAccent', 'themeBg', 'themeText', 'themeSurface', 'themeFont', 'themeHeadingFont', 'themeLayout', 'themeOccasionMessage']
       .forEach((id) => document.getElementById(id).addEventListener('input', updateThemePreview));
     document.getElementById('themeLayout').addEventListener('change', updateThemePreview);
     updateThemePreview();

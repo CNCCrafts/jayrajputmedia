@@ -185,6 +185,36 @@
       0% { transform: translateX(0); }
       100% { transform: translateX(-50%); }
     }
+    .occasion-greeting {
+      width: 100%;
+      overflow: hidden;
+      background: linear-gradient(90deg, var(--theme-primary), var(--theme-accent));
+      color: #ffffff;
+      white-space: nowrap;
+    }
+    .occasion-greeting-track {
+      display: flex;
+      width: max-content;
+      animation: occasion-greeting-scroll 24s linear infinite;
+    }
+    .occasion-greeting-track span {
+      flex: none;
+      padding: 0 2rem;
+    }
+    @keyframes occasion-greeting-scroll {
+      to { transform: translateX(-50%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .occasion-greeting-track {
+        animation: none;
+        width: auto;
+        justify-content: center;
+        white-space: normal;
+      }
+      .occasion-greeting-track span[aria-hidden="true"] {
+        display: none;
+      }
+    }
     .logo-img {
       width: 40px;
       height: 40px;
@@ -471,8 +501,8 @@
   <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 py-8 sm:py-12">
     
     <section id="section-home" class="content-section space-y-12">
-      <div id="siteThemeBannerWrap" class="hidden overflow-hidden rounded-3xl border border-slate-200 dark:border-darkBorder shadow-socialCard">
-        <img id="siteThemeBanner" class="w-full max-h-56 object-cover" alt="Storefront theme banner">
+      <div id="siteOccasionGreetingWrap" class="occasion-greeting hidden overflow-hidden rounded-2xl border border-white/20 shadow-socialCard py-3" role="status" aria-live="polite">
+        <div id="siteOccasionGreetingTrack" class="occasion-greeting-track text-sm sm:text-base font-bold tracking-wide"></div>
       </div>
       
       <div id="userWelcomeBanner" class="hidden p-6 sm:p-8 rounded-3xl meta-gradient-bg text-white shadow-igGlow flex-col md:flex-row items-start md:items-center justify-between gap-6 relative overflow-hidden">
@@ -1313,17 +1343,20 @@
 
         const layout = ['classic', 'minimal', 'editorial'].includes(data.layout) ? data.layout : 'classic';
         document.body.dataset.themeLayout = layout;
-        const bannerWrap = document.getElementById('siteThemeBannerWrap');
-        const bannerImage = document.getElementById('siteThemeBanner');
-        if (data.banner_url) {
-          const bannerUrl = new URL(data.banner_url, window.location.origin);
-          if (['http:', 'https:'].includes(bannerUrl.protocol)) {
-            bannerImage.src = bannerUrl.toString();
-            bannerWrap.classList.remove('hidden');
-          }
+        const greetingWrap = document.getElementById('siteOccasionGreetingWrap');
+        const greetingTrack = document.getElementById('siteOccasionGreetingTrack');
+        const occasionMessage = typeof data.occasion_message === 'string' ? data.occasion_message.trim() : '';
+        greetingTrack.replaceChildren();
+        if (occasionMessage) {
+          [false, true].forEach((isDuplicate) => {
+            const greeting = document.createElement('span');
+            greeting.textContent = occasionMessage;
+            if (isDuplicate) greeting.setAttribute('aria-hidden', 'true');
+            greetingTrack.append(greeting);
+          });
+          greetingWrap.classList.remove('hidden');
         } else {
-          bannerImage.removeAttribute('src');
-          bannerWrap.classList.add('hidden');
+          greetingWrap.classList.add('hidden');
         }
       } catch (error) {
         console.error('Could not apply the public theme pack:', error);

@@ -259,6 +259,7 @@ async function initializeAppData() {
   await addColumnIfMissing('users', 'status', "TEXT DEFAULT 'active'");
   await addColumnIfMissing('tickets', 'resolved_at', 'TIMESTAMP');
   await addColumnIfMissing('site_themes', 'layout', "TEXT NOT NULL DEFAULT 'classic'");
+  await addColumnIfMissing('site_themes', 'occasion_message', 'TEXT');
   await addColumnIfMissing('payment_orders', 'refunded', 'INTEGER DEFAULT 0');
   await addColumnIfMissing('payment_orders', 'refunded_amount', 'REAL DEFAULT 0');
 
@@ -1809,15 +1810,15 @@ app.get('/api/settings', async (req, res) => {
   try {
     const setting = await pool.query("SELECT value FROM site_settings WHERE key = 'active_theme'");
     const activeName = setting.rows.length ? setting.rows[0].value : 'Default';
-    const theme = await pool.query('SELECT name, label, palette_json, banner_url, is_active, layout FROM site_themes WHERE name = $1', [activeName]);
+    const theme = await pool.query('SELECT name, label, palette_json, occasion_message, is_active, layout FROM site_themes WHERE name = $1', [activeName]);
     if (!theme.rows.length) {
-      return res.json({ active_theme: 'Default', palette: {}, banner_url: null, layout: 'classic' });
+      return res.json({ active_theme: 'Default', palette: {}, occasion_message: null, layout: 'classic' });
     }
     res.json({
       active_theme: theme.rows[0].name,
       label: theme.rows[0].label,
       palette: theme.rows[0].palette_json ? JSON.parse(theme.rows[0].palette_json) : {},
-      banner_url: theme.rows[0].banner_url,
+      occasion_message: theme.rows[0].occasion_message,
       layout: theme.rows[0].layout || 'classic'
     });
   } catch (err) {
@@ -1828,12 +1829,12 @@ app.get('/api/settings', async (req, res) => {
 app.get('/api/admin/settings/appearance', authenticateToken, requireAdmin, async (req, res) => {
   const setting = await pool.query("SELECT value FROM site_settings WHERE key = 'active_theme'");
   const activeName = setting.rows.length ? setting.rows[0].value : 'Default';
-  const themes = await pool.query('SELECT id, name, label, palette_json, banner_url, is_active, layout FROM site_themes ORDER BY id');
+  const themes = await pool.query('SELECT id, name, label, palette_json, occasion_message, is_active, layout FROM site_themes ORDER BY id');
   res.json({ active_theme: activeName, themes: themes.rows });
 });
 
 app.get('/api/admin/settings/themes', authenticateToken, requireAdmin, async (req, res) => {
-  const rows = await pool.query('SELECT id, name, label, palette_json, banner_url, is_active, layout FROM site_themes ORDER BY id');
+  const rows = await pool.query('SELECT id, name, label, palette_json, occasion_message, is_active, layout FROM site_themes ORDER BY id');
   res.json({ themes: rows.rows });
 });
 
@@ -1892,8 +1893,49 @@ app.post('/api/admin/settings/themes/:id/apply', authenticateToken, requireAdmin
   }
 });
 
+app.delete('/api/admin/settings/themes/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid theme id.' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const themeResult = await client.query('SELECT id, name, is_active FROM site_themes WHERE id = $1 FOR UPDATE', [id]);
+    if (!themeResult.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Theme not found.' });
+    }
+    const countResult = await client.query('SELECT COUNT(*) AS total FROM site_themes');
+    if (Number(countResult.rows[0].total) <= 1) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'The last remaining theme cannot be deleted.' });
+    }
+
+    let activeTheme = null;
+    if (themeResult.rows[0].is_active) {
+      const fallbackResult = await client.query('SELECT id, name FROM site_themes WHERE id <> $1 ORDER BY id LIMIT 1 FOR UPDATE', [id]);
+      activeTheme = fallbackResult.rows[0].name;
+      await client.query('UPDATE site_themes SET is_active = false');
+      await client.query('UPDATE site_themes SET is_active = true WHERE id = $1', [fallbackResult.rows[0].id]);
+      await client.query(
+        `INSERT INTO site_settings (key, value) VALUES ('active_theme', $1)
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+        [activeTheme]
+      );
+    }
+    await client.query('DELETE FROM site_themes WHERE id = $1', [id]);
+    await client.query('COMMIT');
+    res.json({ success: true, deleted_theme: themeResult.rows[0].name, active_theme: activeTheme });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Theme deletion failed:', err);
+    res.status(500).json({ error: 'Could not delete the theme pack.' });
+  } finally {
+    client.release();
+  }
+});
+
 app.post('/api/admin/settings/themes', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, label, palette_json, banner_url, layout } = req.body;
+  const { name, label, palette_json, occasion_message, layout } = req.body;
   const cleanName = typeof name === 'string' ? name.trim() : '';
   const cleanLabel = typeof label === 'string' ? label.trim() : cleanName;
   const chosenLayout = layout || 'classic';
@@ -1931,25 +1973,20 @@ app.post('/api/admin/settings/themes', authenticateToken, requireAdmin, async (r
   palette.font = palette.font || 'Plus Jakarta Sans';
   palette.headingFont = palette.headingFont || 'Outfit';
 
-  let cleanBannerUrl = null;
-  if (banner_url) {
-    try {
-      const parsed = new URL(banner_url);
-      if (!['http:', 'https:'].includes(parsed.protocol) || banner_url.length > 500) {
-        return res.status(400).json({ error: 'Banner URL must be an HTTP or HTTPS URL under 500 characters.' });
-      }
-      cleanBannerUrl = parsed.toString();
-    } catch {
-      return res.status(400).json({ error: 'Banner URL must be a valid HTTP or HTTPS URL.' });
-    }
+  if (occasion_message !== undefined && occasion_message !== null && typeof occasion_message !== 'string') {
+    return res.status(400).json({ error: 'Occasion greeting must be text.' });
+  }
+  const cleanOccasionMessage = typeof occasion_message === 'string' ? occasion_message.trim() : '';
+  if (cleanOccasionMessage.length > 240) {
+    return res.status(400).json({ error: 'Occasion greeting must be 240 characters or fewer.' });
   }
 
   try {
     const result = await pool.query(
-      `INSERT INTO site_themes (name, label, palette_json, banner_url, is_active, layout)
+      `INSERT INTO site_themes (name, label, palette_json, occasion_message, is_active, layout)
        VALUES ($1, $2, $3, $4, false, $5)
-       RETURNING id, name, label, palette_json, banner_url, is_active, layout`,
-      [cleanName, cleanLabel, JSON.stringify(palette), cleanBannerUrl, chosenLayout]
+       RETURNING id, name, label, palette_json, occasion_message, is_active, layout`,
+      [cleanName, cleanLabel, JSON.stringify(palette), cleanOccasionMessage || null, chosenLayout]
     );
     res.status(201).json({ theme: result.rows[0] });
   } catch (err) {
