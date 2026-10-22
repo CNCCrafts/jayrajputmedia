@@ -164,7 +164,7 @@
             <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-6 pb-3 border-b border-slate-800 gap-3">
               <h2 class="text-lg font-bold text-white flex items-center space-x-2"><i class="fa-solid fa-users text-emerald-400"></i><span>Users</span></h2>
               <div class="flex gap-2 flex-wrap">
-                <input id="usersSearch" type="text" placeholder="Search email/name" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 outline-none" oninput="loadUsers()">
+                <input id="usersSearch" type="text" placeholder="Search email/name" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 outline-none" oninput="currentUsersPage=1; loadUsers()">
                 <button onclick="showUserAddModal()" class="px-3 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-500"><i class="fa-solid fa-plus mr-1"></i>Add User</button>
               </div>
             </div>
@@ -651,6 +651,24 @@
         <div class="flex gap-3 pt-1">
           <button type="button" onclick="closeUserAddModal()" class="flex-1 py-3 bg-slate-800 text-slate-200 font-bold rounded-xl">Cancel</button>
           <button id="userAddSubmit" type="submit" class="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500">Create Customer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="userActionModal" class="fixed inset-0 bg-slate-900/70 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-cardBg w-full max-w-md rounded-3xl border border-cardBorder shadow-2xl p-6 sm:p-8 space-y-5">
+      <div class="flex items-center justify-between">
+        <h3 id="userActionTitle" class="text-lg font-black text-white"></h3>
+        <button type="button" onclick="closeUserActionModal()" class="text-slate-400 hover:text-white" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <p id="userActionDescription" class="text-xs text-slate-400"></p>
+      <form id="userActionForm" onsubmit="handleUserActionSubmit(event)" class="space-y-4">
+        <div id="userActionFields" class="space-y-4"></div>
+        <p id="userActionError" class="hidden text-xs text-red-300" role="alert"></p>
+        <div class="flex gap-3 pt-1">
+          <button type="button" onclick="closeUserActionModal()" class="flex-1 py-3 bg-slate-800 text-slate-200 font-bold rounded-xl">Cancel</button>
+          <button id="userActionSubmit" type="submit" class="flex-1 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-500"></button>
         </div>
       </form>
     </div>
@@ -1331,15 +1349,182 @@
       }
     }
 
+    let currentUsersPage = 1;
+    let activeUserAction = null;
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (character) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[character]);
+    }
+
+    function showUserActionModal(userId, action, user = {}) {
+      if (typeof user === 'string') user = JSON.parse(user);
+      const configurations = {
+        edit: {
+          title: `Edit User #${userId}`,
+          description: 'Update this user’s profile and account role.',
+          submit: 'Save Changes',
+          fields: [
+            { name: 'name', label: 'Name', type: 'text', value: user.name || '', required: true, maxLength: 120 },
+            { name: 'email', label: 'Email', type: 'email', value: user.email || '', required: true, maxLength: 254 },
+            { name: 'role', label: 'Role', type: 'select', value: user.role || 'user', options: ['user', 'admin'] }
+          ]
+        },
+        password: {
+          title: `Set Password for User #${userId}`,
+          description: 'Passwords are securely hashed and cannot be viewed. Set a new password here.',
+          submit: 'Set Password',
+          fields: [{ name: 'password', label: 'New Password (at least 6 characters)', type: 'password', required: true, minLength: 6, autocomplete: 'new-password' }]
+        },
+        funds: {
+          title: `Add Funds to User #${userId}`,
+          description: `Credit the wallet for ${user.name || user.email || 'this user'}. This will be recorded in transactions.`,
+          submit: 'Add Funds',
+          fields: [
+            { name: 'amount', label: 'Amount', type: 'number', required: true, min: '0.01', step: '0.01' },
+            { name: 'currency', label: 'Currency', type: 'select', value: 'INR', options: ['INR', 'USD', 'EUR'] }
+          ]
+        }
+      };
+      const config = configurations[action];
+      if (!config) return;
+
+      activeUserAction = { userId, action };
+      document.getElementById('userActionTitle').textContent = config.title;
+      document.getElementById('userActionDescription').textContent = config.description;
+      document.getElementById('userActionSubmit').textContent = config.submit;
+      document.getElementById('userActionError').classList.add('hidden');
+      document.getElementById('userActionFields').innerHTML = config.fields.map((field) => {
+        const label = `<label for="userAction_${field.name}" class="block text-xs uppercase font-bold text-slate-400 mb-1">${escapeHtml(field.label)}</label>`;
+        const common = `id="userAction_${field.name}" name="${field.name}" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white outline-none focus:border-gold"`;
+        if (field.type === 'select') {
+          const options = field.options.map((option) => `<option value="${option}" ${option === field.value ? 'selected' : ''}>${option}</option>`).join('');
+          return `<div>${label}<select ${common}>${options}</select></div>`;
+        }
+        const attrs = [
+          `type="${field.type}"`,
+          field.required ? 'required' : '',
+          field.minLength ? `minlength="${field.minLength}"` : '',
+          field.maxLength ? `maxlength="${field.maxLength}"` : '',
+          field.min ? `min="${field.min}"` : '',
+          field.step ? `step="${field.step}"` : '',
+          field.autocomplete ? `autocomplete="${field.autocomplete}"` : '',
+          field.value !== undefined ? `value="${escapeHtml(field.value)}"` : ''
+        ].filter(Boolean).join(' ');
+        return `<div>${label}<input ${attrs} ${common}></div>`;
+      }).join('');
+      document.getElementById('userActionModal').classList.remove('hidden');
+      const firstField = document.getElementById('userActionFields').querySelector('input, select');
+      if (firstField) firstField.focus();
+    }
+
+    function closeUserActionModal() {
+      document.getElementById('userActionModal').classList.add('hidden');
+      activeUserAction = null;
+    }
+
+    async function handleUserActionSubmit(event) {
+      event.preventDefault();
+      if (!activeUserAction) return;
+      const { userId, action } = activeUserAction;
+      const form = document.getElementById('userActionForm');
+      const submit = document.getElementById('userActionSubmit');
+      const error = document.getElementById('userActionError');
+      const values = Object.fromEntries(new FormData(form).entries());
+      const endpoint = action === 'password'
+        ? `/api/admin/users/${userId}/password`
+        : action === 'funds'
+          ? `/api/admin/users/${userId}/funds`
+          : `/api/admin/users/${userId}`;
+      const payload = action === 'password' ? { password: values.password } : values;
+      submit.disabled = true;
+      error.classList.add('hidden');
+      try {
+        const response = await fetch(endpoint, {
+          method: action === 'funds' ? 'POST' : 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jr_admin_token')}` },
+          body: JSON.stringify(payload)
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not update this user.');
+        closeUserActionModal();
+        await loadUsers();
+        alert(data.message || (action === 'password' ? 'User password updated.' : 'User updated successfully.'));
+      } catch (err) {
+        error.textContent = err.message;
+        error.classList.remove('hidden');
+      } finally {
+        submit.disabled = false;
+      }
+    }
+
+    async function toggleUserSuspension(userId, suspended) {
+      const operation = suspended ? 'suspend' : 'reactivate';
+      if (!confirm(`Are you sure you want to ${operation} user #${userId}?`)) return;
+      try {
+        const response = await fetch(`/api/admin/users/${userId}/suspend`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${localStorage.getItem('jr_admin_token')}` },
+          body: JSON.stringify({ suspended })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `Could not ${operation} this user.`);
+        await loadUsers();
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function showUserLogins(userId) {
+      try {
+        const response = await fetch(`/api/admin/users/${userId}/logins`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('jr_admin_token')}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load sign-in history.');
+        const logins = data.logins || [];
+        const details = logins.map((entry) => {
+          const date = entry.created_at ? new Date(entry.created_at).toLocaleString() : 'Unknown date';
+          return `${date} — ${entry.ip || 'Unknown IP'} — ${entry.user_agent || 'Unknown device'}`;
+        });
+        alert(logins.length ? `Recent sign-ins for user #${userId}:\n\n${details.join('\n')}` : 'No sign-in history found for this user.');
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
     async function loadUsers() {
       const token = localStorage.getItem('jr_admin_token');
       try {
-        const response = await fetch('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } });
+        const search = document.getElementById('usersSearch').value.trim();
+        const query = new URLSearchParams({ page: String(currentUsersPage), limit: '50' });
+        if (search) query.set('q', search);
+        const response = await fetch(`/api/admin/users?${query}`, { headers: { Authorization: `Bearer ${token}` } });
         const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load users.');
         const tbody = document.getElementById('usersTbody');
-        tbody.innerHTML = (data.users || []).map((user) => `<tr><td class="p-3 text-xs">#${user.id}</td><td class="p-3 text-xs">${user.name || ''}<br>${user.email}</td><td class="p-3 text-xs">${user.role}</td><td class="p-3 text-xs">${user.status || 'active'}</td><td class="p-3 text-xs">${Number(user.wallet_inr || 0).toFixed(2)} / ${Number(user.wallet_usd || 0).toFixed(2)} / ${Number(user.wallet_eur || 0).toFixed(2)}</td><td class="p-3 text-xs">${user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</td><td class="p-3 text-center text-xs">—</td></tr>`).join('') || '<tr><td colspan="7" class="p-3 text-xs">No users</td></tr>';
+        tbody.innerHTML = (data.users || []).map((user) => {
+          const id = Number(user.id);
+          const suspended = user.status === 'suspended';
+          const name = user.name || '';
+          const email = user.email || '';
+          const userJson = escapeHtml(JSON.stringify({ name, email, role: user.role || 'user' }));
+          const actionMarkup = `
+            <div class="flex flex-wrap justify-center gap-1 min-w-[230px]">
+              <button onclick="showUserActionModal(${id}, 'edit', this.dataset.user)" data-user="${userJson}" class="px-2 py-1 bg-blue-500/10 text-blue-300 rounded-lg hover:bg-blue-500/20">Edit</button>
+              <button onclick="showUserActionModal(${id}, 'funds', this.dataset.user)" data-user="${userJson}" class="px-2 py-1 bg-emerald-500/10 text-emerald-300 rounded-lg hover:bg-emerald-500/20">Add Funds</button>
+              <button onclick="showUserActionModal(${id}, 'password')" class="px-2 py-1 bg-amber-500/10 text-amber-300 rounded-lg hover:bg-amber-500/20">Set Password</button>
+              <button onclick="toggleUserSuspension(${id}, ${!suspended})" class="px-2 py-1 bg-rose-500/10 text-rose-300 rounded-lg hover:bg-rose-500/20">${suspended ? 'Reactivate' : 'Suspend'}</button>
+              <button onclick="showUserLogins(${id})" class="px-2 py-1 bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600">Sign-ins</button>
+            </div>`;
+          return `<tr><td class="p-3 text-xs">#${id}</td><td class="p-3 text-xs">${escapeHtml(name)}<br>${escapeHtml(email)}</td><td class="p-3 text-xs">${escapeHtml(user.role)}</td><td class="p-3 text-xs">${escapeHtml(user.status || 'active')}</td><td class="p-3 text-xs">${Number(user.wallet_inr || 0).toFixed(2)} / ${Number(user.wallet_usd || 0).toFixed(2)} / ${Number(user.wallet_eur || 0).toFixed(2)}</td><td class="p-3 text-xs">${user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</td><td class="p-3 text-center text-xs">${actionMarkup}</td></tr>`;
+        }).join('') || '<tr><td colspan="7" class="p-3 text-xs">No users</td></tr>';
+        const totalPages = Number(data.totalPages || 1);
+        document.getElementById('usersPagination').innerHTML = `<span>${Number(data.total || 0)} user(s) — Page ${Number(data.page || 1)} of ${totalPages}</span><div class="flex gap-2"><button type="button" ${currentUsersPage <= 1 ? 'disabled' : ''} onclick="currentUsersPage--; loadUsers()" class="px-3 py-1 bg-slate-800 rounded disabled:opacity-40">Previous</button><button type="button" ${currentUsersPage >= totalPages ? 'disabled' : ''} onclick="currentUsersPage++; loadUsers()" class="px-3 py-1 bg-slate-800 rounded disabled:opacity-40">Next</button></div>`;
       } catch (error) {
         console.error(error);
+        document.getElementById('usersTbody').innerHTML = `<tr><td colspan="7" class="p-3 text-xs text-red-300">${escapeHtml(error.message)}</td></tr>`;
       }
     }
 

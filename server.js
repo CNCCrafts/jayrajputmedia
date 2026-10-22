@@ -386,12 +386,18 @@ app.post('/api/auth/register', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
+  if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
+    return res.status(401).json({ error: 'Invalid credentials. Please check your email and password.' });
+  }
   try {
     console.log('Login attempt for:', email);
     const user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     const existingUser = user.rows[0];
-    if (!existingUser || !bcrypt.compareSync(password, existingUser.password)) {
-      return res.status(400).json({ error: 'Invalid email or password.' });
+    if (!existingUser || typeof existingUser.password !== 'string' || !bcrypt.compareSync(password, existingUser.password)) {
+      return res.status(401).json({ error: 'Invalid credentials. Please check your email and password.' });
+    }
+    if (existingUser.status === 'suspended') {
+      return res.status(403).json({ error: 'This account is suspended. Please contact support.' });
     }
 
     const token = jwt.sign({ id: existingUser.id, email: existingUser.email, role: existingUser.role }, JWT_SECRET, { expiresIn: '7d' });
@@ -1465,6 +1471,44 @@ app.put('/api/admin/users/:id', authenticateToken, requireAdmin, async (req, res
   const result = await pool.query(`UPDATE users SET ${updates.join(', ')} WHERE id = $${i} RETURNING id, name, email, role`, values);
   if (!result.rows.length) return res.status(404).json({ error: 'User not found.' });
   res.json({ user: result.rows[0] });
+});
+
+app.post('/api/admin/users/:id/funds', authenticateToken, requireAdmin, async (req, res) => {
+  const amount = Number(req.body.amount);
+  const currency = req.body.currency || 'INR';
+  if (!Number.isFinite(amount) || amount <= 0 || Math.abs(amount * 100 - Math.round(amount * 100)) > 0.000001) {
+    return res.status(400).json({ error: 'Enter an amount greater than zero with no more than two decimal places.' });
+  }
+
+  const walletFields = { INR: 'wallet_inr', USD: 'wallet_usd', EUR: 'wallet_eur' };
+  const walletField = walletFields[currency];
+  if (!walletField) return res.status(400).json({ error: 'Currency must be INR, USD, or EUR.' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query(
+      `UPDATE users SET ${walletField} = ${walletField} + $1 WHERE id = $2 RETURNING id`,
+      [amount, req.params.id]
+    );
+    if (!result.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    await client.query(
+      `INSERT INTO transactions (user_id, amount, currency, payment_method, status)
+       VALUES ($1, $2, $3, 'Admin wallet credit', 'Completed')`,
+      [req.params.id, amount, currency]
+    );
+    await client.query('COMMIT');
+    res.json({ success: true, message: `Added ${amount.toFixed(2)} ${currency} to the user's wallet.` });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Admin wallet credit error:', err);
+    res.status(500).json({ error: 'Could not add funds to the user wallet.' });
+  } finally {
+    client.release();
+  }
 });
 
 app.put('/api/admin/users/:id/password', authenticateToken, requireAdmin, async (req, res) => {
