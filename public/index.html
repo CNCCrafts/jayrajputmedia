@@ -30,10 +30,19 @@
   <script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
 
 <script>
+  function getAuthToken() {
+    return sessionStorage.getItem('jr_token') || localStorage.getItem('jr_token');
+  }
+
+  function setAuthToken(token) {
+    sessionStorage.removeItem('jr_token');
+    localStorage.setItem('jr_token', token);
+  }
+
   // Opens the Cashfree checkout for a wallet top-up. The wallet is only
   // credited server-side once Cashfree confirms the order as PAID.
   async function initiateCashfreePayment(amount) {
-    const token = localStorage.getItem('jr_token');
+    const token = getAuthToken();
     if (!token) {
       openAuthModal('signin');
       return false;
@@ -1577,7 +1586,7 @@
         const data = await res.json();
         if (data.error) return alert(data.error);
 
-        localStorage.setItem('jr_token', data.token);
+        setAuthToken(data.token);
         currentUser = data.user;
         updateUIForUser();
         closeAuthModal();
@@ -1656,7 +1665,7 @@
         const data = await res.json();
         if (data.error) return alert('Google Sign-In Error: ' + data.error);
 
-        localStorage.setItem('jr_token', data.token);
+        setAuthToken(data.token);
         currentUser = data.user;
         updateUIForUser();
         closeAuthModal();
@@ -1719,6 +1728,7 @@
     }
 
     function logout() {
+      sessionStorage.removeItem('jr_token');
       localStorage.removeItem('jr_token');
       location.reload();
     }
@@ -1972,7 +1982,7 @@
 
     async function handlePlaceOrder(e) {
       e.preventDefault();
-      const token = localStorage.getItem('jr_token');
+      const token = getAuthToken();
       if (!token) return openAuthModal('signin');
 
       const service_id = parseInt(document.getElementById('orderServiceSelect').value);
@@ -2070,7 +2080,7 @@
 
     async function handleQuickOrder(e) {
       e.preventDefault();
-      const token = localStorage.getItem('jr_token');
+      const token = getAuthToken();
       if (!token) return openAuthModal('signin');
 
       const service_id = parseInt(document.getElementById('quickServiceSelect').value);
@@ -2107,7 +2117,7 @@
     }
 
     async function loadUserOrders() {
-      const token = localStorage.getItem('jr_token');
+      const token = getAuthToken();
       if (!token) return;
       const res = await fetch('/api/orders/my-orders', {
         headers: { 'Authorization': `Bearer ${token}` }
@@ -2133,7 +2143,7 @@
 
     async function handleChangePassword(e) {
       e.preventDefault();
-      const token = localStorage.getItem('jr_token');
+      const token = getAuthToken();
       const currentPassword = document.getElementById('currentPassword').value;
       const newPassword = document.getElementById('newPassword').value;
 
@@ -2151,7 +2161,7 @@
 
     async function handleAddFunds(e) {
       e.preventDefault();
-      const token = localStorage.getItem('jr_token');
+      const token = getAuthToken();
       if (!token) return openAuthModal('signin');
 
       const amount = parseFloat(document.getElementById('fundAmount').value);
@@ -2170,7 +2180,7 @@
     }
 
     async function loadPaymentHistory() {
-      const token = localStorage.getItem('jr_token');
+      const token = getAuthToken();
       const container = document.getElementById('paymentHistory');
       if (!token || !container) return;
 
@@ -2202,7 +2212,7 @@
 
     async function handleRaiseTicket(e) {
       e.preventDefault();
-      const token = localStorage.getItem('jr_token');
+      const token = getAuthToken();
       if (!token) return openAuthModal('signin');
 
       const payload = {
@@ -2275,7 +2285,7 @@
 
     async function loadApiKey() {
       if (!currentUser) return;
-      const token = localStorage.getItem('jr_token');
+      const token = getAuthToken();
       try {
         const res = await fetch('/api/user/api-key', { headers: { 'Authorization': `Bearer ${token}` } });
         const data = await res.json();
@@ -2289,7 +2299,7 @@
       if (!currentUser) return openAuthModal('signin');
       if (!confirm('Generate a new API key? The previous key stops working immediately.')) return;
 
-      const token = localStorage.getItem('jr_token');
+      const token = getAuthToken();
       try {
         const res = await fetch('/api/user/api-key', {
           method: 'POST',
@@ -2314,7 +2324,7 @@
     }
 
     async function fetchUserProfile() {
-      const token = localStorage.getItem('jr_token');
+      const token = getAuthToken();
       if (!token) return;
       try {
         const res = await fetch('/api/user/profile', {

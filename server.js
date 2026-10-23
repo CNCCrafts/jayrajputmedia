@@ -1522,9 +1522,13 @@ app.put('/api/admin/users/:id/password', authenticateToken, requireAdmin, async 
 });
 
 app.post('/api/admin/users/:id/impersonate', authenticateToken, requireAdmin, async (req, res) => {
-  const target = await pool.query('SELECT id, email, name, role FROM users WHERE id = $1', [req.params.id]);
+  const target = await pool.query('SELECT id, email, name, role, status FROM users WHERE id = $1', [req.params.id]);
   if (!target.rows.length) return res.status(404).json({ error: 'User not found.' });
   const user = target.rows[0];
+  if (user.role !== 'user') return res.status(403).json({ error: 'Only customer accounts can be impersonated.' });
+  if (user.status === 'suspended') {
+    return res.status(403).json({ error: 'Suspended accounts cannot be accessed.' });
+  }
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role }, JWT_SECRET, { expiresIn: '8h' });
   // Audit log (best-effort)
   try {
