@@ -19,9 +19,9 @@
           colors: {
             gold: '#F5BD02',
             goldLight: '#FFE57F',
-            darkBg: '#070A12',
-            cardBg: '#0F1626',
-            cardBorder: 'rgba(245, 189, 2, 0.2)'
+            darkBg: '#f1f5f9',
+            cardBg: '#ffffff',
+            cardBorder: 'rgba(148, 163, 184, 0.35)'
           }
         }
       }
@@ -31,16 +31,16 @@
 
   <style>
     .admin-nav-btn {
-      color: #94a3b8;
+      color: #475569;
     }
     .admin-nav-btn:hover {
-      background: #1e293b;
-      color: #ffffff;
+      background: #e2e8f0;
+      color: #0f172a;
     }
     .admin-nav-btn.active {
       background: rgba(245, 189, 2, 0.15);
-      color: #F5BD02;
-      border: 1px solid rgba(245, 189, 2, 0.4);
+      color: #946c00;
+      border: 1px solid rgba(245, 189, 2, 0.5);
     }
     .admin-tab-panel {
       animation: fadeIn 0.2s ease-in-out;
@@ -67,9 +67,55 @@
         display: none;
       }
     }
+    body.admin-light-theme {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    .admin-light-theme [class~="bg-cardBg"] {
+      background-color: #ffffff !important;
+    }
+    .admin-light-theme [class~="bg-slate-950"],
+    .admin-light-theme [class~="bg-slate-950/60"],
+    .admin-light-theme [class~="bg-slate-900"],
+    .admin-light-theme [class~="bg-slate-900/50"],
+    .admin-light-theme [class~="bg-slate-800"],
+    .admin-light-theme [class~="bg-slate-800/60"] {
+      background-color: #f8fafc !important;
+    }
+    .admin-light-theme [class~="border-slate-700"],
+    .admin-light-theme [class~="border-slate-800"],
+    .admin-light-theme [class~="divide-slate-800"] {
+      border-color: #cbd5e1 !important;
+    }
+    .admin-light-theme [class~="text-slate-100"] { color: #1e293b !important; }
+    .admin-light-theme [class~="text-slate-200"] { color: #334155 !important; }
+    .admin-light-theme [class~="text-slate-300"] { color: #475569 !important; }
+    .admin-light-theme [class~="text-slate-400"] { color: #64748b !important; }
+    .admin-light-theme [class~="text-gold"],
+    .admin-light-theme [class~="text-goldLight"] {
+      color: #946c00 !important;
+    }
+    .admin-light-theme h1[class~="text-white"],
+    .admin-light-theme h2[class~="text-white"],
+    .admin-light-theme h3[class~="text-white"],
+    .admin-light-theme h4[class~="text-white"],
+    .admin-light-theme p[class~="text-white"],
+    .admin-light-theme td[class~="text-white"],
+    .admin-light-theme th[class~="text-white"],
+    .admin-light-theme label[class~="text-white"],
+    .admin-light-theme input[class~="text-white"],
+    .admin-light-theme select[class~="text-white"],
+    .admin-light-theme textarea[class~="text-white"] {
+      color: #1e293b !important;
+    }
+    .admin-light-theme [class~="hover:bg-slate-900/50"]:hover,
+    .admin-light-theme [class~="hover:bg-slate-800"]:hover,
+    .admin-light-theme [class~="hover:bg-slate-700"]:hover {
+      background-color: #e2e8f0 !important;
+    }
   </style>
 </head>
-<body class="bg-darkBg text-slate-100 font-sans min-h-screen antialiased flex flex-col justify-center items-center p-4">
+<body class="admin-light-theme bg-darkBg text-slate-900 font-sans min-h-screen antialiased flex flex-col justify-center items-center p-4">
 
   <div id="adminLoginCard" class="w-full max-w-md bg-cardBg p-8 rounded-3xl border border-gold/40 shadow-2xl space-y-6">
     <div class="text-center space-y-2">
@@ -307,7 +353,8 @@
                     <th class="p-3">ID</th>
                     <th class="p-3">Category</th>
                     <th class="p-3">Name</th>
-                    <th class="p-3">Rate/1000</th>
+                    <th class="p-3">Provider Rate/1000</th>
+                    <th class="p-3">Your Rate/1000</th>
                     <th class="p-3">Min / Max</th>
                     <th class="p-3">Image</th>
                     <th class="p-3">Source</th>
@@ -1076,6 +1123,7 @@
 
     let previewServices = [];
     let selectedServiceIds = new Set();
+    let previewMarkupPercent = 0;
 
     async function openServiceSelectModal(providerId) {
       const modal = document.getElementById('serviceSelectModal');
@@ -1115,6 +1163,7 @@
         }
 
         previewServices = data.services || [];
+        previewMarkupPercent = Number(data.markupPercent) || 0;
         selectedServiceIds = new Set(previewServices.map(s => s.upstreamId));
 
         renderPreviewServices();
@@ -1148,7 +1197,17 @@
         return;
       }
 
-      container.innerHTML = filtered.map(s => `
+      container.innerHTML = filtered.map(s => {
+        const providerRate = Number(s.rate);
+        const retailRate = providerRate * (1 + previewMarkupPercent / 100);
+        const rateMarkup = Number.isFinite(providerRate)
+          ? `<span class="text-right text-xs font-mono font-bold whitespace-nowrap">
+              <span class="block text-slate-500">Before markup: ₹${providerRate.toFixed(4)}</span>
+              <span class="block text-gold">After markup: ₹${retailRate.toFixed(4)}</span>
+            </span>`
+          : '<span class="text-xs text-red-500">Rate unavailable</span>';
+
+        return `
         <label class="flex items-start gap-3 p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-2xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition">
           <input type="checkbox" value="${s.upstreamId}" ${selectedServiceIds.has(s.upstreamId) ? 'checked' : ''} onchange="togglePreviewService('${s.upstreamId}')" class="mt-1 w-4 h-4 rounded border-slate-300 text-gold focus:ring-gold">
           <div class="flex-1 min-w-0">
@@ -1156,9 +1215,9 @@
             <p class="text-xs text-slate-500 dark:text-slate-400">${s.category} • Min: ${s.min} • Max: ${s.max}</p>
             ${s.description ? `<p class="text-xs text-slate-400 mt-1 line-clamp-2">${s.description}</p>` : ''}
           </div>
-          <span class="text-xs font-mono font-bold text-gold whitespace-nowrap">₹${s.rate}</span>
+          ${rateMarkup}
         </label>
-      `).join('');
+      `}).join('');
     }
 
     function togglePreviewService(upstreamId) {
@@ -1227,7 +1286,8 @@
             <td class="p-3 font-mono text-gold font-bold">#${s.id}</td>
             <td class="p-3 font-semibold text-slate-200">${s.category}</td>
             <td class="p-3">${s.name}</td>
-            <td class="p-3 text-gold font-mono font-bold">₹${s.rate_per_1000}</td>
+            <td class="p-3 text-slate-600 font-mono">${s.cost_per_1000 == null ? '—' : `₹${Number(s.cost_per_1000).toFixed(4)}`}</td>
+            <td class="p-3 text-gold font-mono font-bold">₹${Number(s.rate_per_1000).toFixed(4)}</td>
             <td class="p-3 text-xs text-slate-400">${s.min_quantity} - ${s.max_quantity}</td>
             <td class="p-3">${s.image
               ? `<div class="w-28 h-16 flex items-center justify-center bg-slate-950/60 rounded-lg overflow-hidden border border-slate-700"><img src="${s.image}" alt="${s.name}" loading="lazy" class="w-full h-full object-cover object-center" onerror="this.closest('div').innerHTML='<span class=\'text-slate-500 text-xs\'>none</span>'"></div>`

@@ -508,11 +508,12 @@ async function placeOrder(user, service, link, quantity, currency = 'INR') {
 
     const orderId = info.rows[0].id;
 
-  // Referral Reward Logic (5% commission if amount >= 100 INR/equivalent)
-  if (totalCost >= 100 && user.referred_by) {
+  // Apply the ₹100 eligibility threshold in INR, regardless of order currency.
+  const orderValueInInr = totalCost / multiplier;
+  if (orderValueInInr > 100 && user.referred_by) {
     const referrer = await pool.query('SELECT id FROM users WHERE referral_code = $1', [user.referred_by]);
     if (referrer.rows.length) {
-      const commission = parseFloat((totalCost * 0.05).toFixed(2));
+      const commission = parseFloat((totalCost * 0.10).toFixed(2));
       await pool.query(`UPDATE users SET ${walletField} = ${walletField} + $1 WHERE id = $2`, [commission, referrer.rows[0].id]);
     }
   }
@@ -1079,7 +1080,12 @@ app.post('/api/admin/providers/:id/preview', authenticateToken, requireAdmin, as
           category: row.category,
           description: row.description || ''
         }));
-        return res.json({ success: true, services: normalized, cached: true });
+        return res.json({
+          success: true,
+          services: normalized,
+          cached: true,
+          markupPercent: Number(provider.rows[0].markup_percent) || 0
+        });
       }
       return res.status(400).json({ error: 'Provider did not return a service list. Check the API URL and key.' });
     }
@@ -1094,7 +1100,12 @@ app.post('/api/admin/providers/:id/preview', authenticateToken, requireAdmin, as
       description: item.description || ''
     })).filter(item => item.upstreamId);
 
-    res.json({ success: true, services: normalized, cached: false });
+    res.json({
+      success: true,
+      services: normalized,
+      cached: false,
+      markupPercent: Number(provider.rows[0].markup_percent) || 0
+    });
   } catch (err) {
     // Fall back to cached services on error
     try {
@@ -1109,7 +1120,12 @@ app.post('/api/admin/providers/:id/preview', authenticateToken, requireAdmin, as
           category: row.category,
           description: row.description || ''
         }));
-        return res.json({ success: true, services: normalized, cached: true });
+        return res.json({
+          success: true,
+          services: normalized,
+          cached: true,
+          markupPercent: Number(provider.rows[0].markup_percent) || 0
+        });
       }
     } catch (cacheErr) {
       console.error('Cache fallback failed:', cacheErr.message);

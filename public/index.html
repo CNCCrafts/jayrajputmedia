@@ -479,7 +479,7 @@
             <i class="fa-solid fa-wallet w-5 text-amber-500"></i><span>Add Funds</span>
           </button>
           <button onclick="navigateSection('refer-earn')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left">
-            <i class="fa-solid fa-gift w-5 text-emerald-500"></i><span>Refer & Earn (5%)</span>
+            <i class="fa-solid fa-gift w-5 text-emerald-500"></i><span>Refer & Earn (10%)</span>
           </button>
           <button onclick="navigateSection('support')" class="w-full flex items-center space-x-3.5 p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition text-left">
             <i class="fa-solid fa-headset w-5 text-rose-500"></i><span>Support / Tickets</span>
@@ -572,30 +572,45 @@
         </div>
       </div>
 
+      <div class="flex flex-wrap justify-center gap-3" aria-label="Follow and contact Jay Rajput Media Power">
+        <a href="https://www.facebook.com/share/19tpyoeaEv/" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-5 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition">
+          <i class="fa-brands fa-facebook"></i><span>Facebook</span>
+        </a>
+        <a href="https://www.instagram.com/jayrajputmediapowercompany?dlrf=djk0OHRjYzRja3Bh" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-5 py-3 bg-pink-600 text-white font-bold rounded-xl hover:bg-pink-700 transition">
+          <i class="fa-brands fa-instagram"></i><span>Instagram</span>
+        </a>
+        <a href="https://www.youtube.com/@jayrajputmediapower" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-5 py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition">
+          <i class="fa-brands fa-youtube"></i><span>YouTube</span>
+        </a>
+        <a href="https://wa.me/916375063791" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-5 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition">
+          <i class="fa-brands fa-whatsapp"></i><span>WhatsApp</span>
+        </a>
+      </div>
+
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white dark:bg-darkCard p-7 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3">
+        <button type="button" onclick="openPlatformOrder('Instagram')" class="w-full text-left bg-white dark:bg-darkCard p-7 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3 focus:outline-none focus:ring-2 focus:ring-igPink">
           <div class="w-12 h-12 rounded-2xl bg-pink-50 dark:bg-pink-950/50 text-igPink flex items-center justify-center text-xl font-bold">
             <i class="fa-brands fa-instagram"></i>
           </div>
           <h4 class="text-lg font-display font-bold text-slate-900 dark:text-white">Instagram Automation</h4>
           <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">High-retention non-drop followers, reel views, active story engagement, and algorithmic boosts.</p>
-        </div>
+        </button>
 
-        <div class="bg-white dark:bg-darkCard p-7 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3">
+        <button type="button" onclick="openPlatformOrder('Facebook')" class="w-full text-left bg-white dark:bg-darkCard p-7 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3 focus:outline-none focus:ring-2 focus:ring-fbBlue">
           <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-fbBlue flex items-center justify-center text-xl font-bold">
             <i class="fa-brands fa-facebook"></i>
           </div>
           <h4 class="text-lg font-display font-bold text-slate-900 dark:text-white">Facebook Page Power</h4>
           <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Fast-delivery page likes, post reactions, video watchtime, and follower packages tailored for brands.</p>
-        </div>
+        </button>
 
-        <div class="bg-white dark:bg-darkCard p-7 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3">
+        <button type="button" onclick="openReferralPage()" class="w-full text-left bg-white dark:bg-darkCard p-7 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3 focus:outline-none focus:ring-2 focus:ring-amber-400">
           <div class="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/50 text-amber-500 flex items-center justify-center text-xl font-bold">
             <i class="fa-solid fa-hand-holding-dollar"></i>
           </div>
-          <h4 class="text-lg font-display font-bold text-slate-900 dark:text-white">5% Referral Commission</h4>
-          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Earn recurring cash commission deposited right into your wallet for all client orders above ₹100.</p>
-        </div>
+          <h4 class="text-lg font-display font-bold text-slate-900 dark:text-white">10% Instant Referral Cashback</h4>
+          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Get 10% instant cashback in your wallet when a referred customer spends more than ₹100.</p>
+        </button>
 
         <div class="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 p-7 rounded-3xl border border-purple-200 dark:border-purple-800 shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3 cursor-pointer" onclick="navigateSection('video-editing')">
           <div class="w-12 h-12 rounded-2xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl font-bold">
@@ -691,7 +706,7 @@
           <p class="text-sm text-slate-600 dark:text-slate-300">
             हमारा उद्देश्य है कि customer को service journey के दौरान proper assistance और timely support मिले।
           </p>
-          <a href="https://wa.me/919876543210" target="_blank" class="inline-flex items-center space-x-2 px-5 py-2.5 bg-green-600 text-white text-sm font-bold rounded-2xl hover:bg-green-700 transition">
+          <a href="https://wa.me/916375063791" target="_blank" class="inline-flex items-center space-x-2 px-5 py-2.5 bg-green-600 text-white text-sm font-bold rounded-2xl hover:bg-green-700 transition">
             <i class="fa-brands fa-whatsapp"></i><span>Chat with Support</span>
           </a>
         </div>
@@ -706,11 +721,11 @@
             </div>
             <div>
               <p class="text-xs text-slate-400 font-bold uppercase">YouTube</p>
-              <a href="https://youtube.com/@jayrajputmediapower?si=Sl4x2CtF_15PkPCU" target="_blank" class="text-fbBlue font-semibold hover:underline">@jayrajputmediapower</a>
+              <a href="https://www.youtube.com/@jayrajputmediapower" target="_blank" rel="noopener noreferrer" class="text-fbBlue font-semibold hover:underline">@jayrajputmediapower</a>
             </div>
             <div>
               <p class="text-xs text-slate-400 font-bold uppercase">Instagram</p>
-              <a href="https://www.instagram.com/jayrajputmediapowercompany?stkn=djk0OHRjYzRja3Bh" target="_blank" class="text-igPink font-semibold hover:underline">@jayrajputmediapowercompany</a>
+              <a href="https://www.instagram.com/jayrajputmediapowercompany?dlrf=djk0OHRjYzRja3Bh" target="_blank" rel="noopener noreferrer" class="text-igPink font-semibold hover:underline">@jayrajputmediapowercompany</a>
             </div>
           </div>
         </div>
@@ -802,7 +817,7 @@
 
           <div class="text-center pt-2">
             <p class="text-xs text-slate-500 mb-3">Aap apne budget aur daily requirement ke according koi bhi plan select kar sakte ho</p>
-            <a href="https://wa.me/919876543210?text=Hi%2C%20I%20am%20interested%20in%20monthly%20video%20packages.%20Please%20share%20details." target="_blank" class="inline-flex items-center space-x-2 px-6 py-3 bg-green-600 text-white font-bold rounded-2xl hover:bg-green-700 transition">
+            <a href="https://wa.me/916375063791?text=Hi%2C%20I%20am%20interested%20in%20monthly%20video%20packages.%20Please%20share%20details." target="_blank" class="inline-flex items-center space-x-2 px-6 py-3 bg-green-600 text-white font-bold rounded-2xl hover:bg-green-700 transition">
               <i class="fa-brands fa-whatsapp"></i><span>Get Started — WhatsApp</span>
             </a>
           </div>
@@ -1064,8 +1079,15 @@
           <i class="fa-solid fa-gift"></i>
         </div>
         <div>
-          <h2 class="text-3xl font-display font-black text-slate-900 dark:text-white">Refer & Earn 5% Commission</h2>
-          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1.5">Earn a recurring <strong class="text-fbBlue font-bold">5% Commission</strong> on every referred customer's order over ₹100.</p>
+          <h2 class="text-3xl font-display font-black text-slate-900 dark:text-white">REFER & EARN – INSTANT 10% CASHBACK OFFER</h2>
+          <div class="text-left text-sm text-slate-600 dark:text-slate-300 space-y-3 mt-3">
+            <p>अब हमारे साथ कस्टमर रेफर करें और पाएं शानदार <strong class="text-fbBlue">10% इंस्टेंट कैशबैक रिवॉर्ड!</strong> 💰</p>
+            <h3 class="font-bold text-slate-900 dark:text-white">कैशबैक पाने का तरीका:</h3>
+            <p>1. ₹100 से ऊपर की खरीदारी: आपके रेफरल से साइन अप करने वाला कस्टमर ₹100 से ऊपर का कोई भी पैकेज खरीदता है, तो आपको खरीदारी की राशि का 10% इंस्टेंट कैशबैक मिलेगा।</p>
+            <p class="font-bold">🚀 जितनी बड़ी खरीदारी, उतना बड़ा रिवॉर्ड!</p>
+            <p>अपने दोस्तों, बिजनेस पार्टनर्स और कस्टमर्स को रेफर करें और हर योग्य खरीदारी पर तुरंत 10% कैशबैक पाएं।</p>
+            <p class="font-bold text-slate-900 dark:text-white">JAY Rajput Media Power<br>Digital Marketing • Social Media Promotion • Instagram Growth</p>
+          </div>
         </div>
         <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-left space-y-1.5">
           <label class="text-xs uppercase font-bold text-slate-600 dark:text-slate-300">Your Shareable Referral Link</label>
@@ -1173,7 +1195,7 @@
 
           <div>
             <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">WhatsApp Number</label>
-            <input type="tel" id="veWhatsapp" required placeholder="e.g. 919876543210" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm">
+            <input type="tel" id="veWhatsapp" required placeholder="Enter your WhatsApp number" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm">
             <p class="text-[10px] text-slate-400 mt-1">Enter number with country code, no + symbol</p>
           </div>
 
@@ -1308,6 +1330,8 @@
     let inhouseServices = [];
     let importedServices = [];
     let activeCurrency = 'INR';
+    let pendingAuthSection = null;
+    let pendingOrderCategory = '';
 
     function initTheme() {
       const storedTheme = localStorage.getItem('jr_theme') || 'light';
@@ -1404,6 +1428,60 @@
       if (sectionId !== 'service-detail') {
         history.pushState(null, '', '#');
       }
+    }
+
+    function selectOrderCategory(category) {
+      const categorySelect = document.getElementById('orderCategorySelect');
+      const matchingCategory = [...categorySelect.options].find(option =>
+        option.value.toLowerCase() === category.toLowerCase()
+        || option.value.toLowerCase().includes(category.toLowerCase())
+      );
+      if (!matchingCategory) return false;
+
+      categorySelect.value = matchingCategory.value;
+      filterServicesByCategory();
+      return true;
+    }
+
+    function applyPendingOrderCategory() {
+      if (!pendingOrderCategory || !allServices.length) return;
+      const category = pendingOrderCategory;
+      pendingOrderCategory = '';
+      if (!selectOrderCategory(category)) {
+        alert(`No active ${category} packages were found. You can choose another platform on the order page.`);
+      }
+    }
+
+    function navigateAfterAuthentication() {
+      const destination = pendingAuthSection;
+      pendingAuthSection = null;
+
+      if (destination === 'new-order') {
+        applyPendingOrderCategory();
+        navigateSection('new-order');
+        return;
+      }
+
+      navigateSection(destination || 'quick-order');
+    }
+
+    function openPlatformOrder(category) {
+      pendingOrderCategory = category;
+      pendingAuthSection = 'new-order';
+      if (!currentUser) {
+        openAuthModal('signin');
+        return;
+      }
+      navigateAfterAuthentication();
+    }
+
+    function openReferralPage() {
+      if (currentUser) {
+        navigateSection('refer-earn');
+        return;
+      }
+      pendingAuthSection = 'refer-earn';
+      openAuthModal('signup');
     }
 
     function handleHashRoute() {
@@ -1590,7 +1668,6 @@
         currentUser = data.user;
         updateUIForUser();
         closeAuthModal();
-        navigateSection('quick-order');
       } catch (err) {
         alert('Authentication error: ' + err.message);
       }
@@ -1669,7 +1746,6 @@
         currentUser = data.user;
         updateUIForUser();
         closeAuthModal();
-        navigateSection('quick-order');
       } catch (err) {
         alert('Google Sign-In failed: ' + err.message);
       }
@@ -1706,7 +1782,7 @@
       loadApiKey();
       loadUserOrders();
       
-      navigateSection('quick-order');
+      navigateAfterAuthentication();
     }
 
     function updateWalletDisplay() {
@@ -1756,6 +1832,7 @@
         const importedCatOptions = importedCats.map(c => `<option value="${c}">${c}</option>`).join('');
         const allCatOptions = [...new Set(allServices.map(s => s.category).filter(Boolean))].sort().map(c => `<option value="${c}">${c}</option>`).join('');
         document.getElementById('orderCategorySelect').innerHTML = allCatOptions;
+        if (currentUser) applyPendingOrderCategory();
         const quickCatSelect = document.getElementById('quickCategorySelect');
         if (quickCatSelect) {
           quickCatSelect.innerHTML = '<option value="all">All Categories</option>' + importedCatOptions;
@@ -2364,7 +2441,7 @@
       }, 500);
       
       if (currentUser) {
-        navigateSection('quick-order');
+        navigateAfterAuthentication();
       }
     });
   </script>
@@ -2375,7 +2452,7 @@
 
   <!-- 👇 JavaScript कोड यहाँ रहेगा (HTML फ़ाइल में) -->
   <script>
-    const ADMIN_WHATSAPP_NUMBER = "919876543210"; // अपना व्हाट्सएप नंबर डालें
+    const ADMIN_WHATSAPP_NUMBER = "916375063791";
 
     function veUpdateFileName(input) {
       const fileNameText = document.getElementById('veFileNameText');
