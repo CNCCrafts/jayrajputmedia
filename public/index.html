@@ -389,9 +389,19 @@
 
       <div class="flex items-center space-x-1.5 sm:space-x-2 md:space-x-3 flex-shrink-0">
         
-        <div class="hidden md:flex items-center space-x-2 pr-2 border-r border-slate-200 dark:border-darkBorder">
-          <span class="w-7 h-7 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-fbBlue flex items-center justify-center text-sm shadow-sm"><i class="fa-brands fa-facebook-f"></i></span>
-          <span class="w-7 h-7 rounded-xl bg-pink-50 dark:bg-pink-950/50 text-igPink flex items-center justify-center text-sm shadow-sm"><i class="fa-brands fa-instagram"></i></span>
+        <div class="hidden md:flex items-center space-x-1.5 pr-2 border-r border-slate-200 dark:border-darkBorder" aria-label="Social media">
+          <a href="https://www.facebook.com/share/19tpyoeaEv/" target="_blank" rel="noopener noreferrer" aria-label="Facebook" title="Facebook" class="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-fbBlue flex items-center justify-center text-sm shadow-sm hover:bg-blue-100 dark:hover:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-fbBlue">
+            <i class="fa-brands fa-facebook-f"></i>
+          </a>
+          <a href="https://www.instagram.com/jayrajputmediapowercompany?dlrf=djk0OHRjYzRja3Bh" target="_blank" rel="noopener noreferrer" aria-label="Instagram" title="Instagram" class="w-8 h-8 rounded-xl bg-pink-50 dark:bg-pink-950/50 text-igPink flex items-center justify-center text-sm shadow-sm hover:bg-pink-100 dark:hover:bg-pink-900 focus:outline-none focus:ring-2 focus:ring-igPink">
+            <i class="fa-brands fa-instagram"></i>
+          </a>
+          <a href="https://www.youtube.com/@jayrajputmediapower" target="_blank" rel="noopener noreferrer" aria-label="YouTube" title="YouTube" class="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-950/50 text-red-600 dark:text-red-400 flex items-center justify-center text-sm shadow-sm hover:bg-red-100 dark:hover:bg-red-900 focus:outline-none focus:ring-2 focus:ring-red-500">
+            <i class="fa-brands fa-youtube"></i>
+          </a>
+          <a href="https://wa.me/916375063791" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" title="WhatsApp" class="w-8 h-8 rounded-xl bg-green-50 dark:bg-green-950/50 text-green-700 dark:text-green-400 flex items-center justify-center text-sm shadow-sm hover:bg-green-100 dark:hover:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500">
+            <i class="fa-brands fa-whatsapp"></i>
+          </a>
         </div>
 
         <button id="themeToggleBtn" onclick="toggleTheme()" class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-800/90 text-slate-700 dark:text-amber-400 flex items-center justify-center hover:scale-105 shadow-sm transition flex-shrink-0">
@@ -414,10 +424,10 @@
         </div>
 
         <div id="authNavButtons" class="flex items-center space-x-1 sm:space-x-2 flex-shrink-0">
-          <button onclick="openAuthModal('signin')" type="button" class="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 text-[10px] sm:text-xs md:text-sm font-bold text-slate-700 dark:text-slate-300 hover:text-fbBlue rounded-lg sm:rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition">
+          <button onclick="openAuthModal('signin')" type="button" class="px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 text-[10px] sm:text-xs md:text-sm font-extrabold text-white bg-blue-700 hover:bg-blue-800 rounded-lg sm:rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-400 transition">
             Sign In
           </button>
-          <button onclick="openAuthModal('signup')" type="button" class="px-2 sm:px-3 md:px-5 py-1 sm:py-1.5 md:py-2 text-[10px] sm:text-xs md:text-sm font-bold rounded-lg sm:rounded-xl text-white meta-gradient-bg shadow-igGlow hover:opacity-95 transition-all hover:-translate-y-0.5">
+          <button onclick="openAuthModal('signup')" type="button" class="px-2 sm:px-3 md:px-5 py-1 sm:py-1.5 md:py-2 text-[10px] sm:text-xs md:text-sm font-extrabold rounded-lg sm:rounded-xl text-white meta-gradient-bg shadow-igGlow hover:opacity-95 transition-all hover:-translate-y-0.5">
             Sign Up
           </button>
         </div>

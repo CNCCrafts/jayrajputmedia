@@ -1576,6 +1576,13 @@
 
     async function impersonateUser(userId) {
       if (!confirm('Open the site as this customer? This does not reveal or change their password.')) return;
+      const adminToken = localStorage.getItem('jr_admin_token');
+      if (!adminToken) {
+        alert('Your admin session has expired. Please sign in again.');
+        checkAdminAuth();
+        return;
+      }
+
       const loginWindow = window.open('about:blank', '_blank');
       if (!loginWindow) {
         alert('The new window was blocked. Allow pop-ups for this site and try again.');
@@ -1585,7 +1592,7 @@
       try {
         const response = await fetch(`/api/admin/users/${userId}/impersonate`, {
           method: 'POST',
-          headers: { Authorization: `******'jr_admin_token')}` }
+          headers: { Authorization: 'Bearer ' + adminToken }
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Could not open this user account.');
@@ -1614,16 +1621,16 @@
           const email = user.email || '';
           const userJson = escapeHtml(JSON.stringify({ name, email, role: user.role || 'user' }));
           const loginAction = suspended
-            ? '<button type="button" disabled title="Reactivate this account to log in as it" class="px-2 py-1 bg-slate-800 text-slate-500 rounded-lg cursor-not-allowed">Login as</button>'
-            : `<button type="button" onclick="impersonateUser(${id})" class="px-2 py-1 bg-violet-500/10 text-violet-300 rounded-lg hover:bg-violet-500/20">Login as</button>`;
+            ? '<button type="button" disabled title="Reactivate this account to log in as it" class="px-2 py-1.5 bg-slate-200 text-slate-500 font-extrabold rounded-lg cursor-not-allowed">Login as</button>'
+            : `<button type="button" onclick="impersonateUser(${id})" class="px-2 py-1.5 bg-violet-700 text-white font-extrabold rounded-lg hover:bg-violet-800 focus:outline-none focus:ring-2 focus:ring-violet-400">Login as</button>`;
           const actionMarkup = `
             <div class="flex flex-wrap justify-center gap-1 min-w-[290px]">
-              <button onclick="showUserActionModal(${id}, 'edit', this.dataset.user)" data-user="${userJson}" class="px-2 py-1 bg-blue-500/10 text-blue-300 rounded-lg hover:bg-blue-500/20">Edit</button>
-              <button onclick="showUserActionModal(${id}, 'funds', this.dataset.user)" data-user="${userJson}" class="px-2 py-1 bg-emerald-500/10 text-emerald-300 rounded-lg hover:bg-emerald-500/20">Add Funds</button>
-              <button onclick="showUserActionModal(${id}, 'password')" class="px-2 py-1 bg-amber-500/10 text-amber-300 rounded-lg hover:bg-amber-500/20">Set Password</button>
+              <button onclick="showUserActionModal(${id}, 'edit', this.dataset.user)" data-user="${userJson}" class="px-2 py-1.5 bg-blue-700 text-white font-extrabold rounded-lg hover:bg-blue-800">Edit</button>
+              <button onclick="showUserActionModal(${id}, 'funds', this.dataset.user)" data-user="${userJson}" class="px-2 py-1.5 bg-emerald-700 text-white font-extrabold rounded-lg hover:bg-emerald-800">Add Funds</button>
+              <button onclick="showUserActionModal(${id}, 'password')" class="px-2 py-1.5 bg-amber-600 text-white font-extrabold rounded-lg hover:bg-amber-700">Set Password</button>
               ${loginAction}
-              <button onclick="toggleUserSuspension(${id}, ${!suspended})" class="px-2 py-1 bg-rose-500/10 text-rose-300 rounded-lg hover:bg-rose-500/20">${suspended ? 'Reactivate' : 'Suspend'}</button>
-              <button onclick="showUserLogins(${id})" class="px-2 py-1 bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600">Sign-ins</button>
+              <button onclick="toggleUserSuspension(${id}, ${!suspended})" class="px-2 py-1.5 bg-rose-700 text-white font-extrabold rounded-lg hover:bg-rose-800">${suspended ? 'Reactivate' : 'Suspend'}</button>
+              <button onclick="showUserLogins(${id})" class="px-2 py-1.5 bg-slate-700 text-white font-extrabold rounded-lg hover:bg-slate-800">Sign-ins</button>
             </div>`;
           return `<tr><td class="p-3 text-xs">#${id}</td><td class="p-3 text-xs">${escapeHtml(name)}<br>${escapeHtml(email)}</td><td class="p-3 text-xs">${escapeHtml(user.role)}</td><td class="p-3 text-xs">${escapeHtml(user.status || 'active')}</td><td class="p-3 text-xs">${Number(user.wallet_inr || 0).toFixed(2)} / ${Number(user.wallet_usd || 0).toFixed(2)} / ${Number(user.wallet_eur || 0).toFixed(2)}</td><td class="p-3 text-xs">${user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</td><td class="p-3 text-center text-xs">${actionMarkup}</td></tr>`;
         }).join('') || '<tr><td colspan="7" class="p-3 text-xs">No users</td></tr>';
