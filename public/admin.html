@@ -346,24 +346,55 @@
               </div>
               <span class="text-[10px] text-slate-500">Duplicates are detected by matching name + category</span>
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-left text-sm text-slate-300">
-                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
-                  <tr>
-                    <th class="p-3">ID</th>
-                    <th class="p-3">Category</th>
-                    <th class="p-3">Name</th>
-                    <th class="p-3">Provider Rate/1000</th>
-                    <th class="p-3">Your Rate/1000</th>
-                    <th class="p-3">Min / Max</th>
-                    <th class="p-3">Image</th>
-                    <th class="p-3">Source</th>
-                    <th class="p-3 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="adminServicesTbody" class="divide-y divide-slate-800">
-                </tbody>
-              </table>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <section class="min-w-0 rounded-2xl border border-slate-800 overflow-hidden">
+                <div class="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3">
+                  <h3 class="text-sm font-bold text-white">In-House Packages</h3>
+                  <span id="inHouseServiceCount" class="text-xs text-slate-400">0 packages</span>
+                </div>
+                <div class="overflow-x-auto">
+                  <table class="w-full min-w-[760px] text-left text-sm text-slate-300">
+                    <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
+                      <tr>
+                        <th class="p-3">ID</th>
+                        <th class="p-3">Category</th>
+                        <th class="p-3">Name</th>
+                        <th class="p-3">Provider Rate/1000</th>
+                        <th class="p-3">Your Rate/1000</th>
+                        <th class="p-3">Min / Max</th>
+                        <th class="p-3">Image</th>
+                        <th class="p-3">Source</th>
+                        <th class="p-3 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="inHouseServicesTbody" class="divide-y divide-slate-800"></tbody>
+                  </table>
+                </div>
+              </section>
+              <section class="min-w-0 rounded-2xl border border-slate-800 overflow-hidden">
+                <div class="flex items-center justify-between gap-3 bg-slate-900 px-4 py-3">
+                  <h3 class="text-sm font-bold text-white">Provider Packages</h3>
+                  <span id="providerServiceCount" class="text-xs text-slate-400">0 packages</span>
+                </div>
+                <div class="overflow-x-auto">
+                  <table class="w-full min-w-[760px] text-left text-sm text-slate-300">
+                    <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800">
+                      <tr>
+                        <th class="p-3">ID</th>
+                        <th class="p-3">Category</th>
+                        <th class="p-3">Name</th>
+                        <th class="p-3">Provider Rate/1000</th>
+                        <th class="p-3">Your Rate/1000</th>
+                        <th class="p-3">Min / Max</th>
+                        <th class="p-3">Image</th>
+                        <th class="p-3">Source</th>
+                        <th class="p-3 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="providerServicesTbody" class="divide-y divide-slate-800"></tbody>
+                  </table>
+                </div>
+              </section>
             </div>
           </section>
         </div>
@@ -1280,8 +1311,12 @@
         document.getElementById('serviceCountBadge').innerText = `${adminServicesList.length} Services`;
         populateCategoryDropdowns();
 
-        const tbody = document.getElementById('adminServicesTbody');
-        tbody.innerHTML = adminServicesList.map(s => `
+        const inHouseServices = adminServicesList.filter(s => !s.provider_id);
+        const providerServices = adminServicesList.filter(s => s.provider_id);
+        document.getElementById('inHouseServiceCount').innerText = `${inHouseServices.length} packages`;
+        document.getElementById('providerServiceCount').innerText = `${providerServices.length} packages`;
+
+        const renderServiceRows = services => services.length ? services.map(s => `
           <tr class="hover:bg-slate-900/50">
             <td class="p-3 font-mono text-gold font-bold">#${s.id}</td>
             <td class="p-3 font-semibold text-slate-200">${s.category}</td>
@@ -1300,7 +1335,9 @@
               <button onclick="deleteService(${s.id})" class="px-3 py-1 bg-red-600/20 text-red-400 border border-red-500/30 rounded-lg text-xs hover:bg-red-600 hover:text-white transition">Delete</button>
             </td>
           </tr>
-        `).join('');
+        `).join('') : '<tr><td colspan="9" class="p-5 text-center text-xs text-slate-500">No packages in this section.</td></tr>';
+        document.getElementById('inHouseServicesTbody').innerHTML = renderServiceRows(inHouseServices);
+        document.getElementById('providerServicesTbody').innerHTML = renderServiceRows(providerServices);
       } catch (err) {
         console.error(err);
       }

@@ -234,6 +234,11 @@
       transition: all 0.3s ease;
       flex-shrink: 0;
     }
+    #metaVerifiedBadge {
+      color: #1877F2 !important;
+      background-color: #eff6ff !important;
+      border-color: #bfdbfe !important;
+    }
     .logo-img.logo-large {
       width: 52px;
       height: 52px;
@@ -324,6 +329,17 @@
     }
     body[data-theme-layout="editorial"] #section-home > .grid {
       grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    }
+    body .site-logo-ring {
+      background: linear-gradient(45deg, #F58529, #DD2A7B, #8134AF) !important;
+    }
+    html:not(.dark) body .logo-img {
+      background-color: #ffffff !important;
+      border-color: #F5BD02 !important;
+    }
+    html.dark body .logo-img {
+      background-color: #111827 !important;
+      border-color: #F5BD02 !important;
     }
     @media (max-width: 640px) {
       .ticker-item {
@@ -549,9 +565,10 @@
 
       <div class="p-8 sm:p-14 rounded-3xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder shadow-socialCard flex flex-col md:flex-row items-center justify-between gap-10 relative overflow-hidden transition-colors" id="heroBranding">
         <div class="space-y-5 max-w-xl text-center md:text-left relative z-10">
-          <div class="inline-flex items-center space-x-2 px-3.5 py-1.5 bg-blue-50 dark:bg-slate-800 border border-blue-100 dark:border-slate-700 text-xs font-bold text-fbBlue dark:text-blue-400 rounded-full">
+          <div id="metaVerifiedBadge" class="inline-flex items-center space-x-2 px-3.5 py-1.5 border text-xs font-bold rounded-full">
             <i class="fa-brands fa-meta"></i>
-            <span>Optimized for Instagram Reels & Facebook Pages</span>
+            <span>100% Meta verified services</span>
+            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
           </div>
 
           <h1 class="w-full max-w-2xl mx-auto md:mx-0">
@@ -573,7 +590,7 @@
         </div>
         
         <div class="flex flex-col items-center justify-center relative z-10">
-          <div class="w-52 h-52 sm:w-64 sm:h-64 rounded-full p-2 ig-gradient-bg shadow-igGlow flex items-center justify-center">
+          <div class="site-logo-ring w-52 h-52 sm:w-64 sm:h-64 rounded-full p-2 ig-gradient-bg shadow-igGlow flex items-center justify-center">
             <img src="/logo.png" alt="Jay Rajput Media Power" class="w-full h-full object-cover rounded-full bg-black shadow-inner" onerror="this.src='https://placehold.co/240x240?text=JR+Media'"/>
           </div>
           <div class="mt-4 px-4 py-1.5 bg-white/90 dark:bg-darkCard/90 backdrop-blur-md rounded-full border border-slate-200 dark:border-slate-700 shadow-sm text-[11px] font-display font-black tracking-widest text-slate-600 dark:text-slate-300 uppercase">
