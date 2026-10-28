@@ -262,6 +262,9 @@ async function initializeAppData() {
   await addColumnIfMissing('site_themes', 'occasion_message', 'TEXT');
   await addColumnIfMissing('payment_orders', 'refunded', 'INTEGER DEFAULT 0');
   await addColumnIfMissing('payment_orders', 'refunded_amount', 'REAL DEFAULT 0');
+  await addColumnIfMissing('payment_orders', 'payment_method', "TEXT NOT NULL DEFAULT 'Cashfree'");
+  await addColumnIfMissing('payment_orders', 'utr', 'TEXT');
+  await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS payment_orders_utr_unique_idx ON payment_orders (LOWER(utr)) WHERE utr IS NOT NULL AND BTRIM(utr) <> ''");
 
   // Insert default Admin if not exists
   const adminCheck = await pool.query('SELECT * FROM users WHERE email = $1', ['admin@jayrajputmediapower.com']);
@@ -300,24 +303,34 @@ async function initializeAppData() {
     }
   }
 
-  // Seed default site themes if none exist
-  const themeCount = await pool.query("SELECT COUNT(*) AS n FROM site_themes");
-  if (parseInt(themeCount.rows[0].n) === 0) {
-    const defaultThemes = [
-      ['Default', 'Classic Storefront', '{"primary":"#1e40af","accent":"#f59e0b","bg":"#ffffff","text":"#1f2937","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, true, 'classic'],
-      ['Diwali', 'Festive', '{"primary":"#d97706","accent":"#eab308","bg":"#fffff7","text":"#78350f","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial'],
-      ['Holi', 'Festive', '{"primary":"#ec4899","accent":"#a855f7","bg":"#fff0f6","text":"#7c2d7c","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial'],
-      ['Eid', 'Festive', '{"primary":"#0f766e","accent":"#2dd36f","bg":"#ecfdf5","text":"#064e35","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Plus Jakarta Sans"}', null, false, 'minimal'],
-      ['Christmas', 'Festive', '{"primary":"#b91c1c","accent":"#f59e0b","bg":"#ffeff1","text":"#7f1d1d","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'classic'],
-      ['Minimal', 'Minimal Studio', '{"primary":"#334155","accent":"#0f766e","bg":"#f8fafc","text":"#0f172a","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Plus Jakarta Sans"}', null, false, 'minimal'],
-      ['Editorial', 'Editorial Spotlight', '{"primary":"#7c3aed","accent":"#db2777","bg":"#faf5ff","text":"#1f1635","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial']
-    ];
-    for (const t of defaultThemes) {
-      await pool.query(
-        `INSERT INTO site_themes (name, label, palette_json, banner_url, is_active, layout) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (name) DO NOTHING`,
-        t
-      );
-    }
+  await pool.query(
+    `INSERT INTO categories (name)
+     SELECT DISTINCT TRIM(category) FROM services
+     WHERE category IS NOT NULL AND TRIM(category) <> ''
+     ON CONFLICT (name) DO NOTHING`
+  );
+  await pool.query(
+    `INSERT INTO categories (name)
+     SELECT DISTINCT TRIM(category) FROM provider_services
+     WHERE category IS NOT NULL AND TRIM(category) <> ''
+     ON CONFLICT (name) DO NOTHING`
+  );
+
+  // Ensure the built-in quick themes are available alongside custom themes.
+  const defaultThemes = [
+    ['Default', 'Classic Storefront', '{"primary":"#1e40af","accent":"#f59e0b","bg":"#ffffff","text":"#1f2937","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, true, 'classic'],
+    ['Diwali', 'Festive', '{"primary":"#d97706","accent":"#eab308","bg":"#fffff7","text":"#78350f","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial'],
+    ['Holi', 'Festive', '{"primary":"#ec4899","accent":"#a855f7","bg":"#fff0f6","text":"#7c2d7c","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial'],
+    ['Eid', 'Festive', '{"primary":"#0f766e","accent":"#2dd36f","bg":"#ecfdf5","text":"#064e35","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Plus Jakarta Sans"}', null, false, 'minimal'],
+    ['Christmas', 'Festive', '{"primary":"#b91c1c","accent":"#f59e0b","bg":"#ffeff1","text":"#7f1d1d","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'classic'],
+    ['Minimal', 'Minimal Studio', '{"primary":"#334155","accent":"#0f766e","bg":"#f8fafc","text":"#0f172a","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Plus Jakarta Sans"}', null, false, 'minimal'],
+    ['Editorial', 'Editorial Spotlight', '{"primary":"#7c3aed","accent":"#db2777","bg":"#faf5ff","text":"#1f1635","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial']
+  ];
+  for (const t of defaultThemes) {
+    await pool.query(
+      `INSERT INTO site_themes (name, label, palette_json, banner_url, is_active, layout) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (name) DO NOTHING`,
+      t
+    );
   }
 
   await pool.query(
@@ -1581,18 +1594,103 @@ app.post('/api/admin/services/:id/duplicate', authenticateToken, requireAdmin, a
 });
 
 app.get('/api/admin/categories', authenticateToken, requireAdmin, async (req, res) => {
+  await pool.query(
+    `INSERT INTO categories (name)
+     SELECT DISTINCT category_name
+     FROM (
+       SELECT TRIM(category) AS category_name FROM services
+       UNION
+       SELECT TRIM(category) AS category_name FROM provider_services
+     ) category_names
+     WHERE category_name IS NOT NULL AND category_name <> ''
+     ON CONFLICT (name) DO NOTHING`
+  );
   const rows = await pool.query('SELECT id, name FROM categories ORDER BY name');
   res.json({ categories: rows.rows });
 });
 
 app.post('/api/admin/categories', authenticateToken, requireAdmin, async (req, res) => {
-  const { name } = req.body;
-  if (!name || !name.trim()) return res.status(400).json({ error: 'Category name is required.' });
+  const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+  if (!name || name.length > 80) return res.status(400).json({ error: 'Category name is required and must be 80 characters or fewer.' });
   try {
-    const result = await pool.query('INSERT INTO categories (name) VALUES ($1) ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name RETURNING id, name', [name.trim()]);
+    const result = await pool.query('INSERT INTO categories (name) VALUES ($1) RETURNING id, name', [name]);
     res.status(201).json({ category: result.rows[0] });
-  } catch (err) {
-    res.status(409).json({ error: 'Category already exists.' });
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'Category already exists.' });
+    console.error('Admin category creation failed:', error);
+    res.status(500).json({ error: 'Could not create category.' });
+  }
+});
+
+app.put('/api/admin/categories/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const name = typeof req.body.name === 'string' ? req.body.name.trim() : '';
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid category id.' });
+  if (!name || name.length > 80) return res.status(400).json({ error: 'Category name is required and must be 80 characters or fewer.' });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const current = await client.query('SELECT id, name FROM categories WHERE id = $1 FOR UPDATE', [id]);
+    if (!current.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Category not found.' });
+    }
+    const duplicate = await client.query(
+      'SELECT id FROM categories WHERE LOWER(name) = LOWER($1) AND id <> $2',
+      [name, id]
+    );
+    if (duplicate.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'A category with this name already exists.' });
+    }
+
+    const oldName = current.rows[0].name;
+    await client.query('UPDATE services SET category = $1 WHERE LOWER(TRIM(category)) = LOWER(TRIM($2))', [name, oldName]);
+    await client.query('UPDATE provider_services SET category = $1 WHERE LOWER(TRIM(category)) = LOWER(TRIM($2))', [name, oldName]);
+    const updated = await client.query('UPDATE categories SET name = $1 WHERE id = $2 RETURNING id, name', [name, id]);
+    await client.query('COMMIT');
+    res.json({ category: updated.rows[0] });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    if (error.code === '23505') return res.status(409).json({ error: 'A category with this name already exists.' });
+    console.error('Admin category rename failed:', error);
+    res.status(500).json({ error: 'Could not rename category.' });
+  } finally {
+    client.release();
+  }
+});
+
+app.delete('/api/admin/categories/:id', authenticateToken, requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id < 1) return res.status(400).json({ error: 'Invalid category id.' });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const current = await client.query('SELECT id, name FROM categories WHERE id = $1 FOR UPDATE', [id]);
+    if (!current.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Category not found.' });
+    }
+    const name = current.rows[0].name;
+    const usage = await client.query(
+      `SELECT EXISTS (SELECT 1 FROM services WHERE LOWER(TRIM(category)) = LOWER(TRIM($1)))
+       OR EXISTS (SELECT 1 FROM provider_services WHERE LOWER(TRIM(category)) = LOWER(TRIM($1))) AS in_use`,
+      [name]
+    );
+    if (usage.rows[0].in_use) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'This category is used by services. Rename it or move those services before deleting it.' });
+    }
+    await client.query('DELETE FROM categories WHERE id = $1', [id]);
+    await client.query('COMMIT');
+    res.json({ success: true });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Admin category deletion failed:', error);
+    res.status(500).json({ error: 'Could not delete category.' });
+  } finally {
+    client.release();
   }
 });
 
@@ -1607,22 +1705,22 @@ app.get('/api/admin/payments', authenticateToken, requireAdmin, async (req, res)
     params.push(status);
   }
   if (q) {
-    where += ` AND (order_id ILIKE $${params.length + 1} OR user_name ILIKE $${params.length + 1} OR user_email ILIKE $${params.length + 1} OR amount::text ILIKE $${params.length + 1})`;
+    where += ` AND (order_id ILIKE $${params.length + 1} OR user_name ILIKE $${params.length + 1} OR user_email ILIKE $${params.length + 1} OR amount::text ILIKE $${params.length + 1} OR COALESCE(utr, '') ILIKE $${params.length + 1})`;
     params.push(`%${q}%`);
   }
   const ledger = `
     WITH payment_ledger AS (
-      SELECT po.order_id, po.amount, po.currency, po.payment_status, po.credited, po.refunded, po.refunded_amount,
+      SELECT po.order_id, po.amount, po.currency, po.payment_status, po.credited, po.refunded, po.refunded_amount, po.utr,
              po.created_at, po.updated_at, u.id AS user_id, u.name AS user_name, u.email AS user_email,
-             'Cashfree' AS payment_method, 'payment' AS record_type
+             COALESCE(po.payment_method, 'Cashfree') AS payment_method, 'payment' AS record_type
       FROM payment_orders po JOIN users u ON po.user_id = u.id
       UNION ALL
       SELECT 'WALLET-' || t.id::text AS order_id, t.amount, t.currency, UPPER(COALESCE(t.status, 'COMPLETED')) AS payment_status,
-             1 AS credited, 0 AS refunded, 0 AS refunded_amount, t.created_at, NULL AS updated_at,
+             1 AS credited, 0 AS refunded, 0 AS refunded_amount, NULL::text AS utr, t.created_at, NULL AS updated_at,
              u.id AS user_id, u.name AS user_name, u.email AS user_email, COALESCE(t.payment_method, 'Wallet transaction') AS payment_method,
              'transaction' AS record_type
       FROM transactions t JOIN users u ON t.user_id = u.id
-      WHERE COALESCE(t.payment_method, '') <> 'Cashfree'
+      WHERE COALESCE(t.payment_method, '') NOT IN ('Cashfree', 'BharatPe QR')
     )
   `;
   const countRes = await pool.query(
@@ -1631,12 +1729,97 @@ app.get('/api/admin/payments', authenticateToken, requireAdmin, async (req, res)
   );
   const total = parseInt(countRes.rows[0].total);
   const rows = await pool.query(
-    `${ledger} SELECT order_id, amount, currency, payment_status, credited, refunded, refunded_amount, created_at, updated_at,
+    `${ledger} SELECT order_id, amount, currency, payment_status, credited, refunded, refunded_amount, utr, created_at, updated_at,
             user_id, user_name, user_email, payment_method, record_type
      FROM payment_ledger ${where} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
     [...params, parseInt(limit), offset]
   );
   res.json({ payments: rows.rows, total, page: parseInt(page), totalPages: Math.ceil(total / parseInt(limit)) });
+});
+
+app.post('/api/admin/payments/:orderId/approve-upi', authenticateToken, requireAdmin, async (req, res) => {
+  const utr = typeof req.body.utr === 'string' ? req.body.utr.trim().toUpperCase() : '';
+  if (!/^[A-Z0-9-]{6,30}$/.test(utr)) {
+    return res.status(400).json({ error: 'Enter a valid UTR (6–30 letters, numbers, or hyphens).' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const payment = await client.query(
+      `SELECT order_id, user_id, amount, currency, payment_status, credited, payment_method
+       FROM payment_orders WHERE order_id = $1 FOR UPDATE`,
+      [req.params.orderId]
+    );
+    if (!payment.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Payment not found.' });
+    }
+
+    const record = payment.rows[0];
+    if (record.payment_method !== 'BharatPe QR' || record.payment_status !== 'PENDING' || record.credited) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Only pending BharatPe QR payments can be approved.' });
+    }
+    if (record.currency !== 'INR' || !Number.isFinite(Number(record.amount)) || Number(record.amount) <= 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'This payment has invalid amount or currency details.' });
+    }
+
+    const duplicate = await client.query(
+      "SELECT order_id FROM payment_orders WHERE LOWER(utr) = LOWER($1) AND order_id <> $2 LIMIT 1",
+      [utr, record.order_id]
+    );
+    if (duplicate.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'This UTR has already been used for another payment.' });
+    }
+
+    const userUpdate = await client.query(
+      'UPDATE users SET wallet_inr = wallet_inr + $1 WHERE id = $2',
+      [record.amount, record.user_id]
+    );
+    if (userUpdate.rowCount !== 1) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Customer account not found.' });
+    }
+    await client.query(
+      `UPDATE payment_orders
+       SET utr = $1, payment_status = 'PAID', credited = 1, updated_at = CURRENT_TIMESTAMP
+       WHERE order_id = $2`,
+      [utr, record.order_id]
+    );
+    await client.query(
+      `INSERT INTO transactions (user_id, amount, currency, payment_method, status)
+       VALUES ($1, $2, $3, 'BharatPe QR', 'Completed')`,
+      [record.user_id, record.amount, record.currency]
+    );
+    await client.query('COMMIT');
+    res.json({ success: true, message: 'UTR approved and wallet credited.' });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    if (error.code === '23505') return res.status(409).json({ error: 'This UTR has already been used for another payment.' });
+    console.error('BharatPe QR payment approval failed:', error);
+    res.status(500).json({ error: 'Could not approve this QR payment.' });
+  } finally {
+    client.release();
+  }
+});
+
+app.post('/api/admin/payments/:orderId/reject-upi', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `UPDATE payment_orders SET payment_status = 'REJECTED', updated_at = CURRENT_TIMESTAMP
+       WHERE order_id = $1 AND payment_method = 'BharatPe QR' AND payment_status = 'PENDING' AND credited = 0
+       RETURNING order_id`,
+      [req.params.orderId]
+    );
+    if (!result.rows.length) return res.status(409).json({ error: 'Only pending BharatPe QR payments can be rejected.' });
+    res.json({ success: true, message: 'QR payment rejected.' });
+  } catch (error) {
+    console.error('BharatPe QR payment rejection failed:', error);
+    res.status(500).json({ error: 'Could not reject this QR payment.' });
+  }
 });
 
 app.post('/api/admin/payments/:orderId/refund', authenticateToken, requireAdmin, async (req, res) => {
@@ -1722,15 +1905,47 @@ app.get('/api/wallet/payments', authenticateToken, async (req, res) => {
   const rows = await pool.query(
     `SELECT 'TXN-' || id::text AS order_id, COALESCE(payment_method, 'Wallet transaction') AS description,
             amount, currency, UPPER(COALESCE(status, 'COMPLETED')) AS payment_status,
-            TRUE AS credited, created_at
-     FROM transactions WHERE user_id = $1
+            TRUE AS credited, NULL::text AS utr, created_at
+     FROM transactions WHERE user_id = $1 AND COALESCE(payment_method, '') NOT IN ('Cashfree', 'BharatPe QR')
      UNION ALL
-     SELECT order_id, 'Wallet deposit' AS description, amount, currency, payment_status, (credited = 1) AS credited, created_at
-     FROM payment_orders WHERE user_id = $1 AND credited = 0
+     SELECT order_id, COALESCE(payment_method, 'Cashfree') || ' wallet deposit' AS description,
+            amount, currency, payment_status, (credited = 1) AS credited, utr, created_at
+     FROM payment_orders WHERE user_id = $1
      ORDER BY created_at DESC LIMIT 50`,
     [req.user.id]
   );
   res.json(rows.rows);
+});
+
+app.post('/api/wallet/upi-payment', authenticateToken, async (req, res) => {
+  const amount = Number(req.body.amount);
+  const utr = typeof req.body.utr === 'string' ? req.body.utr.trim().toUpperCase() : '';
+  if (!Number.isFinite(amount) || amount < 10 || amount > 1000000 || Math.abs(amount * 100 - Math.round(amount * 100)) > 0.000001) {
+    return res.status(400).json({ error: 'Enter an amount between 10 and 1000000 INR, with no more than two decimal places.' });
+  }
+  if (!/^[A-Z0-9-]{6,30}$/.test(utr)) {
+    return res.status(400).json({ error: 'Enter a valid UTR (6–30 letters, numbers, or hyphens).' });
+  }
+
+  const orderId = `UPI_${Date.now()}_${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+  try {
+    const result = await pool.query(
+      `INSERT INTO payment_orders (order_id, user_id, amount, currency, wallet_field, payment_method, utr, payment_status)
+       VALUES ($1, $2, $3, 'INR', 'wallet_inr', 'BharatPe QR', $4, 'PENDING')
+       RETURNING order_id, payment_status`,
+      [orderId, req.user.id, amount, utr]
+    );
+    res.status(201).json({
+      success: true,
+      order_id: result.rows[0].order_id,
+      payment_status: result.rows[0].payment_status,
+      message: 'Your payment details were submitted. Wallet funds will be added after admin verification.'
+    });
+  } catch (error) {
+    if (error.code === '23505') return res.status(409).json({ error: 'This UTR has already been submitted.' });
+    console.error('BharatPe QR payment submission failed:', error);
+    res.status(500).json({ error: 'Could not submit this QR payment.' });
+  }
 });
 
 // ==================== SUPPORT TICKETS (admin + user replies) ====================
@@ -1923,6 +2138,10 @@ app.delete('/api/admin/settings/themes/:id', authenticateToken, requireAdmin, as
     if (!themeResult.rows.length) {
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Theme not found.' });
+    }
+    if (['Default', 'Diwali', 'Holi', 'Eid', 'Christmas', 'Minimal'].includes(themeResult.rows[0].name)) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ error: 'Built-in quick themes cannot be deleted.' });
     }
     const countResult = await client.query('SELECT COUNT(*) AS total FROM site_themes');
     if (Number(countResult.rows[0].total) <= 1) {

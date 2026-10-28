@@ -1075,18 +1075,35 @@
           </div>
           <div>
             <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Payment Method</label>
-            <div class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-500 dark:text-slate-400 text-sm font-medium">
-              UPI, Cards & Netbanking — handled securely by Cashfree
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="flex items-center gap-2 p-3 border border-slate-200 dark:border-slate-700 rounded-2xl cursor-pointer text-sm font-medium">
+                <input type="radio" name="walletPaymentMethod" value="cashfree" checked onchange="updateWalletPaymentMethod()">
+                <span>Cashfree (UPI, cards &amp; netbanking)</span>
+              </label>
+              <label class="flex items-center gap-2 p-3 border border-slate-200 dark:border-slate-700 rounded-2xl cursor-pointer text-sm font-medium">
+                <input type="radio" name="walletPaymentMethod" value="upi" onchange="updateWalletPaymentMethod()">
+                <span>BharatPe UPI QR</span>
+              </label>
             </div>
           </div>
           <div>
             <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Amount</label>
-            <input type="number" min="10" id="fundAmount" required placeholder="500" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm font-medium">
+            <input type="number" min="10" max="1000000" step="0.01" id="fundAmount" required placeholder="500" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm font-medium">
           </div>
-          <button type="submit" class="w-full py-4 text-white font-display font-bold rounded-2xl meta-gradient-bg shadow-fbGlow hover:opacity-95 transition">
+          <div id="upiPaymentDetails" class="hidden p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
+            <p class="text-sm font-bold text-slate-800 dark:text-white">Scan to pay with BharatPe</p>
+            <img src="/images/bharatpe-qr.png" alt="BharatPe payment QR code" class="w-56 h-56 max-w-full object-contain mx-auto bg-white rounded-xl p-2">
+            <p class="text-center text-sm text-slate-700 dark:text-slate-300">UPI ID: <strong class="select-all">6375063791@ybl</strong></p>
+            <p class="text-xs text-slate-500 dark:text-slate-400">Pay the amount above, then enter the UTR from your payment receipt. QR payments stay pending until an admin verifies them; wallet credit is not automatic.</p>
+            <div>
+              <label for="upiUtr" class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">UPI UTR / Reference Number</label>
+              <input type="text" id="upiUtr" maxlength="30" pattern="[A-Za-z0-9-]{6,30}" placeholder="Enter the UTR from your receipt" class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-800 dark:text-white outline-none text-sm">
+            </div>
+          </div>
+          <button id="fundSubmitBtn" type="submit" class="w-full py-4 text-white font-display font-bold rounded-2xl meta-gradient-bg shadow-fbGlow hover:opacity-95 transition">
             Pay Securely via Cashfree
           </button>
-          <p class="text-[11px] text-slate-500 dark:text-slate-400 text-center">
+          <p id="fundPaymentNote" class="text-[11px] text-slate-500 dark:text-slate-400 text-center">
             Your wallet is credited only after Cashfree confirms the payment. Online deposits are in INR.
           </p>
         </form>
@@ -1226,13 +1243,9 @@
             <p class="text-[10px] text-slate-400 mt-1">Enter number with country code, no + symbol</p>
           </div>
 
-          <div>
-            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Video Upload</label>
-            <input type="file" id="veVideo" accept="video/*" onchange="handleVideoSelect(this)" class="hidden">
-            <label for="veVideo" class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-2xl cursor-pointer hover:border-purple-400 dark:hover:border-purple-500 transition bg-slate-50 dark:bg-slate-800/50">
-              <i class="fa-solid fa-cloud-arrow-up text-2xl text-slate-400 mb-2"></i>
-              <span id="veFileNameText" class="text-xs font-medium text-slate-500 dark:text-slate-400">Click or Drag video file here</span>
-            </label>
+          <div class="flex items-start space-x-3 p-4 rounded-2xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30">
+            <i class="fa-brands fa-whatsapp text-green-600 dark:text-green-400 text-lg mt-0.5"></i>
+            <p class="text-sm text-slate-700 dark:text-slate-300">After you click Apply for Video Editing on WhatsApp, send your video directly in the WhatsApp chat.</p>
           </div>
 
           <div>
@@ -2279,8 +2292,40 @@
         return alert('Online deposits are processed in INR. Contact support for USD/EUR top-ups.');
       }
 
+      const paymentMethod = document.querySelector('input[name="walletPaymentMethod"]:checked').value;
+      if (paymentMethod === 'upi') {
+        const utr = document.getElementById('upiUtr').value.trim();
+        if (!/^[A-Za-z0-9-]{6,30}$/.test(utr)) return alert('Enter a valid UTR from your payment receipt.');
+        try {
+          const response = await fetch('/api/wallet/upi-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ amount, utr })
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'Could not submit the QR payment.');
+          alert(data.message);
+          document.getElementById('addFundsForm').reset();
+          updateWalletPaymentMethod();
+          await loadPaymentHistory();
+        } catch (error) {
+          alert(error.message);
+        }
+        return;
+      }
+
       const started = await initiateCashfreePayment(amount);
       if (started) document.getElementById('addFundsForm').reset();
+    }
+
+    function updateWalletPaymentMethod() {
+      const isUpi = document.querySelector('input[name="walletPaymentMethod"]:checked')?.value === 'upi';
+      document.getElementById('upiPaymentDetails').classList.toggle('hidden', !isUpi);
+      document.getElementById('upiUtr').required = isUpi;
+      document.getElementById('fundSubmitBtn').textContent = isUpi ? 'Submit UTR for Verification' : 'Pay Securely via Cashfree';
+      document.getElementById('fundPaymentNote').textContent = isUpi
+        ? 'QR payments are reviewed by an admin before your wallet is credited.'
+        : 'Your wallet is credited only after Cashfree confirms the payment. Online deposits are in INR.';
     }
 
     async function loadPaymentHistory() {
@@ -2297,13 +2342,13 @@
           return;
         }
 
-        const badge = { PAID: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10', COMPLETED: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10', PENDING: 'text-amber-400 border-amber-500/40 bg-amber-500/10', FAILED: 'text-red-400 border-red-500/40 bg-red-500/10', CANCELLED: 'text-red-400 border-red-500/40 bg-red-500/10' };
+        const badge = { PAID: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10', COMPLETED: 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10', PENDING: 'text-amber-400 border-amber-500/40 bg-amber-500/10', FAILED: 'text-red-400 border-red-500/40 bg-red-500/10', CANCELLED: 'text-red-400 border-red-500/40 bg-red-500/10', REJECTED: 'text-red-400 border-red-500/40 bg-red-500/10' };
 
         container.innerHTML = rows.map(p => `
           <div class="flex items-center justify-between gap-3 py-2.5 border-b border-slate-200 dark:border-darkBorder last:border-0">
             <div class="min-w-0">
               <p class="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">${p.description || 'Wallet deposit'}</p>
-              <p class="text-[10px] text-slate-500 dark:text-slate-400">${p.order_id} · ${p.created_at}</p>
+              <p class="text-[10px] text-slate-500 dark:text-slate-400">${p.order_id} · ${p.created_at}${p.utr ? ` · UTR ${p.utr}` : ''}</p>
             </div>
             <span class="text-[10px] font-bold uppercase px-2 py-1 rounded-full border shrink-0 ${badge[p.payment_status] || badge.PENDING}">${p.payment_status}</span>
             <span class="text-sm font-display font-black text-slate-900 dark:text-white shrink-0">${({ INR: '₹', USD: '$', EUR: '€' })[p.currency] || ''}${parseFloat(p.amount).toFixed(2)}</span>
@@ -2338,22 +2383,10 @@
       document.getElementById('supportTicketForm').reset();
     }
 
-    function handleVideoSelect(input) {
-      const fileNameText = document.getElementById('veFileNameText');
-      if (input.files && input.files[0]) {
-        const file = input.files[0];
-        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        fileNameText.innerText = `Selected: ${file.name} (${fileSizeMB} MB)`;
-      } else {
-        fileNameText.innerText = 'Click or Drag video file here';
-      }
-    }
-
     function handleVideoEditingSubmit(e) {
       e.preventDefault();
       const name = document.getElementById('veName').value.trim();
       const whatsapp = document.getElementById('veWhatsapp').value.trim();
-      const videoInput = document.getElementById('veVideo');
       const duration = document.getElementById('veDuration').value.trim();
       const requirements = document.getElementById('veRequirements').value.trim();
 
@@ -2362,18 +2395,11 @@
         return;
       }
 
-      const videoFile = videoInput.files && videoInput.files[0];
-      let videoInfo = 'No video uploaded';
-      if (videoFile) {
-        const sizeMB = (videoFile.size / (1024 * 1024)).toFixed(2);
-        videoInfo = `Video: ${videoFile.name} (${sizeMB} MB)`;
-      }
-
       const message = `🎬 *Video Editing Application*%0A%0A` +
         `👤 *Name:* ${encodeURIComponent(name)}%0A` +
         `📱 *WhatsApp:* ${encodeURIComponent(whatsapp)}%0A` +
         `⏱️ *Duration:* ${encodeURIComponent(duration)}%0A` +
-        `📹 *Video:* ${videoInfo}%0A%0A` +
+        `📹 *Video:* I will send it here in this WhatsApp chat after submitting my application.%0A%0A` +
         `📝 *Requirements:*%0A${encodeURIComponent(requirements)}`;
 
       const whatsappURL = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${message}`;
@@ -2473,159 +2499,5 @@
     });
   </script>
 
-  <!-- HTML Form -->
-  <div class="ve-form-container">
-  </div>
-
-  <!-- 👇 JavaScript कोड यहाँ रहेगा (HTML फ़ाइल में) -->
-  <script>
-    const ADMIN_WHATSAPP_NUMBER = "916375063791";
-
-    function veUpdateFileName(input) {
-      const fileNameText = document.getElementById('veFileNameText');
-      if (input.files && input.files[0]) {
-        const file = input.files[0];
-        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-        fileNameText.innerText = `Selected: ${file.name} (${fileSizeMB} MB)`;
-      } else {
-        fileNameText.innerText = 'Click or Drag video file here';
-      }
-    }
-
-    document.getElementById('veEditingForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-
-      const name = document.getElementById('veFullName').value.trim();
-      const phone = document.getElementById('veWhatsappNum').value.trim();
-      const duration = document.getElementById('veVideoDuration').value.trim();
-      const requirements = document.getElementById('veEditingReqs').value.trim();
-      const videoInput = document.getElementById('veVideoFile');
-      
-      let fileName = "No file attached";
-      if (videoInput.files && videoInput.files[0]) {
-        fileName = videoInput.files[0].name;
-      }
-
-      const message = `🎬 *NEW VIDEO EDITING ORDER* 🎬\n\n` +
-                      `👤 *Name:* ${name}\n` +
-                      `📱 *Customer WA:* ${phone}\n` +
-                      `⏱️ *Video Duration:* ${duration}\n` +
-                      `📁 *Video File Name:* ${fileName}\n` +
-                      `📝 *Requirements:*\n${requirements}\n\n` +
-                      `------------------------------\n` +
-                      `_Sent via Video Editing Application Form_`;
-
-      const encodedMessage = encodeURIComponent(message);
-      const whatsappURL = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodedMessage}`;
-
-      window.open(whatsappURL, '_blank');
-    });
-  </script>
-
-</body>
-</html>
-
-  <style>
-    /* Unique Prefixed CSS so it doesn't break your existing theme */
-.ve-form-container {
-  display: flex;
-  justify-content: center;
-  padding: 20px 10px;
-}
-
-.ve-form-card {
-  background: #1e293b;
-  border: 1px solid #334155;
-  width: 100%;
-  max-width: 520px;
-  border-radius: 16px;
-  padding: 28px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
-  color: #f8fafc;
-}
-
-.ve-form-header h2 {
-  font-size: 1.6rem;
-  margin-bottom: 6px;
-  color: #25d366;
-}
-
-.ve-form-header p {
-  color: #94a3b8;
-  font-size: 0.9rem;
-  margin-bottom: 20px;
-}
-
-.ve-form-group {
-  margin-bottom: 16px;
-  text-align: left;
-}
-
-.ve-form-group label {
-  display: block;
-  font-size: 0.88rem;
-  font-weight: 600;
-  margin-bottom: 6px;
-  color: #e2e8f0;
-}
-
-.ve-form-control {
-  width: 100%;
-  padding: 12px;
-  border-radius: 8px;
-  border: 1px solid #334155;
-  background: #0f172a;
-  color: #f8fafc;
-  outline: none;
-  box-sizing: border-box;
-}
-
-textarea.ve-form-control {
-  resize: vertical;
-  min-height: 90px;
-}
-
-.ve-file-input-wrapper {
-  position: relative;
-  background: #0f172a;
-  border: 2px dashed #334155;
-  border-radius: 8px;
-  padding: 16px;
-  text-align: center;
-  cursor: pointer;
-}
-
-.ve-file-input-wrapper input[type="file"] {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-  width: 100%;
-  height: 100%;
-}
-
-.ve-file-info {
-  color: #94a3b8;
-  font-size: 0.85rem;
-}
-
-.ve-btn-whatsapp {
-  width: 100%;
-  background: #25d366;
-  color: #ffffff;
-  font-weight: 700;
-  font-size: 0.95rem;
-  padding: 14px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: background 0.2s;
-}
-
-.ve-btn-whatsapp:hover {
-  background: #20ba5a;
-}
-  </style>
 </body>
 </html>
