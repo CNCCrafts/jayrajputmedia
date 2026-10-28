@@ -855,10 +855,10 @@
     <section id="section-services-catalog" class="content-section hidden space-y-6">
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-darkBorder pb-5">
         <div>
-          <h2 class="text-3xl font-display font-black text-slate-900 dark:text-white flex items-center space-x-2">
-            <i class="fa-solid fa-layer-group text-igPink"></i><span>Services & Packages Store</span>
+          <h2 class="text-3xl font-display font-black text-purple-700 dark:text-purple-300 flex items-center space-x-2">
+            <i class="fa-solid fa-layer-group text-purple-700 dark:text-purple-300"></i><span>Services & Packages Store</span>
           </h2>
-          <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">Select a service to view details and place your order.</p>
+          <p class="text-xs sm:text-sm text-purple-700 dark:text-purple-300 mt-1">Select a service to view details and place your order.</p>
         </div>
         <div class="relative w-full md:w-72">
           <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-slate-400 text-xs"></i>
@@ -1361,6 +1361,7 @@
 
   <footer class="bg-white/80 dark:bg-darkCard/80 backdrop-blur-md border-t border-slate-200 dark:border-darkBorder py-6 text-center text-xs text-slate-500 mt-12 transition-colors">
     <p>© 2026 Jay Rajput Media Power. All rights reserved. | Helpline: <a href="tel:6375063791" class="text-fbBlue dark:text-pink-400 font-bold hover:underline">+91 6375063791</a></p>
+    <p class="mt-2">Designed and developed by <a href="https://pulseonsolutions.in/" target="_blank" rel="noopener noreferrer" class="text-fbBlue dark:text-pink-400 font-bold hover:underline">Pulseon Solutions</a></p>
   </footer>
 
   <script>
@@ -1713,28 +1714,8 @@
       }
     }
 
-    function parseJwtPayload(token) {
-      const payload = token.split('.')[1];
-      const json = atob(payload.replace(/-/g, '+').replace(/_/g, '/'));
-      return JSON.parse(json);
-    }
-
     async function handleGoogleCredentialResponse(response) {
-      try {
-        const payload = parseJwtPayload(response.credential);
-        const email = payload.email;
-        const name = payload.name;
-        
-        if (!email) {
-          alert('Google Sign-In failed: No email found in credential.');
-          return;
-        }
-        
-        await submitGoogleAuth(email, name);
-      } catch (err) {
-        console.error('Google credential parsing error:', err);
-        alert('Google Sign-In failed: ' + err.message);
-      }
+      await submitGoogleAuth(response.credential);
     }
 
     async function handleGoogleSignIn() {
@@ -1772,15 +1753,15 @@
       }
     }
 
-    async function submitGoogleAuth(email, name) {
+    async function submitGoogleAuth(credential) {
       try {
         const res = await fetch('/api/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, name, google_id: 'google_' + Date.now() })
+          body: JSON.stringify({ credential })
         });
         const data = await res.json();
-        if (data.error) return alert('Google Sign-In Error: ' + data.error);
+        if (!res.ok) return alert('Google Sign-In Error: ' + (data.error || 'Sign-in failed.'));
 
         setAuthToken(data.token);
         currentUser = data.user;
@@ -1923,8 +1904,8 @@
           : `<span class="ml-2 text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-slate-600/30 text-slate-300 border border-slate-600/40">In-House</span>`;
 
         const imageHtml = s.image ? `
-          <div class="relative w-full aspect-[4/3] sm:aspect-video bg-slate-50 dark:bg-slate-900 border-b border-slate-200/80 dark:border-darkBorder overflow-hidden cursor-pointer flex items-center justify-center" onclick="openServiceDetail(${s.id})">
-            <img src="${s.image}" alt="${s.name}" loading="lazy" class="w-full h-full object-center hover:scale-105 transition-transform duration-300" onerror="this.src='https://placehold.co/600x400?text=${encodeURIComponent(s.name)}'">
+          <div class="relative w-full aspect-[4/3] sm:aspect-video bg-slate-50 dark:bg-slate-900 border-b border-slate-200/80 dark:border-darkBorder overflow-hidden cursor-pointer flex items-center justify-center p-3 sm:p-4" onclick="openServiceDetail(${s.id})">
+            <img src="${s.image}" alt="${s.name}" loading="lazy" class="w-full h-full object-contain transition-transform duration-300" onerror="this.src='https://placehold.co/600x400?text=${encodeURIComponent(s.name)}'">
             <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent opacity-0 hover:opacity-100 transition-opacity flex items-end p-3">
               <span class="text-white text-xs font-bold">View Details →</span>
             </div>
@@ -2460,6 +2441,15 @@
         const res = await fetch('/api/user/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        if (res.status === 401 || res.status === 403) {
+          sessionStorage.removeItem('jr_token');
+          localStorage.removeItem('jr_token');
+          if (res.status === 403) {
+            const data = await res.json();
+            alert(data.error || 'This account is suspended. Please contact support.');
+          }
+          return;
+        }
         if (res.ok) {
           currentUser = await res.json();
           updateUIForUser();

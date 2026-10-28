@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const axios = require('axios');
+const { OAuth2Client } = require('google-auth-library');
 const cloudinary = require('cloudinary').v2;
 require('dotenv').config();
 
@@ -352,16 +353,36 @@ async function initializeAppData() {
 }
 
 // Middleware: Authentication
-const authenticateToken = (req, res, next) => {
+const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Access Denied: No Token Provided' });
 
-  jwt.verify(token, JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ error: 'Invalid Token' });
-    req.user = user;
+  try {
+    const tokenUser = jwt.verify(token, JWT_SECRET);
+    if (!tokenUser || typeof tokenUser !== 'object' || !tokenUser.id) {
+      return res.status(403).json({ error: 'Invalid Token' });
+    }
+
+    const result = await pool.query(
+      'SELECT id, email, role, status FROM users WHERE id = $1',
+      [tokenUser.id]
+    );
+    const user = result.rows[0];
+    if (!user) return res.status(401).json({ error: 'Account not found.' });
+    if (user.status === 'suspended') {
+      return res.status(403).json({ error: 'This account is suspended. Please contact support.' });
+    }
+
+    req.user = { ...tokenUser, id: user.id, email: user.email, role: user.role };
     next();
-  });
+  } catch (error) {
+    if (error && ['JsonWebTokenError', 'TokenExpiredError', 'NotBeforeError'].includes(error.name)) {
+      return res.status(403).json({ error: 'Invalid Token' });
+    }
+    console.error('Authentication check failed:', error);
+    res.status(500).json({ error: 'Could not verify account status.' });
+  }
 };
 
 // Middleware: Admin Authorization
@@ -440,23 +461,49 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Google Login Mock / API integration hook
-app.post('/api/auth/google', async (req, res) => {
-  const { google_id, email, name } = req.body;
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '144460065869-cj42bposvevvpneci3s32qmeb72jcpho.apps.googleusercontent.com';
+const googleAuthClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-  if (!email) {
-    return res.status(400).json({ error: 'Email is required for Google Sign-In' });
+app.post('/api/auth/google', async (req, res) => {
+  const { credential } = req.body;
+  if (typeof credential !== 'string' || !credential) {
+    return res.status(400).json({ error: 'Google credential is required.' });
+  }
+
+  let identity;
+  try {
+    const ticket = await googleAuthClient.verifyIdToken({ idToken: credential, audience: GOOGLE_CLIENT_ID });
+    identity = ticket.getPayload();
+  } catch (error) {
+    const networkErrorCodes = ['ECONNRESET', 'ETIMEDOUT', 'ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ERR_NETWORK'];
+    const serviceUnavailable = error && (
+      networkErrorCodes.includes(error.code)
+      || (error.response && (error.response.status >= 500 || error.response.status === 429))
+    );
+    if (serviceUnavailable) {
+      console.error('Google ID token verification service failed:', error);
+      return res.status(502).json({ error: 'Google Sign-In verification is temporarily unavailable. Please try again.' });
+    }
+    return res.status(401).json({ error: 'Google Sign-In could not verify this account.' });
+  }
+
+  const email = typeof identity?.email === 'string' ? identity.email.trim().toLowerCase() : '';
+  if (!identity || !identity.sub || !email || identity.email_verified !== true) {
+    return res.status(401).json({ error: 'Google Sign-In could not verify this account.' });
   }
 
   try {
-    console.log('Google Sign-In attempt for:', email);
-    let user = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    console.log('Google Sign-In attempt for verified account:', email);
+    let user = await pool.query('SELECT * FROM users WHERE LOWER(email) = $1', [email]);
+    if (user.rows[0] && user.rows[0].status === 'suspended') {
+      return res.status(403).json({ error: 'This account is suspended. Please contact support.' });
+    }
 
     if (!user.rows.length) {
       const myRefCode = 'JR' + Math.random().toString(36).substring(2, 7).toUpperCase();
       const info = await pool.query(
         `INSERT INTO users (name, email, google_id, role, referral_code) VALUES ($1, $2, $3, 'user', $4) RETURNING id`,
-        [name || email.split('@')[0], email, google_id || 'google_' + Date.now(), myRefCode]
+        [identity.name || email.split('@')[0], email, identity.sub, myRefCode]
       );
       const newUserId = info.rows[0].id;
       user = await pool.query('SELECT * FROM users WHERE id = $1', [newUserId]);
@@ -465,24 +512,25 @@ app.post('/api/auth/google', async (req, res) => {
       console.log('Existing Google user logged in:', email);
     }
 
-    const token = jwt.sign({ id: user.rows[0].id, email: user.rows[0].email, role: user.rows[0].role }, JWT_SECRET, { expiresIn: '7d' });
+    const account = user.rows[0];
+    const token = jwt.sign({ id: account.id, email: account.email, role: account.role }, JWT_SECRET, { expiresIn: '7d' });
     res.json({
       token,
       user: {
-        id: user.rows[0].id,
-        name: user.rows[0].name,
-        email: user.rows[0].email,
-        role: user.rows[0].role,
-        wallet_inr: user.rows[0].wallet_inr,
-        wallet_usd: user.rows[0].wallet_usd,
-        wallet_eur: user.rows[0].wallet_eur,
-        currency: user.rows[0].currency,
-        referral_code: user.rows[0].referral_code
+        id: account.id,
+        name: account.name,
+        email: account.email,
+        role: account.role,
+        wallet_inr: account.wallet_inr,
+        wallet_usd: account.wallet_usd,
+        wallet_eur: account.wallet_eur,
+        currency: account.currency,
+        referral_code: account.referral_code
       }
     });
   } catch (err) {
-    console.error('Google Sign-In error:', err);
-    res.status(500).json({ error: 'Google Sign-In failed: ' + err.message });
+    console.error('Google Sign-In account lookup failed:', err);
+    res.status(500).json({ error: 'Could not complete Google Sign-In. Please try again.' });
   }
 });
 
