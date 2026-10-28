@@ -34,7 +34,13 @@ app.use(cors());
 app.use('/api/cashfree/webhook', express.raw({ type: '*/*', limit: '1mb' }));
 app.use(express.json({ limit: '12mb' }));
 app.use(express.urlencoded({ extended: true, limit: '12mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders(res, filePath) {
+    if (path.extname(filePath) === '.html') {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+  }
+}));
 
 // Returns clean JSON instead of an HTML stack trace when a body cannot be parsed
 app.use((err, req, res, next) => {
@@ -467,7 +473,7 @@ const googleAuthClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 app.post('/api/auth/google', async (req, res) => {
   const { credential } = req.body;
   if (typeof credential !== 'string' || !credential) {
-    return res.status(400).json({ error: 'Google credential is required.' });
+    return res.status(400).json({ error: 'This page is out of date. Refresh it and try Google Sign-In again.' });
   }
 
   let identity;

@@ -1715,6 +1715,10 @@
     }
 
     async function handleGoogleCredentialResponse(response) {
+      if (!response || typeof response.credential !== 'string' || !response.credential) {
+        alert('Google Sign-In did not return a credential. Refresh the page and try again.');
+        return;
+      }
       await submitGoogleAuth(response.credential);
     }
 
@@ -1754,6 +1758,11 @@
     }
 
     async function submitGoogleAuth(credential) {
+      if (typeof credential !== 'string' || !credential) {
+        alert('Google Sign-In did not return a credential. Refresh the page and try again.');
+        return;
+      }
+
       try {
         const res = await fetch('/api/auth/google', {
           method: 'POST',
