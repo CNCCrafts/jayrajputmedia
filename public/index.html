@@ -258,6 +258,40 @@
     @media (prefers-reduced-motion: reduce) {
       .referral-gift-icon { animation: none; }
     }
+    #section-quick-order,
+    #section-new-order {
+      background-color: #ffffff !important;
+    }
+    #section-quick-order > div,
+    #section-new-order > div {
+      background-color: #ffffff !important;
+      color: #1e293b;
+    }
+    #section-quick-order label,
+    #section-new-order label,
+    #section-quick-order > div h2,
+    #section-new-order > div h2 {
+      color: #334155 !important;
+    }
+    #section-quick-order input,
+    #section-quick-order select,
+    #section-new-order input,
+    #section-new-order select {
+      background-color: #ffffff !important;
+      color: #1e293b !important;
+      border-color: #cbd5e1 !important;
+      color-scheme: light;
+    }
+    #section-quick-order select option,
+    #section-new-order select option {
+      background-color: #ffffff;
+      color: #1e293b;
+    }
+    #quickServiceDetails,
+    #serviceDetailsBox {
+      background-color: #ffffff !important;
+      color: #475569 !important;
+    }
     #metaVerifiedBadge {
       color: #1877F2 !important;
       background-color: #eff6ff !important;
@@ -1993,7 +2027,7 @@
       wrapper.className = 'relative';
       const toggle = document.createElement('button');
       toggle.type = 'button';
-      toggle.className = 'flex w-full items-center justify-between rounded-xl border border-slate-200 bg-white px-4 py-3 text-left text-sm font-bold text-slate-800 shadow-sm transition hover:border-fbBlue focus:outline-none focus:ring-2 focus:ring-fbBlue dark:border-slate-700 dark:bg-slate-800 dark:text-white';
+      toggle.className = 'flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-4 py-3 text-left text-sm font-bold text-slate-800 shadow-sm transition hover:border-fbBlue focus:outline-none focus:ring-2 focus:ring-fbBlue';
       toggle.setAttribute('aria-haspopup', 'listbox');
       toggle.setAttribute('aria-expanded', 'false');
       const selectedLabel = selectedCategory === 'all' ? 'All Categories' : selectedCategory;
@@ -2004,14 +2038,14 @@
       toggle.append(chevron);
 
       const options = document.createElement('div');
-      options.className = 'absolute left-0 right-0 top-full z-30 mt-1 hidden max-h-60 overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-xl dark:border-slate-700 dark:bg-slate-800';
+      options.className = 'absolute left-0 right-0 top-full z-30 mt-1 hidden max-h-60 overflow-y-auto rounded-xl border border-slate-300 bg-white p-1 text-slate-800 shadow-xl';
       options.setAttribute('role', 'listbox');
       categories.forEach(category => {
         const option = document.createElement('button');
         option.type = 'button';
         option.setAttribute('role', 'option');
         option.setAttribute('aria-selected', String(category === selectedCategory));
-        option.className = `block w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition hover:bg-blue-50 hover:text-fbBlue dark:hover:bg-slate-700 ${category === selectedCategory ? 'bg-blue-50 text-fbBlue dark:bg-slate-700 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200'}`;
+        option.className = `block w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition hover:bg-blue-50 hover:text-fbBlue ${category === selectedCategory ? 'bg-blue-50 text-fbBlue' : 'text-slate-700'}`;
         option.textContent = category === 'all' ? 'All Categories' : category;
         option.addEventListener('click', () => {
           options.classList.add('hidden');
