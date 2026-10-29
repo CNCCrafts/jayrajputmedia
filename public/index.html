@@ -1038,7 +1038,8 @@
 
           <div>
             <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Select Service</label>
-            <select id="quickServiceSelect" onchange="updateQuickServiceDetails()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white font-medium outline-none text-sm transition">
+            <div id="quickServiceDropdown" class="relative"></div>
+            <select id="quickServiceSelect" onchange="updateQuickServiceDetails()" class="hidden" tabindex="-1" aria-hidden="true">
               <option value="">First search or select a category</option>
             </select>
           </div>
@@ -1092,7 +1093,8 @@
 
           <div>
             <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Package</label>
-            <select id="orderServiceSelect" onchange="updateServiceDetails()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white font-medium outline-none text-sm transition">
+            <div id="orderServiceDropdown" class="relative"></div>
+            <select id="orderServiceSelect" onchange="updateServiceDetails()" class="hidden" tabindex="-1" aria-hidden="true">
             </select>
           </div>
 
@@ -2065,6 +2067,92 @@
       container.append(wrapper);
     }
 
+    function renderServiceDropdown(selectId, containerId) {
+      const select = document.getElementById(selectId);
+      const container = document.getElementById(containerId);
+      if (!select || !container) return;
+
+      container.replaceChildren();
+      const wrapper = document.createElement('div');
+      wrapper.className = 'relative';
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-4 py-3 text-left text-sm font-bold text-slate-800 shadow-sm transition hover:border-fbBlue focus:outline-none focus:ring-2 focus:ring-fbBlue';
+      toggle.setAttribute('aria-haspopup', 'listbox');
+      toggle.setAttribute('aria-expanded', 'false');
+
+      const getSelectedOption = () => [...select.options].find(option => option.value === select.value);
+      const selectedOption = getSelectedOption();
+      const label = document.createElement('span');
+      label.className = 'min-w-0 flex-1 truncate';
+      label.textContent = selectedOption?.textContent.trim() || 'Select a service';
+      toggle.append(label);
+
+      const chevron = document.createElement('i');
+      chevron.className = 'fa-solid fa-chevron-down ml-3 shrink-0 text-xs text-slate-500 transition-transform';
+      chevron.setAttribute('aria-hidden', 'true');
+      toggle.append(chevron);
+      toggle.disabled = !select.options.length || (select.options.length === 1 && !select.options[0].value);
+
+      const menu = document.createElement('div');
+      menu.className = 'absolute left-0 right-0 top-full z-30 mt-1 hidden max-h-72 overflow-hidden rounded-xl border border-slate-300 bg-white text-slate-800 shadow-xl';
+      menu.setAttribute('role', 'listbox');
+      const search = document.createElement('input');
+      search.type = 'search';
+      search.placeholder = 'Search services...';
+      search.setAttribute('aria-label', 'Search services');
+      search.className = 'w-full border-0 border-b border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-800 outline-none placeholder:text-slate-400 focus:ring-0';
+      menu.append(search);
+
+      const optionList = document.createElement('div');
+      optionList.className = 'max-h-56 overflow-y-auto p-1';
+      [...select.options].forEach(sourceOption => {
+        const option = document.createElement('button');
+        option.type = 'button';
+        option.setAttribute('role', 'option');
+        option.setAttribute('aria-selected', String(sourceOption.value === select.value));
+        option.dataset.searchText = sourceOption.textContent.toLowerCase();
+        option.className = `block w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition hover:bg-blue-50 hover:text-fbBlue ${sourceOption.value === select.value ? 'bg-blue-50 text-fbBlue' : 'text-slate-700'}`;
+        option.textContent = sourceOption.textContent.trim();
+        option.disabled = !sourceOption.value;
+        option.addEventListener('click', () => {
+          select.value = sourceOption.value;
+          toggle.setAttribute('aria-expanded', 'false');
+          menu.classList.add('hidden');
+          label.textContent = sourceOption.textContent.trim();
+          select.dispatchEvent(new Event('change'));
+        });
+        optionList.append(option);
+      });
+      if (!select.options.length) {
+        const emptyMessage = document.createElement('p');
+        emptyMessage.className = 'px-3 py-2.5 text-sm text-slate-500';
+        emptyMessage.textContent = 'No services available for this category.';
+        optionList.append(emptyMessage);
+      }
+      menu.append(optionList);
+
+      search.addEventListener('input', () => {
+        const query = search.value.trim().toLowerCase();
+        optionList.querySelectorAll('[role="option"]').forEach(option => {
+          option.classList.toggle('hidden', !option.dataset.searchText.includes(query));
+        });
+      });
+      toggle.addEventListener('click', () => {
+        const isOpen = toggle.getAttribute('aria-expanded') === 'true';
+        menu.classList.toggle('hidden', isOpen);
+        toggle.setAttribute('aria-expanded', String(!isOpen));
+        chevron.classList.toggle('rotate-180', !isOpen);
+        if (!isOpen) {
+          search.value = '';
+          search.dispatchEvent(new Event('input'));
+          search.focus();
+        }
+      });
+      wrapper.append(toggle, menu);
+      container.append(wrapper);
+    }
+
     function renderCatalogCards(list, sortImportedFirst = false) {
       const container = document.getElementById('servicesCardGrid');
       let multiplier = 1;
@@ -2214,12 +2302,19 @@
       const selectedCat = document.getElementById('orderCategorySelect').value;
       const services = allServices.filter(s => s.category === selectedCat);
       const servSelect = document.getElementById('orderServiceSelect');
-      servSelect.innerHTML = services.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      servSelect.replaceChildren();
+      services.forEach(service => {
+        const option = document.createElement('option');
+        option.value = service.id;
+        option.textContent = service.name;
+        servSelect.append(option);
+      });
       renderOrderCategories([...new Set(allServices.map(s => s.category).filter(Boolean))].sort());
       updateServiceDetails();
     }
 
     function updateServiceDetails() {
+      renderServiceDropdown('orderServiceSelect', 'orderServiceDropdown');
       const serviceId = parseInt(document.getElementById('orderServiceSelect').value);
       const s = allServices.find(item => item.id === serviceId);
       if (!s) return;
@@ -2352,9 +2447,20 @@
       }
 
       const select = document.getElementById('quickServiceSelect');
-      select.innerHTML = filtered.length
-        ? filtered.map(s => `<option value="${s.id}">${s.category} - ${s.name} (₹${s.rate_per_1000}/1000)</option>`).join('')
-        : '<option value="">No services found</option>';
+      select.replaceChildren();
+      filtered.forEach(service => {
+        const option = document.createElement('option');
+        option.value = service.id;
+        option.textContent = `${service.category} - ${service.name} (₹${service.rate_per_1000}/1000)`;
+        select.append(option);
+      });
+      if (!filtered.length) {
+        const option = document.createElement('option');
+        option.value = '';
+        option.textContent = 'No services found';
+        select.append(option);
+      }
+      renderServiceDropdown('quickServiceSelect', 'quickServiceDropdown');
 
       if (filtered.length === 1) {
         select.value = filtered[0].id;
@@ -2367,6 +2473,7 @@
     }
 
     function updateQuickServiceDetails() {
+      renderServiceDropdown('quickServiceSelect', 'quickServiceDropdown');
       const serviceId = parseInt(document.getElementById('quickServiceSelect').value);
       const s = importedServices.find(item => item.id === serviceId);
       const detailsBox = document.getElementById('quickServiceDetails');
