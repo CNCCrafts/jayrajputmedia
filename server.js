@@ -971,45 +971,54 @@ async function forwardOrderToProvider(orderId) {
     const upstreamOrderId = payload ? (payload.order ?? payload) : null;
 
     if (!upstreamOrderId) {
+      if (body.error) {
+        await pool.query("UPDATE orders SET status = 'Failed' WHERE id = $1 AND status = 'Pending'", [orderId]);
+      }
       return { error: `Upstream rejected the order: ${JSON.stringify(body)}` };
     }
 
     await pool.query('UPDATE orders SET upstream_order_id = $1 WHERE id = $2', [String(upstreamOrderId), orderId]);
     return { upstream_order_id: String(upstreamOrderId) };
   } catch (err) {
+    if (err.response?.data?.error) {
+      await pool.query("UPDATE orders SET status = 'Failed' WHERE id = $1 AND status = 'Pending'", [orderId]);
+    }
     const detail = err.response ? JSON.stringify(err.response.data) : err.message;
     return { error: `Upstream order failed: ${detail}` };
   }
 }
 
 // Pulls the delivery status of forwarded orders back from the upstream panel
-async function refreshUpstreamOrderStatus() {
+async function refreshUpstreamOrderStatus(orderId = null, userId = null) {
   const pending = await pool.query(`
-    SELECT o.id, o.service_id, o.upstream_order_id FROM orders o
+    SELECT o.id, o.user_id, o.upstream_order_id, s.provider_id FROM orders o
     JOIN services s ON s.id = o.service_id
     WHERE o.upstream_order_id IS NOT NULL
       AND o.upstream_order_id != ''
       AND o.status IN ('Pending', 'In progress', 'Partial')
       AND s.provider_id IS NOT NULL
-  `);
+      AND ($1::integer IS NULL OR o.id = $1)
+      AND ($2::integer IS NULL OR o.user_id = $2)
+  `, [orderId, userId]);
 
   let checked = 0;
 
   for (const order of pending.rows) {
-    const service = await pool.query('SELECT provider_id FROM services WHERE id = $1', [order.service_id]);
-    const provider = await pool.query("SELECT * FROM upstream_providers WHERE id = $1 AND status = 'active'", [service.rows[0].provider_id]);
+    const provider = await pool.query("SELECT * FROM upstream_providers WHERE id = $1 AND status = 'active'", [order.provider_id]);
     if (!provider.rows.length) continue;
 
     try {
       const response = await providerRequest(provider.rows[0], { action: 'status', id: order.upstream_order_id });
-      const payload = (response.data && (response.data.order ?? response.data.data)) || {};
-      const raw = String(payload.status ?? (typeof payload === 'string' ? payload : '')).trim();
+      const body = response.data;
+      const payload = body?.data ?? body?.order ?? body;
+      const raw = String(payload?.status ?? body?.status ?? (typeof payload === 'string' ? payload : '')).trim();
       if (!raw) continue;
 
       const statusMap = {
         pending: 'Pending',
         'in progress': 'In progress',
         inprogress: 'In progress',
+        processing: 'In progress',
         completed: 'Completed',
         complete: 'Completed',
         partial: 'Partial',
@@ -1020,8 +1029,12 @@ async function refreshUpstreamOrderStatus() {
       const mapped = statusMap[raw.toLowerCase()];
       if (!mapped) continue;
 
-      await pool.query('UPDATE orders SET status = $1 WHERE id = $2', [mapped, order.id]);
-      checked++;
+      const updated = await pool.query(
+        `UPDATE orders SET status = $1
+         WHERE id = $2 AND status IN ('Pending', 'In progress', 'Partial')`,
+        [mapped, order.id]
+      );
+      if (updated.rowCount) checked++;
     } catch (err) {
       console.error(`Upstream status check failed for order ${order.id}:`, err.message);
     }
@@ -2349,7 +2362,11 @@ app.post('/api/v2', authenticateApiKey, async (req, res) => {
     }
 
     case 'status': {
-      const row = await pool.query('SELECT * FROM orders WHERE id = $1 AND user_id = $2', [order, req.apiUser.id]);
+      const orderId = parseInt(order, 10);
+      if (!Number.isInteger(orderId)) return res.json({ error: 'Order not found' });
+
+      await refreshUpstreamOrderStatus(orderId, req.apiUser.id);
+      const row = await pool.query('SELECT * FROM orders WHERE id = $1 AND user_id = $2', [orderId, req.apiUser.id]);
       if (!row.rows.length) return res.json({ error: 'Order not found' });
 
       return res.json({
@@ -2411,6 +2428,46 @@ app.post('/api/user/api-key', authenticateToken, async (req, res) => {
   }
 
   res.json({ success: true, api_key: apiKey });
+});
+
+app.post('/api/webhooks/order-status', async (req, res) => {
+  const webhookSecret = process.env.ORDER_STATUS_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    return res.status(503).json({ error: 'Order status webhook is not configured.' });
+  }
+
+  const authorization = req.get('authorization') || '';
+  const tokenMatch = authorization.match(/^Bearer\s+(.+)$/i);
+  const suppliedSecret = tokenMatch ? Buffer.from(tokenMatch[1]) : Buffer.alloc(0);
+  const expectedSecret = Buffer.from(webhookSecret);
+  if (suppliedSecret.length !== expectedSecret.length || !crypto.timingSafeEqual(suppliedSecret, expectedSecret)) {
+    return res.status(401).json({ error: 'Invalid webhook authorization.' });
+  }
+
+  const orderId = Number(req.body?.order_id);
+  const status = String(req.body?.status || '').trim().toLowerCase();
+  const terminalStatus = status === 'completed' ? 'Completed' : status === 'failed' ? 'Failed' : null;
+  if (!Number.isSafeInteger(orderId) || orderId < 1 || !terminalStatus) {
+    return res.status(400).json({ error: 'A valid order_id and status of Completed or Failed are required.' });
+  }
+
+  const updated = await pool.query(
+    `UPDATE orders SET status = $1
+     WHERE id = $2
+       AND status IN ('Awaiting', 'Pending', 'Processing', 'In Progress', 'Inprogress', 'Partial')
+     RETURNING id, status`,
+    [terminalStatus, orderId]
+  );
+  if (updated.rows.length) {
+    return res.json({ success: true, order_id: updated.rows[0].id, status: updated.rows[0].status });
+  }
+
+  const existing = await pool.query('SELECT id, status FROM orders WHERE id = $1', [orderId]);
+  if (!existing.rows.length) return res.status(404).json({ error: 'Order not found.' });
+  if (existing.rows[0].status === terminalStatus) {
+    return res.json({ success: true, order_id: existing.rows[0].id, status: existing.rows[0].status });
+  }
+  return res.status(409).json({ error: `Order is already in terminal status "${existing.rows[0].status}".` });
 });
 
 // Keeps forwarded orders in sync with the upstream panel
