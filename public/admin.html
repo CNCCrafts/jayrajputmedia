@@ -30,6 +30,13 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <style>
+    body.admin-light-theme {
+      font-weight: 600;
+    }
+    body.admin-light-theme [class~="font-medium"],
+    body.admin-light-theme [class~="font-normal"] {
+      font-weight: 600 !important;
+    }
     .admin-nav-btn {
       color: #475569;
     }
@@ -215,6 +222,9 @@
             </button>
             <button onclick="switchAdminTab('appearance')" data-tab="appearance" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
               <i class="fa-solid fa-palette w-5 text-purple-400"></i><span>Appearance</span>
+            </button>
+            <button onclick="switchAdminTab('home-content')" data-tab="home-content" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
+              <i class="fa-solid fa-newspaper w-5 text-cyan-400"></i><span>Home Page Content</span>
             </button>
           </nav>
 
@@ -652,6 +662,32 @@
                 <tbody id="ticketsTbody" class="divide-y divide-slate-800"></tbody>
               </table>
             </div>
+          </section>
+        </div>
+
+        <!-- Home Page Content Tab -->
+        <div id="admin-tab-home-content" class="admin-tab-panel hidden">
+          <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
+            <div class="mb-6 border-b border-slate-800 pb-3">
+              <h2 class="flex items-center gap-2 text-lg font-bold text-white"><i class="fa-solid fa-newspaper text-cyan-400"></i><span>Home Page Content</span></h2>
+              <p class="mt-1 text-xs text-slate-400">Edit the latest-news list on the home page and the disclaimer below Quick Order.</p>
+            </div>
+            <p id="homeContentStatus" class="hidden mb-5 rounded-xl border px-3 py-2 text-xs" role="status" aria-live="polite"></p>
+            <form id="homeContentForm" onsubmit="saveHomeContent(event)" class="space-y-5">
+              <label class="block text-xs font-bold text-slate-300">
+                Latest News
+                <span class="mt-1 block font-normal text-slate-400">Add one announcement per line. Leave empty to hide the section.</span>
+                <textarea id="homeLatestNewsInput" maxlength="5000" rows="7" placeholder="New services are now available&#10;Check out this week's offers" class="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white outline-none focus:border-cyan-500"></textarea>
+              </label>
+              <label class="block text-xs font-bold text-slate-300">
+                Quick Order Disclaimer
+                <span class="mt-1 block font-normal text-slate-400">Shown directly below the Quick Order form. Leave empty to hide it.</span>
+                <textarea id="quickOrderDisclaimerInput" maxlength="3000" rows="5" class="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white outline-none focus:border-cyan-500"></textarea>
+              </label>
+              <button type="submit" class="rounded-xl bg-cyan-600 px-5 py-3 text-sm font-bold text-white transition hover:bg-cyan-500">
+                <i class="fa-solid fa-floppy-disk mr-1"></i> Save Home Page Content
+              </button>
+            </form>
           </section>
         </div>
 
@@ -2058,6 +2094,52 @@
       status.className = `text-xs rounded-xl px-3 py-2 mb-5 ${isError ? 'bg-red-500/10 text-red-300 border border-red-500/30' : 'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'}`;
     }
 
+    function setHomeContentStatus(message, isError = false) {
+      const status = document.getElementById('homeContentStatus');
+      status.textContent = message;
+      status.className = `mb-5 rounded-xl border px-3 py-2 text-xs ${isError ? 'bg-red-500/10 text-red-300 border-red-500/30' : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'}`;
+    }
+
+    async function loadHomeContent() {
+      try {
+        const response = await fetch('/api/admin/settings/home-content', {
+          headers: { Authorization: `Bearer ${localStorage.getItem('jr_admin_token')}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load home page content.');
+        document.getElementById('homeLatestNewsInput').value = data.latest_news || '';
+        document.getElementById('quickOrderDisclaimerInput').value = data.quick_order_disclaimer || '';
+      } catch (error) {
+        setHomeContentStatus(error.message, true);
+      }
+    }
+
+    async function saveHomeContent(event) {
+      event.preventDefault();
+      const submit = event.currentTarget.querySelector('button[type="submit"]');
+      submit.disabled = true;
+      try {
+        const response = await fetch('/api/admin/settings/home-content', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${localStorage.getItem('jr_admin_token')}`
+          },
+          body: JSON.stringify({
+            latest_news: document.getElementById('homeLatestNewsInput').value,
+            quick_order_disclaimer: document.getElementById('quickOrderDisclaimerInput').value
+          })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not save home page content.');
+        setHomeContentStatus('Home page content saved.');
+      } catch (error) {
+        setHomeContentStatus(error.message, true);
+      } finally {
+        submit.disabled = false;
+      }
+    }
+
     function getThemePalette(theme) {
       try {
         return typeof theme.palette_json === 'string' ? JSON.parse(theme.palette_json) : (theme.palette_json || {});
@@ -2614,6 +2696,7 @@
       if (tabName === 'payments') loadPayments();
       if (tabName === 'tickets') loadTickets();
       if (tabName === 'appearance') loadAppearance();
+      if (tabName === 'home-content') loadHomeContent();
     }
 
     function updateAdminTopScrollbars() {

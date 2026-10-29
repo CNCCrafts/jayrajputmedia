@@ -23,3 +23,7 @@ Content-Type: application/json
 ```
 
 Use `"Failed"` when fulfillment fails. The order ID is the local ID returned by this site's reseller API `add` action. Requests without the secret are rejected; only `Completed` and `Failed` are accepted. Repeating the same terminal update is safe, while changing an already-terminal status returns `409`. This endpoint does not mark orders completed by a timer—the fulfillment system must send the real outcome.
+
+## Homepage content
+
+Administrators can edit the homepage's Latest News (one item per line) and the disclaimer displayed below Quick Order in the Admin Portal under **Home Page Content**.

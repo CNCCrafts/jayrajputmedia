@@ -442,10 +442,10 @@
           <div class="w-5 h-5 sm:w-6 sm:h-6 rounded-md sm:rounded-lg meta-gradient-bg flex items-center justify-center text-white text-[10px] sm:text-xs flex-shrink-0">
             <i class="fa-solid fa-wallet"></i>
           </div>
-          <div class="hidden sm:block">
+          <button type="button" onclick="navigateSection('add-funds')" class="text-left leading-tight" aria-label="Open wallet and add funds">
             <span id="walletCurrencySymbol" class="text-slate-400 font-bold text-[10px] sm:text-xs">₹</span>
             <span id="walletBalanceAmount" class="font-display font-black text-slate-900 dark:text-white text-xs sm:text-sm">0.00</span>
-          </div>
+          </button>
           <select id="currencySelector" onchange="changeCurrency(this.value)" class="hidden sm:block bg-slate-100 dark:bg-slate-700 border-none text-[10px] sm:text-xs text-slate-700 dark:text-slate-200 font-bold rounded-md sm:rounded-lg px-1 sm:px-1.5 py-0.5 sm:py-1 outline-none cursor-pointer">
             <option value="INR">INR</option>
             <option value="USD">USD</option>
@@ -564,7 +564,11 @@
           </h2>
           <p class="text-blue-100 text-xs sm:text-sm mt-1 max-w-lg">Manage your Instagram & Facebook campaigns with instant delivery and automated refill.</p>
         </div>
-        <div class="flex items-center gap-3 relative z-10">
+        <div class="flex flex-wrap items-center gap-3 relative z-10">
+          <button type="button" onclick="navigateSection('add-funds')" class="rounded-2xl border border-white/30 bg-white/15 px-4 py-2.5 text-left text-white backdrop-blur-md transition hover:bg-white/25" aria-label="Open wallet and add funds">
+            <span class="block text-[10px] font-bold uppercase tracking-wider text-blue-100">Wallet Balance · Add Funds</span>
+            <span class="font-display text-lg font-black"><span id="homeWalletCurrencySymbol">₹</span><span id="homeWalletBalanceAmount">0.00</span></span>
+          </button>
           <button onclick="navigateSection('quick-order')" class="px-5 py-2.5 bg-white text-slate-900 font-bold rounded-2xl shadow-md hover:bg-slate-100 transition text-xs sm:text-sm">
             <i class="fa-solid fa-bolt mr-1"></i> Quick Order
           </button>
@@ -576,6 +580,13 @@
           </button>
         </div>
       </div>
+
+      <section id="homeLatestNews" class="hidden rounded-3xl border border-blue-200 dark:border-blue-900 bg-white dark:bg-darkCard p-6 sm:p-8 shadow-socialCard" aria-labelledby="homeLatestNewsHeading">
+        <h2 id="homeLatestNewsHeading" class="mb-4 flex items-center gap-2 text-xl font-display font-black text-slate-900 dark:text-white">
+          <i class="fa-solid fa-bullhorn text-fbBlue" aria-hidden="true"></i><span>Latest News</span>
+        </h2>
+        <ul id="homeLatestNewsList" class="space-y-3 text-sm text-slate-700 dark:text-slate-300"></ul>
+      </section>
 
       <div class="p-8 sm:p-14 rounded-3xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder shadow-socialCard flex flex-col md:flex-row items-center justify-between gap-10 relative overflow-hidden transition-colors" id="heroBranding">
         <div class="space-y-5 max-w-xl text-center md:text-left relative z-10">
@@ -974,9 +985,10 @@
               <input type="text" id="quickServiceSearch" oninput="filterQuickServices(this.value)" placeholder="Search for followers, likes, views..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
             </div>
             <div>
-              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Category</label>
-              <select id="quickCategorySelect" onchange="filterQuickServicesByCategory()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white font-medium outline-none text-sm transition">
-              </select>
+              <span class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">Categories</span>
+              <div id="quickCategoryList" class="flex gap-2 overflow-x-auto overscroll-x-contain pb-2" role="group" aria-label="Filter quick order services by category">
+                <span class="text-xs text-slate-500">Loading categories...</span>
+              </div>
             </div>
           </div>
 
@@ -1012,6 +1024,10 @@
           </button>
         </form>
       </div>
+      <a href="https://chat.whatsapp.com/FF108smgCrkD9aCrSHI099?s=sh&amp;p=a&amp;mlu=4&amp;ilr=4&amp;iam=2" target="_blank" rel="noopener noreferrer" aria-label="Join our WhatsApp Channel" title="Join our WhatsApp Channel" class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-white font-bold shadow-lg shadow-emerald-900/30 transition hover:bg-emerald-700 hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-emerald-300">
+        <i class="fa-brands fa-whatsapp text-xl" aria-hidden="true"></i><span>Join WhatsApp Channel</span>
+      </a>
+      <aside id="quickOrderDisclaimer" class="rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-4 text-xs leading-relaxed text-amber-950 dark:text-amber-100 whitespace-pre-line" aria-label="Order disclaimer"></aside>
     </section>
 
     <section id="section-new-order" class="content-section hidden">
@@ -1025,9 +1041,9 @@
 
         <form id="newOrderForm" onsubmit="withOrderLoading(handlePlaceOrder, event, 'Order placement')" class="space-y-4">
           <div>
-            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Platform / Category</label>
-            <select id="orderCategorySelect" onchange="filterServicesByCategory()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white font-medium outline-none text-sm transition">
-            </select>
+            <label class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">Platform / Category</label>
+            <div id="orderCategoryList" class="flex gap-2 overflow-x-auto overscroll-x-contain pb-2" role="group" aria-label="Choose platform or category"></div>
+            <select id="orderCategorySelect" onchange="filterServicesByCategory()" class="hidden" tabindex="-1" aria-hidden="true"></select>
           </div>
 
           <div>
@@ -1408,6 +1424,7 @@
     let allServices = [];
     let inhouseServices = [];
     let importedServices = [];
+    let quickOrderCategory = 'all';
     let activeCurrency = 'INR';
     let pendingAuthSection = null;
     let pendingOrderCategory = '';
@@ -1439,6 +1456,7 @@
         const response = await fetch('/api/settings');
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Could not load the storefront theme.');
+        renderHomeContent(data.latest_news || '', data.quick_order_disclaimer || '');
         const palette = data.palette || {};
         const root = document.documentElement;
         const validColor = (value, fallback) => /^#[0-9a-fA-F]{6}$/.test(value || '') ? value : fallback;
@@ -1862,6 +1880,8 @@
 
       document.getElementById('walletCurrencySymbol').innerText = symbol;
       document.getElementById('walletBalanceAmount').innerText = parseFloat(balance).toFixed(2);
+      document.getElementById('homeWalletCurrencySymbol').innerText = symbol;
+      document.getElementById('homeWalletBalanceAmount').innerText = parseFloat(balance).toFixed(2);
     }
 
     function changeCurrency(curr) {
@@ -1897,14 +1917,11 @@
 
         // Configure Order (reached via "Buy" from the store) lists all categories;
         // Quick Order ("Search Services") lists imported categories only.
-        const importedCatOptions = importedCats.map(c => `<option value="${c}">${c}</option>`).join('');
         const allCatOptions = [...new Set(allServices.map(s => s.category).filter(Boolean))].sort().map(c => `<option value="${c}">${c}</option>`).join('');
         document.getElementById('orderCategorySelect').innerHTML = allCatOptions;
+        renderOrderCategories([...new Set(allServices.map(s => s.category).filter(Boolean))].sort());
         if (currentUser) applyPendingOrderCategory();
-        const quickCatSelect = document.getElementById('quickCategorySelect');
-        if (quickCatSelect) {
-          quickCatSelect.innerHTML = '<option value="all">All Categories</option>' + importedCatOptions;
-        }
+        renderQuickOrderCategories(importedCats);
 
         filterServicesByCategory();
         filterQuickServices('');
@@ -1912,6 +1929,78 @@
       } catch (err) {
         console.error(err);
       }
+    }
+
+    function renderHomeContent(latestNews, disclaimer) {
+      const newsSection = document.getElementById('homeLatestNews');
+      const newsList = document.getElementById('homeLatestNewsList');
+      const newsItems = String(latestNews || '').split(/\r?\n/).map(item => item.trim()).filter(Boolean);
+      newsList.replaceChildren();
+      newsItems.forEach(item => {
+        const row = document.createElement('li');
+        row.className = 'flex items-start gap-3';
+        const icon = document.createElement('i');
+        icon.className = 'fa-solid fa-circle-check mt-1 text-emerald-500';
+        icon.setAttribute('aria-hidden', 'true');
+        const text = document.createElement('span');
+        text.textContent = item;
+        row.append(icon, text);
+        newsList.append(row);
+      });
+      newsSection.classList.toggle('hidden', newsItems.length === 0);
+
+      const disclaimerBox = document.getElementById('quickOrderDisclaimer');
+      const disclaimerText = String(disclaimer || '').trim();
+      disclaimerBox.textContent = disclaimerText;
+      disclaimerBox.classList.toggle('hidden', !disclaimerText);
+    }
+
+    function renderQuickOrderCategories(categories) {
+      const container = document.getElementById('quickCategoryList');
+      if (!container) return;
+      const categoryNames = ['all', ...categories];
+      if (!categoryNames.includes(quickOrderCategory)) quickOrderCategory = 'all';
+      container.replaceChildren();
+
+      categoryNames.forEach(category => {
+        const button = document.createElement('button');
+        const isSelected = category === quickOrderCategory;
+        button.type = 'button';
+        button.textContent = category === 'all' ? 'All Categories' : category;
+        button.setAttribute('aria-pressed', String(isSelected));
+        button.className = isSelected
+          ? 'shrink-0 rounded-full border border-fbBlue bg-fbBlue px-4 py-2 text-xs font-bold text-white shadow-sm'
+          : 'shrink-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:border-fbBlue hover:text-fbBlue dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-fbBlue';
+        button.addEventListener('click', () => {
+          quickOrderCategory = category;
+          renderQuickOrderCategories(categories);
+          filterQuickServices(document.getElementById('quickServiceSearch').value);
+        });
+        container.append(button);
+      });
+    }
+
+    function renderOrderCategories(categories) {
+      const container = document.getElementById('orderCategoryList');
+      if (!container) return;
+      const selectedCategory = document.getElementById('orderCategorySelect').value;
+      container.replaceChildren();
+
+      categories.forEach(category => {
+        const button = document.createElement('button');
+        const isSelected = category === selectedCategory;
+        button.type = 'button';
+        button.textContent = category;
+        button.setAttribute('aria-pressed', String(isSelected));
+        button.className = isSelected
+          ? 'shrink-0 rounded-full border border-fbBlue bg-fbBlue px-4 py-2 text-xs font-bold text-white shadow-sm'
+          : 'shrink-0 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition hover:border-fbBlue hover:text-fbBlue dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:border-fbBlue';
+        button.addEventListener('click', () => {
+          document.getElementById('orderCategorySelect').value = category;
+          filterServicesByCategory();
+        });
+        container.append(button);
+      });
     }
 
     function renderCatalogCards(list, sortImportedFirst = false) {
@@ -2064,6 +2153,7 @@
       const services = allServices.filter(s => s.category === selectedCat);
       const servSelect = document.getElementById('orderServiceSelect');
       servSelect.innerHTML = services.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+      renderOrderCategories([...new Set(allServices.map(s => s.category).filter(Boolean))].sort());
       updateServiceDetails();
     }
 
@@ -2189,11 +2279,10 @@
     // ==================== QUICK ORDER FUNCTIONS ====================
     function filterQuickServices(query) {
       const q = query.toLowerCase();
-      const category = document.getElementById('quickCategorySelect').value;
       let filtered = importedServices.slice();
 
-      if (category && category !== 'all') {
-        filtered = filtered.filter(s => s.category === category);
+      if (quickOrderCategory !== 'all') {
+        filtered = filtered.filter(s => s.category === quickOrderCategory);
       }
 
       if (q) {

@@ -14,6 +14,7 @@ require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET;
+const DEFAULT_QUICK_ORDER_DISCLAIMER = 'Delivery times vary by service and provider. Please submit a valid public URL and review the service details before placing your order.';
 
 if (!JWT_SECRET) {
   console.error('JWT_SECRET environment variable is not set');
@@ -2110,21 +2111,73 @@ app.put('/api/admin/tickets/:id/status', authenticateToken, requireAdmin, async 
 // Public: returns the active theme palette so the site can apply it
 app.get('/api/settings', async (req, res) => {
   try {
+    const contentRows = await pool.query(
+      "SELECT key, value FROM site_settings WHERE key IN ('home_latest_news', 'quick_order_disclaimer')"
+    );
+    const homeContent = Object.fromEntries(contentRows.rows.map(row => [row.key, row.value]));
     const setting = await pool.query("SELECT value FROM site_settings WHERE key = 'active_theme'");
     const activeName = setting.rows.length ? setting.rows[0].value : 'Default';
     const theme = await pool.query('SELECT name, label, palette_json, occasion_message, is_active, layout FROM site_themes WHERE name = $1', [activeName]);
     if (!theme.rows.length) {
-      return res.json({ active_theme: 'Default', palette: {}, occasion_message: null, layout: 'classic' });
+      return res.json({
+        active_theme: 'Default',
+        palette: {},
+        occasion_message: null,
+        layout: 'classic',
+        latest_news: homeContent.home_latest_news ?? '',
+        quick_order_disclaimer: homeContent.quick_order_disclaimer ?? DEFAULT_QUICK_ORDER_DISCLAIMER
+      });
     }
     res.json({
       active_theme: theme.rows[0].name,
       label: theme.rows[0].label,
       palette: theme.rows[0].palette_json ? JSON.parse(theme.rows[0].palette_json) : {},
       occasion_message: theme.rows[0].occasion_message,
-      layout: theme.rows[0].layout || 'classic'
+      layout: theme.rows[0].layout || 'classic',
+      latest_news: homeContent.home_latest_news ?? '',
+      quick_order_disclaimer: homeContent.quick_order_disclaimer ?? DEFAULT_QUICK_ORDER_DISCLAIMER
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/admin/settings/home-content', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT key, value FROM site_settings WHERE key IN ('home_latest_news', 'quick_order_disclaimer')"
+    );
+    const content = Object.fromEntries(result.rows.map(row => [row.key, row.value]));
+    res.json({
+      latest_news: content.home_latest_news ?? '',
+      quick_order_disclaimer: content.quick_order_disclaimer ?? DEFAULT_QUICK_ORDER_DISCLAIMER
+    });
+  } catch (err) {
+    console.error('Could not load editable homepage content:', err);
+    res.status(500).json({ error: 'Could not load homepage content.' });
+  }
+});
+
+app.put('/api/admin/settings/home-content', authenticateToken, requireAdmin, async (req, res) => {
+  const { latest_news, quick_order_disclaimer } = req.body || {};
+  if (typeof latest_news !== 'string' || typeof quick_order_disclaimer !== 'string') {
+    return res.status(400).json({ error: 'Latest news and quick-order disclaimer must be text.' });
+  }
+  if (latest_news.length > 5000 || quick_order_disclaimer.length > 3000) {
+    return res.status(400).json({ error: 'Latest news is limited to 5,000 characters and the disclaimer to 3,000 characters.' });
+  }
+
+  try {
+    await pool.query(
+      `INSERT INTO site_settings (key, value)
+       VALUES ('home_latest_news', $1), ('quick_order_disclaimer', $2)
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+      [latest_news.trim(), quick_order_disclaimer.trim()]
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Could not save editable homepage content:', err);
+    res.status(500).json({ error: 'Could not save homepage content.' });
   }
 });
 
