@@ -1023,29 +1023,35 @@
         </div>
 
         <form id="quickOrderForm" onsubmit="withOrderLoading(handleQuickOrder, event, 'Quick order')" class="space-y-4">
+          <div>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">In-House Packages</label>
+            <div id="quickPackageDropdown" class="relative"></div>
+            <select id="quickPackageSelect" onchange="selectQuickOrderProduct('package')" class="hidden" tabindex="-1" aria-hidden="true"></select>
+          </div>
+
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Search Services</label>
+              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Search Provider Services</label>
               <input type="text" id="quickServiceSearch" oninput="filterQuickServices(this.value)" placeholder="Search for followers, likes, views..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
             </div>
             <div>
-              <span class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">Categories</span>
-              <div id="quickCategoryList" class="relative" aria-label="Filter quick order services by category">
+              <span class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">Provider Categories</span>
+              <div id="quickCategoryList" class="relative" aria-label="Filter provider services by category">
                 <span class="text-xs text-slate-500">Loading categories...</span>
               </div>
             </div>
           </div>
 
           <div>
-            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Select Service</label>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Select Provider Service</label>
             <div id="quickServiceDropdown" class="relative"></div>
-            <select id="quickServiceSelect" onchange="updateQuickServiceDetails()" class="hidden" tabindex="-1" aria-hidden="true">
+            <select id="quickServiceSelect" onchange="selectQuickOrderProduct('provider')" class="hidden" tabindex="-1" aria-hidden="true">
               <option value="">First search or select a category</option>
             </select>
           </div>
 
           <div id="quickServiceDetails" class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1 text-slate-600 dark:text-slate-300">
-            <p>Search for a service to view details and pricing.</p>
+            <p>Select an in-house package or provider service to view details and pricing.</p>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1966,8 +1972,10 @@
         populateOrderProductSelect('orderPackageSelect', inhouseServices, 'Select an in-house package');
         populateOrderProductSelect('orderProviderServiceSelect', importedServices, 'Select a provider service');
         populateOrderProductSelect('orderServiceSelect', allServices, '');
+        populateOrderProductSelect('quickPackageSelect', inhouseServices, 'Select an in-house package');
         renderServiceDropdown('orderPackageSelect', 'orderPackageDropdown');
         renderServiceDropdown('orderProviderServiceSelect', 'orderProviderServiceDropdown');
+        renderServiceDropdown('quickPackageSelect', 'quickPackageDropdown');
         if (currentUser) applyPendingOrderCategory();
         renderQuickOrderCategories(importedCats);
 
@@ -2466,6 +2474,28 @@
     }
 
     // ==================== QUICK ORDER FUNCTIONS ====================
+    function selectQuickOrderProduct(source) {
+      const packageSelect = document.getElementById('quickPackageSelect');
+      const providerSelect = document.getElementById('quickServiceSelect');
+      const otherSelect = source === 'package' ? providerSelect : packageSelect;
+      otherSelect.value = '';
+      renderServiceDropdown(
+        source === 'package' ? 'quickServiceSelect' : 'quickPackageSelect',
+        source === 'package' ? 'quickServiceDropdown' : 'quickPackageDropdown'
+      );
+      updateQuickServiceDetails();
+    }
+
+    function getSelectedQuickOrderService() {
+      const packageId = parseInt(document.getElementById('quickPackageSelect').value);
+      if (packageId) {
+        return inhouseServices.find(item => item.id === packageId) || null;
+      }
+
+      const serviceId = parseInt(document.getElementById('quickServiceSelect').value);
+      return importedServices.find(item => item.id === serviceId) || null;
+    }
+
     function filterQuickServices(query) {
       const q = query.toLowerCase();
       let filtered = importedServices.slice();
@@ -2479,23 +2509,22 @@
       }
 
       const select = document.getElementById('quickServiceSelect');
-      select.replaceChildren();
+      select.replaceChildren(new Option(
+        filtered.length ? 'Select a provider service' : 'No provider services found',
+        ''
+      ));
       filtered.forEach(service => {
         const option = document.createElement('option');
         option.value = service.id;
         option.textContent = `${service.category} - ${service.name} (₹${service.rate_per_1000}/1000)`;
         select.append(option);
       });
-      if (!filtered.length) {
-        const option = document.createElement('option');
-        option.value = '';
-        option.textContent = 'No services found';
-        select.append(option);
-      }
       renderServiceDropdown('quickServiceSelect', 'quickServiceDropdown');
 
       if (filtered.length === 1) {
         select.value = filtered[0].id;
+        selectQuickOrderProduct('provider');
+      } else {
         updateQuickServiceDetails();
       }
     }
@@ -2506,12 +2535,12 @@
 
     function updateQuickServiceDetails() {
       renderServiceDropdown('quickServiceSelect', 'quickServiceDropdown');
-      const serviceId = parseInt(document.getElementById('quickServiceSelect').value);
-      const s = importedServices.find(item => item.id === serviceId);
+      renderServiceDropdown('quickPackageSelect', 'quickPackageDropdown');
+      const s = getSelectedQuickOrderService();
       const detailsBox = document.getElementById('quickServiceDetails');
 
       if (!s) {
-        detailsBox.innerHTML = '<p>Search for a service to view details and pricing.</p>';
+        detailsBox.innerHTML = '<p>Select an in-house package or provider service to view details and pricing.</p>';
         document.getElementById('quickOrderTotal').innerText = '₹0.00';
         return;
       }
@@ -2530,9 +2559,8 @@
     }
 
     function calculateQuickOrderCharge() {
-      const serviceId = parseInt(document.getElementById('quickServiceSelect').value);
       const qty = parseInt(document.getElementById('quickOrderQuantity').value) || 0;
-      const s = importedServices.find(item => item.id === serviceId);
+      const s = getSelectedQuickOrderService();
       if (!s) {
         document.getElementById('quickOrderTotal').innerText = '₹0.00';
         return;
@@ -2547,11 +2575,12 @@
       const token = getAuthToken();
       if (!token) return openAuthModal('signin');
 
-      const service_id = parseInt(document.getElementById('quickServiceSelect').value);
+      const service = getSelectedQuickOrderService();
+      const service_id = service?.id;
       const link = document.getElementById('quickOrderLink').value;
       const quantity = parseInt(document.getElementById('quickOrderQuantity').value);
 
-      if (!service_id) return alert('Please select a service.');
+      if (!service_id) return alert('Please select an in-house package or provider service.');
       if (!link) return alert('Please enter a target URL.');
       if (!quantity || quantity < 1) return alert('Please enter a valid quantity.');
 
@@ -2563,7 +2592,6 @@
       const data = await res.json();
       if (data.error) return alert(data.error);
 
-      const service = importedServices.find(s => s.id === service_id);
       showOrderSuccess({
         orderId: data.order_id,
         service,
@@ -2574,8 +2602,11 @@
         remainingBalance: data.remaining_balance
       });
       document.getElementById('quickOrderForm').reset();
-      document.getElementById('quickServiceDetails').innerHTML = '<p>Search for a service to view details and pricing.</p>';
-      document.getElementById('quickOrderTotal').innerText = '₹0.00';
+      document.getElementById('quickPackageSelect').value = '';
+      document.getElementById('quickServiceSelect').value = '';
+      renderServiceDropdown('quickPackageSelect', 'quickPackageDropdown');
+      renderServiceDropdown('quickServiceSelect', 'quickServiceDropdown');
+      updateQuickServiceDetails();
       fetchUserProfile();
       loadUserOrders();
     }
