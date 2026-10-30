@@ -350,8 +350,8 @@
       background-color: var(--theme-bg) !important;
       color: var(--theme-text) !important;
     }
-    html:not(.dark) body [class*="bg-white"],
-    html:not(.dark) body [class*="dark:bg-darkCard"] {
+    html:not(.dark) body [class~="bg-white"],
+    html:not(.dark) body [class~="dark:bg-darkCard"] {
       background-color: var(--theme-surface) !important;
     }
     html:not(.dark) body [class*="border-slate-200"],
@@ -610,7 +610,7 @@
         </div>
         <div class="flex flex-wrap items-center gap-3 relative z-10">
           <button type="button" onclick="navigateSection('add-funds')" class="rounded-2xl border border-white/30 bg-white/15 px-4 py-2.5 text-left text-white backdrop-blur-md transition hover:bg-white/25" aria-label="Open wallet and add funds">
-            <span class="block text-[10px] font-bold uppercase tracking-wider text-blue-100">Wallet Balance · Add Funds</span>
+            <span class="block text-[10px] font-bold uppercase tracking-wider text-white">Wallet Balance · Add Funds</span>
             <span class="font-display text-lg font-black"><span id="homeWalletCurrencySymbol">₹</span><span id="homeWalletBalanceAmount">0.00</span></span>
           </button>
           <button onclick="navigateSection('quick-order')" class="px-5 py-2.5 bg-white text-slate-900 font-bold rounded-2xl shadow-md hover:bg-slate-100 transition text-xs sm:text-sm">
@@ -1087,12 +1087,12 @@
         <form id="newOrderForm" onsubmit="withOrderLoading(handlePlaceOrder, event, 'Order placement')" class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">In-House Package</label>
+              <label class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">Packages · In-House</label>
               <div id="orderPackageDropdown" class="relative"></div>
               <select id="orderPackageSelect" onchange="selectOrderProduct('package')" class="hidden" tabindex="-1" aria-hidden="true"></select>
             </div>
             <div>
-              <label class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">Provider Service</label>
+              <label class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">Provider Services</label>
               <div id="orderProviderServiceDropdown" class="relative"></div>
               <select id="orderProviderServiceSelect" onchange="selectOrderProduct('provider')" class="hidden" tabindex="-1" aria-hidden="true"></select>
             </div>
@@ -1102,7 +1102,7 @@
           <div id="serviceDetailsBox" class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1 text-slate-600 dark:text-slate-300">
             <p><strong>Rate / 1000:</strong> <span id="displayRate" class="text-fbBlue dark:text-pink-400 font-bold">₹0</span></p>
             <p><strong>Min / Max Limits:</strong> <span id="displayMinMax" class="font-semibold text-slate-800 dark:text-white">0 / 0</span></p>
-            <p id="displayDesc" class="text-slate-500 italic">Select a package to view specifications.</p>
+            <p id="displayDesc" class="text-slate-500 italic">Select a package or provider service to view specifications.</p>
           </div>
 
           <div>
@@ -1963,8 +1963,8 @@
         cf.innerHTML = `<button onclick="filterByCategory('all')" class="category-pill active px-4 py-2 rounded-full text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-900 dark:bg-white text-white dark:text-slate-900 transition" data-category="all">All Packages</button>` +
           inhouseCats.map(c => `<button onclick="filterByCategory('${c}')" class="category-pill px-4 py-2 rounded-full text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition" data-category="${c}">${c}</button>`).join('');
 
-        populateOrderProductSelect('orderPackageSelect', inhouseServices, 'Choose an in-house package');
-        populateOrderProductSelect('orderProviderServiceSelect', importedServices, 'Choose a provider service');
+        populateOrderProductSelect('orderPackageSelect', inhouseServices, 'Select an in-house package');
+        populateOrderProductSelect('orderProviderServiceSelect', importedServices, 'Select a provider service');
         populateOrderProductSelect('orderServiceSelect', allServices, '');
         renderServiceDropdown('orderPackageSelect', 'orderPackageDropdown');
         renderServiceDropdown('orderProviderServiceSelect', 'orderProviderServiceDropdown');
