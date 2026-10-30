@@ -1069,8 +1069,8 @@
           </button>
         </form>
       </div>
-      <a href="https://chat.whatsapp.com/FF108smgCrkD9aCrSHI099?s=sh&amp;p=a&amp;mlu=4&amp;ilr=4&amp;iam=2" target="_blank" rel="noopener noreferrer" aria-label="Join our WhatsApp Channel" title="Join our WhatsApp Channel" class="fixed bottom-6 right-6 z-40 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-5 py-3 text-white font-bold shadow-lg shadow-emerald-900/30 transition hover:bg-emerald-700 hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-emerald-300">
-        <i class="fa-brands fa-whatsapp text-xl" aria-hidden="true"></i><span>Join WhatsApp Channel</span>
+      <a href="https://chat.whatsapp.com/FF108smgCrkD9aCrSHI099?s=sh&amp;p=a&amp;mlu=4&amp;ilr=4&amp;iam=2" target="_blank" rel="noopener noreferrer" aria-label="Join our WhatsApp Channel" title="Join our WhatsApp Channel" class="fixed bottom-4 right-3 z-40 inline-flex items-center gap-2 rounded-full bg-emerald-600 px-4 py-2.5 text-white font-bold shadow-lg shadow-emerald-900/30 transition hover:bg-emerald-700 hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-emerald-300">
+        <i class="fa-brands fa-whatsapp text-lg" aria-hidden="true"></i><span>Join</span>
       </a>
       <aside id="quickOrderDisclaimer" class="rounded-2xl border border-amber-200 dark:border-amber-900 bg-amber-50 dark:bg-amber-950/30 p-4 text-xs leading-relaxed text-amber-950 dark:text-amber-100 whitespace-pre-line" aria-label="Order disclaimer"></aside>
     </section>
@@ -1085,18 +1085,19 @@
         </div>
 
         <form id="newOrderForm" onsubmit="withOrderLoading(handlePlaceOrder, event, 'Order placement')" class="space-y-4">
-          <div>
-            <label class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">Platform / Category</label>
-            <div id="orderCategoryList" class="relative" aria-label="Choose platform or category"></div>
-            <select id="orderCategorySelect" onchange="filterServicesByCategory()" class="hidden" tabindex="-1" aria-hidden="true"></select>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">In-House Package</label>
+              <div id="orderPackageDropdown" class="relative"></div>
+              <select id="orderPackageSelect" onchange="selectOrderProduct('package')" class="hidden" tabindex="-1" aria-hidden="true"></select>
+            </div>
+            <div>
+              <label class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">Provider Service</label>
+              <div id="orderProviderServiceDropdown" class="relative"></div>
+              <select id="orderProviderServiceSelect" onchange="selectOrderProduct('provider')" class="hidden" tabindex="-1" aria-hidden="true"></select>
+            </div>
           </div>
-
-          <div>
-            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Package</label>
-            <div id="orderServiceDropdown" class="relative"></div>
-            <select id="orderServiceSelect" onchange="updateServiceDetails()" class="hidden" tabindex="-1" aria-hidden="true">
-            </select>
-          </div>
+          <select id="orderServiceSelect" class="hidden" tabindex="-1" aria-hidden="true"></select>
 
           <div id="serviceDetailsBox" class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1 text-slate-600 dark:text-slate-300">
             <p><strong>Rate / 1000:</strong> <span id="displayRate" class="text-fbBlue dark:text-pink-400 font-bold">₹0</span></p>
@@ -1574,15 +1575,16 @@
     }
 
     function selectOrderCategory(category) {
-      const categorySelect = document.getElementById('orderCategorySelect');
-      const matchingCategory = [...categorySelect.options].find(option =>
-        option.value.toLowerCase() === category.toLowerCase()
-        || option.value.toLowerCase().includes(category.toLowerCase())
+      const matchingService = [...inhouseServices, ...importedServices].find(service =>
+        service.category.toLowerCase() === category.toLowerCase()
+        || service.category.toLowerCase().includes(category.toLowerCase())
       );
-      if (!matchingCategory) return false;
+      if (!matchingService) return false;
 
-      categorySelect.value = matchingCategory.value;
-      filterServicesByCategory();
+      const isProviderService = Boolean(matchingService.provider_id);
+      const select = document.getElementById(isProviderService ? 'orderProviderServiceSelect' : 'orderPackageSelect');
+      select.value = String(matchingService.id);
+      selectOrderProduct(isProviderService ? 'provider' : 'package');
       return true;
     }
 
@@ -1961,17 +1963,17 @@
         cf.innerHTML = `<button onclick="filterByCategory('all')" class="category-pill active px-4 py-2 rounded-full text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-900 dark:bg-white text-white dark:text-slate-900 transition" data-category="all">All Packages</button>` +
           inhouseCats.map(c => `<button onclick="filterByCategory('${c}')" class="category-pill px-4 py-2 rounded-full text-xs font-bold border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition" data-category="${c}">${c}</button>`).join('');
 
-        // Configure Order (reached via "Buy" from the store) lists all categories;
-        // Quick Order ("Search Services") lists imported categories only.
-        const allCatOptions = [...new Set(allServices.map(s => s.category).filter(Boolean))].sort().map(c => `<option value="${c}">${c}</option>`).join('');
-        document.getElementById('orderCategorySelect').innerHTML = allCatOptions;
-        renderOrderCategories([...new Set(allServices.map(s => s.category).filter(Boolean))].sort());
+        populateOrderProductSelect('orderPackageSelect', inhouseServices, 'Choose an in-house package');
+        populateOrderProductSelect('orderProviderServiceSelect', importedServices, 'Choose a provider service');
+        populateOrderProductSelect('orderServiceSelect', allServices, '');
+        renderServiceDropdown('orderPackageSelect', 'orderPackageDropdown');
+        renderServiceDropdown('orderProviderServiceSelect', 'orderProviderServiceDropdown');
         if (currentUser) applyPendingOrderCategory();
         renderQuickOrderCategories(importedCats);
 
-        filterServicesByCategory();
         filterQuickServices('');
         renderCatalogCards(inhouseServices, false);
+        handleHashRoute();
       } catch (err) {
         console.error(err);
       }
@@ -2013,13 +2015,12 @@
       });
     }
 
-    function renderOrderCategories(categories) {
-      const container = document.getElementById('orderCategoryList');
-      if (!container) return;
-      const selectedCategory = document.getElementById('orderCategorySelect').value;
-      renderCategoryDropdown(container, categories, selectedCategory, category => {
-        document.getElementById('orderCategorySelect').value = category;
-        filterServicesByCategory();
+    function populateOrderProductSelect(selectId, products, placeholder) {
+      const select = document.getElementById(selectId);
+      select.replaceChildren(new Option(placeholder, ''));
+      products.forEach(product => {
+        const option = new Option(`${product.category} - ${product.name}`, product.id);
+        select.append(option);
       });
     }
 
@@ -2223,11 +2224,14 @@
                   <p class="text-[10px] uppercase font-bold text-slate-400">Rate / 1000</p>
                   <p class="text-lg font-display font-black text-slate-900 dark:text-white">${symbol}${(s.rate_per_1000 * multiplier).toFixed(2)}</p>
                 </div>
-                <div class="flex items-center space-x-2">
-                  <button onclick="openServiceDetail(${s.id})" class="px-3 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition">
+                <div class="flex flex-wrap items-center justify-end gap-1.5">
+                  <button type="button" onclick="openServiceDetail(${s.id})" class="px-2.5 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition">
                     Details
                   </button>
-                  <button onclick="prepareBuyNow(${s.id})" class="px-3 py-2 bg-fbBlue text-white font-bold rounded-xl text-xs hover:bg-fbBlueHover transition">
+                  <button type="button" onclick="shareService(${s.id})" class="px-2.5 py-2 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-xl text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition" aria-label="Share ${s.name}">
+                    <i class="fa-solid fa-share-nodes mr-1"></i>Share
+                  </button>
+                  <button type="button" onclick="prepareBuyNow(${s.id})" class="px-2.5 py-2 bg-fbBlue text-white font-bold rounded-xl text-xs hover:bg-fbBlueHover transition">
                     <i class="fa-solid fa-cart-shopping text-[10px] mr-1"></i>Buy
                   </button>
                 </div>
@@ -2236,6 +2240,32 @@
           </div>
         `;
       }).join('');
+    }
+
+    async function shareService(serviceId) {
+      const service = allServices.find(item => item.id === serviceId);
+      if (!service) return;
+
+      const shareUrl = new URL(window.location.href);
+      shareUrl.hash = `service/${serviceId}`;
+      const shareData = {
+        title: service.name,
+        text: `${service.name} - ${service.category}`,
+        url: shareUrl.href
+      };
+
+      try {
+        if (navigator.share) {
+          await navigator.share(shareData);
+          return;
+        }
+        await navigator.clipboard.writeText(shareUrl.href);
+        alert('Package link copied to clipboard.');
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        console.error('Could not share package:', err);
+        alert('Could not share this package. Please try again.');
+      }
     }
 
     function openServiceDetail(serviceId) {
@@ -2291,33 +2321,35 @@
       const s = allServices.find(item => item.id === serviceId);
       if (!s) return;
 
-      document.getElementById('orderCategorySelect').value = s.category;
-      filterServicesByCategory();
-      document.getElementById('orderServiceSelect').value = s.id;
-      updateServiceDetails();
+      const isProviderService = Boolean(s.provider_id);
+      const select = document.getElementById(isProviderService ? 'orderProviderServiceSelect' : 'orderPackageSelect');
+      select.value = String(s.id);
+      selectOrderProduct(isProviderService ? 'provider' : 'package');
       navigateSection('new-order');
     }
 
-    function filterServicesByCategory() {
-      const selectedCat = document.getElementById('orderCategorySelect').value;
-      const services = allServices.filter(s => s.category === selectedCat);
-      const servSelect = document.getElementById('orderServiceSelect');
-      servSelect.replaceChildren();
-      services.forEach(service => {
-        const option = document.createElement('option');
-        option.value = service.id;
-        option.textContent = service.name;
-        servSelect.append(option);
-      });
-      renderOrderCategories([...new Set(allServices.map(s => s.category).filter(Boolean))].sort());
+    function selectOrderProduct(source) {
+      const isProviderService = source === 'provider';
+      const selectedProductSelect = document.getElementById(isProviderService ? 'orderProviderServiceSelect' : 'orderPackageSelect');
+      const otherProductSelect = document.getElementById(isProviderService ? 'orderPackageSelect' : 'orderProviderServiceSelect');
+      const serviceSelect = document.getElementById('orderServiceSelect');
+      otherProductSelect.value = '';
+      serviceSelect.value = selectedProductSelect.value;
+      renderServiceDropdown('orderPackageSelect', 'orderPackageDropdown');
+      renderServiceDropdown('orderProviderServiceSelect', 'orderProviderServiceDropdown');
       updateServiceDetails();
     }
 
     function updateServiceDetails() {
-      renderServiceDropdown('orderServiceSelect', 'orderServiceDropdown');
       const serviceId = parseInt(document.getElementById('orderServiceSelect').value);
       const s = allServices.find(item => item.id === serviceId);
-      if (!s) return;
+      if (!s) {
+        document.getElementById('displayRate').innerText = '₹0';
+        document.getElementById('displayMinMax').innerText = '0 / 0';
+        document.getElementById('displayDesc').innerText = 'Select a package or service to view specifications.';
+        document.getElementById('orderTotalCharge').innerText = '₹0.00';
+        return;
+      }
 
       document.getElementById('displayRate').innerText = `₹${s.rate_per_1000} per 1000`;
       document.getElementById('displayMinMax').innerText = `${s.min_quantity} - ${s.max_quantity}`;
