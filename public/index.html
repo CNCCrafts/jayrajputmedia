@@ -408,6 +408,12 @@
     body[data-theme-layout="editorial"] #section-home > .grid {
       grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
     }
+    body .platform-brand-instagram {
+      color: #E1306C !important;
+    }
+    body .platform-brand-facebook {
+      color: #0866FF !important;
+    }
     body .site-logo-ring {
       background: linear-gradient(45deg, #F58529, #DD2A7B, #8134AF) !important;
     }
@@ -705,7 +711,7 @@
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <button type="button" onclick="openPlatformOrder('Instagram')" class="w-full text-left bg-white dark:bg-darkCard p-7 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3 focus:outline-none focus:ring-2 focus:ring-igPink">
-          <div class="w-12 h-12 rounded-2xl bg-pink-50 dark:bg-pink-950/50 text-igPink flex items-center justify-center text-xl font-bold">
+          <div class="w-12 h-12 rounded-2xl bg-pink-50 dark:bg-pink-950/50 text-igPink platform-brand-instagram flex items-center justify-center text-xl font-bold">
             <i class="fa-brands fa-instagram"></i>
           </div>
           <h4 class="text-lg font-display font-bold text-slate-900 dark:text-white">Instagram Automation</h4>
@@ -713,7 +719,7 @@
         </button>
 
         <button type="button" onclick="openPlatformOrder('Facebook')" class="w-full text-left bg-white dark:bg-darkCard p-7 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard hover:-translate-y-1.5 transition-all space-y-3 focus:outline-none focus:ring-2 focus:ring-fbBlue">
-          <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-fbBlue flex items-center justify-center text-xl font-bold">
+          <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/50 text-fbBlue platform-brand-facebook flex items-center justify-center text-xl font-bold">
             <i class="fa-brands fa-facebook"></i>
           </div>
           <h4 class="text-lg font-display font-bold text-slate-900 dark:text-white">Facebook Page Power</h4>
@@ -1105,7 +1111,7 @@
         </div>
 
         <form id="newOrderForm" onsubmit="withOrderLoading(handlePlaceOrder, event, 'Order placement')" class="space-y-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div id="orderProductPickers" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">Packages · In-House</label>
               <div id="orderPackageDropdown" class="relative"></div>
@@ -1120,6 +1126,7 @@
           <select id="orderServiceSelect" class="hidden" tabindex="-1" aria-hidden="true"></select>
 
           <div id="serviceDetailsBox" class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1 text-slate-600 dark:text-slate-300">
+            <p><strong>Selected service:</strong> <span id="displayServiceName" class="font-semibold text-slate-800 dark:text-white">Choose a service</span></p>
             <p><strong>Rate / 1000:</strong> <span id="displayRate" class="text-fbBlue dark:text-pink-400 font-bold">₹0</span></p>
             <p><strong>Min / Max Limits:</strong> <span id="displayMinMax" class="font-semibold text-slate-800 dark:text-white">0 / 0</span></p>
             <p id="displayDesc" class="text-slate-500 italic">Select a package or provider service to view specifications.</p>
@@ -1495,6 +1502,7 @@
     let activeCurrency = 'INR';
     let pendingAuthSection = null;
     let pendingOrderCategory = '';
+    let pendingBuyServiceId = null;
 
     function initTheme() {
       const storedTheme = localStorage.getItem('jr_theme') || 'light';
@@ -1583,6 +1591,9 @@
         return;
       }
 
+      if (sectionId !== 'new-order') {
+        document.getElementById('orderProductPickers').classList.remove('hidden');
+      }
       document.querySelectorAll('.content-section').forEach(sec => sec.classList.add('hidden'));
       const target = document.getElementById('section-' + sectionId);
       if (target) target.classList.remove('hidden');
@@ -1623,7 +1634,17 @@
       pendingAuthSection = null;
 
       if (destination === 'new-order') {
-        applyPendingOrderCategory();
+        const pendingBuyService = allServices.find(item => item.id === pendingBuyServiceId);
+        pendingBuyServiceId = null;
+        if (pendingBuyService) {
+          const isProviderService = Boolean(pendingBuyService.provider_id);
+          const select = document.getElementById(isProviderService ? 'orderProviderServiceSelect' : 'orderPackageSelect');
+          select.value = String(pendingBuyService.id);
+          selectOrderProduct(isProviderService ? 'provider' : 'package');
+          document.getElementById('orderProductPickers').classList.add('hidden');
+        } else {
+          applyPendingOrderCategory();
+        }
         navigateSection('new-order');
         return;
       }
@@ -2334,16 +2355,19 @@
     }
 
     function prepareBuyNow(serviceId) {
-      if (!currentUser) {
-        return openAuthModal('signin');
-      }
       const s = allServices.find(item => item.id === serviceId);
       if (!s) return;
+      if (!currentUser) {
+        pendingBuyServiceId = serviceId;
+        pendingAuthSection = 'new-order';
+        return openAuthModal('signin');
+      }
 
       const isProviderService = Boolean(s.provider_id);
       const select = document.getElementById(isProviderService ? 'orderProviderServiceSelect' : 'orderPackageSelect');
       select.value = String(s.id);
       selectOrderProduct(isProviderService ? 'provider' : 'package');
+      document.getElementById('orderProductPickers').classList.add('hidden');
       navigateSection('new-order');
     }
 
@@ -2363,6 +2387,7 @@
       const serviceId = parseInt(document.getElementById('orderServiceSelect').value);
       const s = allServices.find(item => item.id === serviceId);
       if (!s) {
+        document.getElementById('displayServiceName').innerText = 'Choose a service';
         document.getElementById('displayRate').innerText = '₹0';
         document.getElementById('displayMinMax').innerText = '0 / 0';
         document.getElementById('displayDesc').innerText = 'Select a package or service to view specifications.';
@@ -2370,6 +2395,7 @@
         return;
       }
 
+      document.getElementById('displayServiceName').innerText = `${s.category} · ${s.name}`;
       document.getElementById('displayRate').innerText = `₹${s.rate_per_1000} per 1000`;
       document.getElementById('displayMinMax').innerText = `${s.min_quantity} - ${s.max_quantity}`;
       document.getElementById('displayDesc').innerText = s.description;

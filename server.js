@@ -15,6 +15,7 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET;
 const DEFAULT_QUICK_ORDER_DISCLAIMER = 'Delivery times vary by service and provider. Please submit a valid public URL and review the service details before placing your order.';
+const CURATED_THEME_NAMES = ['Black & Gold', 'Midnight', 'Emerald Luxe', 'Royal Plum', 'Ocean'];
 
 if (!JWT_SECRET) {
   console.error('JWT_SECRET environment variable is not set');
@@ -393,37 +394,43 @@ async function initializeAppData() {
      ON CONFLICT (name) DO NOTHING`
   );
 
-  // Ensure the built-in quick themes are available alongside custom themes.
+  // Keep the curated storefront theme presets synchronized with their fixed palettes.
   const defaultThemes = [
-    ['Default', 'Classic Storefront', '{"primary":"#1e40af","accent":"#f59e0b","bg":"#ffffff","text":"#1f2937","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, true, 'classic'],
-    ['Black & Gold', 'Black & Gold', '{"primary":"#111827","accent":"#f5bd02","bg":"#090d16","text":"#f8fafc","surface":"#111827","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'classic'],
-    ['Midnight', 'Midnight Blue', '{"primary":"#1e3a8a","accent":"#38bdf8","bg":"#f1f5f9","text":"#0f172a","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial'],
-    ['Minimal', 'Minimal Studio', '{"primary":"#334155","accent":"#0f766e","bg":"#f8fafc","text":"#0f172a","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Plus Jakarta Sans"}', null, false, 'minimal'],
-    ['Editorial', 'Editorial Spotlight', '{"primary":"#7c3aed","accent":"#db2777","bg":"#faf5ff","text":"#1f1635","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial']
+    ['Black & Gold', 'Black & Gold', '{"primary":"#111827","accent":"#f5bd02","bg":"#090d16","text":"#f8fafc","surface":"#111827","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, true, 'classic'],
+    ['Midnight', 'Midnight Blue', '{"primary":"#1e3a8a","accent":"#38bdf8","bg":"#0b1220","text":"#e2e8f0","surface":"#111827","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial'],
+    ['Emerald Luxe', 'Emerald Luxe', '{"primary":"#047857","accent":"#fbbf24","bg":"#f0fdf4","text":"#064e3b","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'classic'],
+    ['Royal Plum', 'Royal Plum', '{"primary":"#6d28d9","accent":"#ec4899","bg":"#faf5ff","text":"#2e1065","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial'],
+    ['Ocean', 'Ocean Blue', '{"primary":"#0369a1","accent":"#06b6d4","bg":"#f0f9ff","text":"#0c2538","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'minimal']
   ];
   const retiredThemeNames = ['Diwali', 'Holi', 'Eid', 'Christmas'];
   await pool.query(
-    "UPDATE site_settings SET value = 'Default' WHERE key = 'active_theme' AND value = ANY($1::text[])",
+    "UPDATE site_settings SET value = 'Black & Gold' WHERE key = 'active_theme' AND value = ANY($1::text[])",
     [retiredThemeNames]
   );
   await pool.query('UPDATE site_themes SET is_active = false WHERE name = ANY($1::text[])', [retiredThemeNames]);
   await pool.query('DELETE FROM site_themes WHERE name = ANY($1::text[])', [retiredThemeNames]);
   for (const t of defaultThemes) {
     await pool.query(
-      `INSERT INTO site_themes (name, label, palette_json, banner_url, is_active, layout) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (name) DO NOTHING`,
+      `INSERT INTO site_themes (name, label, palette_json, banner_url, is_active, layout)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       ON CONFLICT (name) DO UPDATE SET label = EXCLUDED.label, palette_json = EXCLUDED.palette_json, layout = EXCLUDED.layout`,
       t
     );
   }
 
   await pool.query(
-    `INSERT INTO site_settings (key, value) VALUES ('active_theme', 'Default') ON CONFLICT (key) DO NOTHING`
+    `INSERT INTO site_settings (key, value) VALUES ('active_theme', 'Black & Gold') ON CONFLICT (key) DO NOTHING`
+  );
+  await pool.query(
+    "UPDATE site_settings SET value = 'Black & Gold' WHERE key = 'active_theme' AND NOT (value = ANY($1::text[]))",
+    [CURATED_THEME_NAMES]
   );
   const activeThemeSetting = await pool.query("SELECT value FROM site_settings WHERE key = 'active_theme'");
   let activeThemeName = activeThemeSetting.rows[0]?.value;
   const activeThemeExists = await pool.query('SELECT id FROM site_themes WHERE name = $1', [activeThemeName]);
   if (!activeThemeExists.rows.length) {
     const fallbackTheme = await pool.query('SELECT name FROM site_themes ORDER BY id LIMIT 1');
-    activeThemeName = fallbackTheme.rows[0]?.name || 'Default';
+    activeThemeName = fallbackTheme.rows[0]?.name || 'Black & Gold';
     await pool.query(
       `INSERT INTO site_settings (key, value) VALUES ('active_theme', $1)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
@@ -2271,7 +2278,10 @@ async function activateTheme(id) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    const result = await client.query('SELECT name FROM site_themes WHERE id = $1 FOR UPDATE', [id]);
+    const result = await client.query(
+      'SELECT name FROM site_themes WHERE id = $1 AND name = ANY($2::text[]) FOR UPDATE',
+      [id, CURATED_THEME_NAMES]
+    );
     if (!result.rows.length) {
       await client.query('ROLLBACK');
       return null;
@@ -2296,7 +2306,9 @@ async function activateTheme(id) {
 
 app.put('/api/admin/settings/appearance', authenticateToken, requireAdmin, async (req, res) => {
   const { active_theme } = req.body;
-  if (!active_theme) return res.status(400).json({ error: 'active_theme is required.' });
+  if (!CURATED_THEME_NAMES.includes(active_theme)) {
+    return res.status(400).json({ error: 'Choose one of the available curated themes.' });
+  }
   try {
     const result = await pool.query('SELECT id FROM site_themes WHERE name = $1', [active_theme]);
     if (!result.rows.length) return res.status(404).json({ error: 'Theme not found.' });
@@ -2333,7 +2345,7 @@ app.delete('/api/admin/settings/themes/:id', authenticateToken, requireAdmin, as
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Theme not found.' });
     }
-    if (['Default', 'Black & Gold', 'Midnight', 'Minimal'].includes(themeResult.rows[0].name)) {
+    if (['Default', 'Diwali', 'Holi', 'Eid', 'Christmas', ...CURATED_THEME_NAMES].includes(themeResult.rows[0].name)) {
       await client.query('ROLLBACK');
       return res.status(409).json({ error: 'Built-in quick themes cannot be deleted.' });
     }
@@ -2367,66 +2379,8 @@ app.delete('/api/admin/settings/themes/:id', authenticateToken, requireAdmin, as
   }
 });
 
-app.post('/api/admin/settings/themes', authenticateToken, requireAdmin, async (req, res) => {
-  const { name, label, palette_json, occasion_message, layout } = req.body;
-  const cleanName = typeof name === 'string' ? name.trim() : '';
-  const cleanLabel = typeof label === 'string' ? label.trim() : cleanName;
-  const chosenLayout = layout || 'classic';
-  if (!cleanName || cleanName.length > 60) {
-    return res.status(400).json({ error: 'Theme name is required and must be 60 characters or fewer.' });
-  }
-  if (!cleanLabel || cleanLabel.length > 80) {
-    return res.status(400).json({ error: 'Theme label is required and must be 80 characters or fewer.' });
-  }
-  if (!['classic', 'minimal', 'editorial'].includes(chosenLayout)) {
-    return res.status(400).json({ error: 'Choose a valid layout template.' });
-  }
-
-  let palette;
-  try {
-    palette = typeof palette_json === 'string' ? JSON.parse(palette_json) : palette_json;
-  } catch {
-    return res.status(400).json({ error: 'Theme colors must be valid JSON.' });
-  }
-  if (!palette || typeof palette !== 'object' || Array.isArray(palette)) {
-    return res.status(400).json({ error: 'Theme colors are required.' });
-  }
-  const colorKeys = ['primary', 'accent', 'bg', 'text', 'surface'];
-  for (const key of colorKeys) {
-    const value = palette[key] || (key === 'surface' ? palette.bg : null);
-    if (typeof value !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(value)) {
-      return res.status(400).json({ error: `Theme color "${key}" must be a six-digit hex value.` });
-    }
-    palette[key] = value.toLowerCase();
-  }
-  const fonts = ['Plus Jakarta Sans', 'Outfit', 'Georgia', 'Arial'];
-  if (!fonts.includes(palette.font || 'Plus Jakarta Sans') || !fonts.includes(palette.headingFont || 'Outfit')) {
-    return res.status(400).json({ error: 'Choose a supported font for the theme.' });
-  }
-  palette.font = palette.font || 'Plus Jakarta Sans';
-  palette.headingFont = palette.headingFont || 'Outfit';
-
-  if (occasion_message !== undefined && occasion_message !== null && typeof occasion_message !== 'string') {
-    return res.status(400).json({ error: 'Occasion greeting must be text.' });
-  }
-  const cleanOccasionMessage = typeof occasion_message === 'string' ? occasion_message.trim() : '';
-  if (cleanOccasionMessage.length > 240) {
-    return res.status(400).json({ error: 'Occasion greeting must be 240 characters or fewer.' });
-  }
-
-  try {
-    const result = await pool.query(
-      `INSERT INTO site_themes (name, label, palette_json, occasion_message, is_active, layout)
-       VALUES ($1, $2, $3, $4, false, $5)
-       RETURNING id, name, label, palette_json, occasion_message, is_active, layout`,
-      [cleanName, cleanLabel, JSON.stringify(palette), cleanOccasionMessage || null, chosenLayout]
-    );
-    res.status(201).json({ theme: result.rows[0] });
-  } catch (err) {
-    if (err.code === '23505') return res.status(409).json({ error: 'A theme with that name already exists.' });
-    console.error('Theme creation failed:', err);
-    res.status(500).json({ error: 'Could not save the theme pack.' });
-  }
+app.post('/api/admin/settings/themes', authenticateToken, requireAdmin, (req, res) => {
+  res.status(410).json({ error: 'Custom themes are no longer supported. Choose a curated theme preset.' });
 });
 
 // ==================== RESELLER API (sell our services to other sites) ====================
