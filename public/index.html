@@ -321,64 +321,61 @@
       --theme-body-font: "Plus Jakarta Sans", sans-serif;
       --theme-heading-font: Outfit, sans-serif;
     }
-    body {
+    main {
       font-family: var(--theme-body-font) !important;
     }
-    body h1,
-    body h2,
-    body h3,
-    body h4,
-    body .font-display {
+    main h1,
+    main h2,
+    main h3,
+    main h4,
+    main .font-display {
       font-family: var(--theme-heading-font) !important;
     }
-    body .meta-gradient-bg,
-    body .ig-gradient-bg {
+    main .meta-gradient-bg,
+    main .ig-gradient-bg {
       background: linear-gradient(135deg, var(--theme-primary), var(--theme-accent)) !important;
     }
-    body [class*="text-fbBlue"] {
+    main [class*="text-fbBlue"] {
       color: var(--theme-primary) !important;
     }
-    body [class*="text-igPink"],
-    body [class*="text-igPurple"] {
+    main [class*="text-igPink"],
+    main [class*="text-igPurple"] {
       color: var(--theme-accent) !important;
     }
-    body [class*="bg-fbBlue"],
-    body [class*="bg-purple-600"] {
+    main [class*="bg-fbBlue"],
+    main [class*="bg-purple-600"] {
       background-color: var(--theme-primary) !important;
     }
-    html:not(.dark) body {
+    html:not(.dark) body main {
       background-color: var(--theme-bg) !important;
       color: var(--theme-text) !important;
     }
-    html:not(.dark) body [class~="bg-white"],
-    html:not(.dark) body [class~="dark:bg-darkCard"] {
+    html:not(.dark) body main [class~="bg-white"],
+    html:not(.dark) body main [class~="dark:bg-darkCard"] {
       background-color: var(--theme-surface) !important;
     }
-    html:not(.dark) body [class*="border-slate-200"],
-    html:not(.dark) body [class*="dark:border-darkBorder"] {
+    html:not(.dark) body main [class*="border-slate-200"],
+    html:not(.dark) body main [class*="dark:border-darkBorder"] {
       border-color: color-mix(in srgb, var(--theme-primary) 18%, #cbd5e1) !important;
     }
-    html:not(.dark) body header {
-      background-color: color-mix(in srgb, var(--theme-surface) 90%, transparent) !important;
-    }
-    html:not(.dark) body[data-theme-name="Black & Gold"] {
+    html:not(.dark) body[data-theme-name="Black & Gold"] main {
       background-color: var(--theme-bg) !important;
       color: var(--theme-text) !important;
     }
-    html:not(.dark) body[data-theme-name="Black & Gold"] [class~="bg-white"],
-    html:not(.dark) body[data-theme-name="Black & Gold"] [class~="dark:bg-darkCard"] {
+    html:not(.dark) body[data-theme-name="Black & Gold"] main [class~="bg-white"],
+    html:not(.dark) body[data-theme-name="Black & Gold"] main [class~="dark:bg-darkCard"] {
       background-color: var(--theme-surface) !important;
     }
-    html:not(.dark) body[data-theme-name="Black & Gold"] [class*="bg-slate-50"],
-    html:not(.dark) body[data-theme-name="Black & Gold"] [class*="bg-slate-100"] {
+    html:not(.dark) body[data-theme-name="Black & Gold"] main [class*="bg-slate-50"],
+    html:not(.dark) body[data-theme-name="Black & Gold"] main [class*="bg-slate-100"] {
       background-color: #0f172a !important;
     }
-    html:not(.dark) body[data-theme-name="Black & Gold"] [class*="text-slate-900"],
-    html:not(.dark) body[data-theme-name="Black & Gold"] [class*="text-slate-800"] {
+    html:not(.dark) body[data-theme-name="Black & Gold"] main [class*="text-slate-900"],
+    html:not(.dark) body[data-theme-name="Black & Gold"] main [class*="text-slate-800"] {
       color: var(--theme-text) !important;
     }
-    html:not(.dark) body[data-theme-name="Black & Gold"] [class*="text-slate-700"],
-    html:not(.dark) body[data-theme-name="Black & Gold"] [class*="text-slate-600"] {
+    html:not(.dark) body[data-theme-name="Black & Gold"] main [class*="text-slate-700"],
+    html:not(.dark) body[data-theme-name="Black & Gold"] main [class*="text-slate-600"] {
       color: #cbd5e1 !important;
     }
     body[data-theme-layout="minimal"] .ticker-wrap {
@@ -394,19 +391,20 @@
     body[data-theme-layout="editorial"] main {
       max-width: 90rem;
     }
-    body[data-theme-layout="editorial"] .ticker-wrap {
-      background: linear-gradient(90deg, var(--theme-primary), var(--theme-accent));
-      border-bottom-color: var(--theme-accent);
-    }
-    body[data-theme-layout="editorial"] .ticker-item {
-      color: #ffffff;
-    }
-    body[data-theme-layout="editorial"] #heroBranding {
+    body[data-theme-layout="editorial"] main #heroBranding {
       min-height: 26rem;
       border-radius: 1.5rem;
     }
-    body[data-theme-layout="editorial"] #section-home > .grid {
+    body[data-theme-layout="editorial"] main #section-home > .grid {
       grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+    }
+    #homeWalletBalanceButton {
+      background-color: rgba(2, 6, 23, 0.4) !important;
+    }
+    #homeWalletBalanceButton,
+    #homeWalletBalanceButton span {
+      color: #ffffff !important;
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
     }
     body .platform-brand-instagram {
       color: #E1306C !important;
@@ -635,7 +633,7 @@
           <p class="text-blue-100 text-xs sm:text-sm mt-1 max-w-lg">Manage your Instagram & Facebook campaigns with instant delivery and automated refill.</p>
         </div>
         <div class="flex flex-wrap items-center gap-3 relative z-10">
-          <button type="button" onclick="navigateSection('add-funds')" class="rounded-2xl border border-white/30 bg-white/15 px-4 py-2.5 text-left text-white backdrop-blur-md transition hover:bg-white/25" aria-label="Open wallet and add funds">
+          <button id="homeWalletBalanceButton" type="button" onclick="navigateSection('add-funds')" class="rounded-2xl border border-white/30 bg-white/15 px-4 py-2.5 text-left text-white backdrop-blur-md transition hover:bg-white/25" aria-label="Open wallet and add funds">
             <span class="block text-[10px] font-bold uppercase tracking-wider text-white">Wallet Balance · Add Funds</span>
             <span class="font-display text-lg font-black"><span id="homeWalletCurrencySymbol">₹</span><span id="homeWalletBalanceAmount">0.00</span></span>
           </button>
