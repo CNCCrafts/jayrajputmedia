@@ -2265,9 +2265,8 @@
       const service = allServices.find(item => item.id === serviceId);
       if (!service) return;
 
-      const shareUrl = new URL(window.location.href);
+      const shareUrl = new URL('/', window.location.origin);
       shareUrl.searchParams.set('service', String(serviceId));
-      shareUrl.hash = `service/${serviceId}`;
       const shareData = {
         title: service.name,
         text: `${service.name} - ${service.category}${service.description ? `: ${service.description}` : ''}`,
