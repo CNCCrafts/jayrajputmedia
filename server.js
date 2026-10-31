@@ -35,6 +35,75 @@ app.use(cors());
 app.use('/api/cashfree/webhook', express.raw({ type: '*/*', limit: '1mb' }));
 app.use(express.json({ limit: '12mb' }));
 app.use(express.urlencoded({ extended: true, limit: '12mb' }));
+app.get('/', async (req, res, next) => {
+  if (req.query.service === undefined) return next();
+  const serviceId = typeof req.query.service === 'string' && /^\d+$/.test(req.query.service)
+    ? Number(req.query.service)
+    : NaN;
+  if (!Number.isSafeInteger(serviceId) || serviceId < 1) {
+    return res.status(400).send('Invalid service link.');
+  }
+
+  try {
+    const result = await pool.query(
+      "SELECT id, category, name, rate_per_1000, description, image FROM services WHERE id = $1 AND status = 'active'",
+      [serviceId]
+    );
+    if (!result.rows.length) return res.status(404).send('Package not found.');
+
+    const service = result.rows[0];
+    const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, character => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[character]));
+    const pageUrl = new URL(req.originalUrl, PUBLIC_URL);
+    pageUrl.hash = '';
+    let imageUrl;
+    try {
+      imageUrl = new URL(service.image || '/logo.png', PUBLIC_URL);
+      if (!['http:', 'https:'].includes(imageUrl.protocol)) imageUrl = new URL('/logo.png', PUBLIC_URL);
+    } catch {
+      imageUrl = new URL('/logo.png', PUBLIC_URL);
+    }
+    const description = [
+      service.category,
+      service.description,
+      `₹${Number(service.rate_per_1000).toFixed(2)} per 1,000`
+    ].filter(Boolean).join(' · ');
+    const title = `${service.name} | Jay Rajput Media Power`;
+    const indexPath = path.join(__dirname, 'public', 'index.html');
+    let html = await fs.promises.readFile(indexPath, 'utf8');
+    html = html.replace(/<title>[\s\S]*?<\/title>/i, `<title>${escapeHtml(title)}</title>`);
+    html = html.replace(
+      /<meta name="description" content="[^"]*"\s*\/?>/i,
+      `<meta name="description" content="${escapeHtml(description)}">`
+    );
+    const socialMetadata = [
+      ['og:type', 'product'],
+      ['og:title', title],
+      ['og:description', description],
+      ['og:url', pageUrl.href],
+      ['og:image', imageUrl.href],
+      ['og:image:alt', service.name],
+      ['twitter:card', 'summary_large_image'],
+      ['twitter:title', title],
+      ['twitter:description', description],
+      ['twitter:image', imageUrl.href]
+    ].map(([property, content]) => {
+      const attribute = property.startsWith('twitter:') ? 'name' : 'property';
+      return `<meta ${attribute}="${escapeHtml(property)}" content="${escapeHtml(content)}">`;
+    }).join('\n  ');
+    html = html.replace('</head>', `  ${socialMetadata}\n</head>`);
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.type('html').send(html);
+  } catch (error) {
+    console.error('Could not render package share preview:', error);
+    res.status(500).send('Could not load this package preview.');
+  }
+});
 app.use(express.static(path.join(__dirname, 'public'), {
   setHeaders(res, filePath) {
     if (path.extname(filePath) === '.html') {
@@ -327,13 +396,18 @@ async function initializeAppData() {
   // Ensure the built-in quick themes are available alongside custom themes.
   const defaultThemes = [
     ['Default', 'Classic Storefront', '{"primary":"#1e40af","accent":"#f59e0b","bg":"#ffffff","text":"#1f2937","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, true, 'classic'],
-    ['Diwali', 'Festive', '{"primary":"#d97706","accent":"#eab308","bg":"#fffff7","text":"#78350f","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial'],
-    ['Holi', 'Festive', '{"primary":"#ec4899","accent":"#a855f7","bg":"#fff0f6","text":"#7c2d7c","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial'],
-    ['Eid', 'Festive', '{"primary":"#0f766e","accent":"#2dd36f","bg":"#ecfdf5","text":"#064e35","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Plus Jakarta Sans"}', null, false, 'minimal'],
-    ['Christmas', 'Festive', '{"primary":"#b91c1c","accent":"#f59e0b","bg":"#ffeff1","text":"#7f1d1d","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'classic'],
+    ['Black & Gold', 'Black & Gold', '{"primary":"#111827","accent":"#f5bd02","bg":"#090d16","text":"#f8fafc","surface":"#111827","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'classic'],
+    ['Midnight', 'Midnight Blue', '{"primary":"#1e3a8a","accent":"#38bdf8","bg":"#f1f5f9","text":"#0f172a","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial'],
     ['Minimal', 'Minimal Studio', '{"primary":"#334155","accent":"#0f766e","bg":"#f8fafc","text":"#0f172a","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Plus Jakarta Sans"}', null, false, 'minimal'],
     ['Editorial', 'Editorial Spotlight', '{"primary":"#7c3aed","accent":"#db2777","bg":"#faf5ff","text":"#1f1635","surface":"#ffffff","font":"Plus Jakarta Sans","headingFont":"Outfit"}', null, false, 'editorial']
   ];
+  const retiredThemeNames = ['Diwali', 'Holi', 'Eid', 'Christmas'];
+  await pool.query(
+    "UPDATE site_settings SET value = 'Default' WHERE key = 'active_theme' AND value = ANY($1::text[])",
+    [retiredThemeNames]
+  );
+  await pool.query('UPDATE site_themes SET is_active = false WHERE name = ANY($1::text[])', [retiredThemeNames]);
+  await pool.query('DELETE FROM site_themes WHERE name = ANY($1::text[])', [retiredThemeNames]);
   for (const t of defaultThemes) {
     await pool.query(
       `INSERT INTO site_themes (name, label, palette_json, banner_url, is_active, layout) VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (name) DO NOTHING`,
@@ -2259,7 +2333,7 @@ app.delete('/api/admin/settings/themes/:id', authenticateToken, requireAdmin, as
       await client.query('ROLLBACK');
       return res.status(404).json({ error: 'Theme not found.' });
     }
-    if (['Default', 'Diwali', 'Holi', 'Eid', 'Christmas', 'Minimal'].includes(themeResult.rows[0].name)) {
+    if (['Default', 'Black & Gold', 'Midnight', 'Minimal'].includes(themeResult.rows[0].name)) {
       await client.query('ROLLBACK');
       return res.status(409).json({ error: 'Built-in quick themes cannot be deleted.' });
     }

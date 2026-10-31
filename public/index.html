@@ -361,6 +361,26 @@
     html:not(.dark) body header {
       background-color: color-mix(in srgb, var(--theme-surface) 90%, transparent) !important;
     }
+    html:not(.dark) body[data-theme-name="Black & Gold"] {
+      background-color: var(--theme-bg) !important;
+      color: var(--theme-text) !important;
+    }
+    html:not(.dark) body[data-theme-name="Black & Gold"] [class~="bg-white"],
+    html:not(.dark) body[data-theme-name="Black & Gold"] [class~="dark:bg-darkCard"] {
+      background-color: var(--theme-surface) !important;
+    }
+    html:not(.dark) body[data-theme-name="Black & Gold"] [class*="bg-slate-50"],
+    html:not(.dark) body[data-theme-name="Black & Gold"] [class*="bg-slate-100"] {
+      background-color: #0f172a !important;
+    }
+    html:not(.dark) body[data-theme-name="Black & Gold"] [class*="text-slate-900"],
+    html:not(.dark) body[data-theme-name="Black & Gold"] [class*="text-slate-800"] {
+      color: var(--theme-text) !important;
+    }
+    html:not(.dark) body[data-theme-name="Black & Gold"] [class*="text-slate-700"],
+    html:not(.dark) body[data-theme-name="Black & Gold"] [class*="text-slate-600"] {
+      color: #cbd5e1 !important;
+    }
     body[data-theme-layout="minimal"] .ticker-wrap {
       display: none;
     }
@@ -1023,12 +1043,6 @@
         </div>
 
         <form id="quickOrderForm" onsubmit="withOrderLoading(handleQuickOrder, event, 'Quick order')" class="space-y-4">
-          <div>
-            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">In-House Packages</label>
-            <div id="quickPackageDropdown" class="relative"></div>
-            <select id="quickPackageSelect" onchange="selectQuickOrderProduct('package')" class="hidden" tabindex="-1" aria-hidden="true"></select>
-          </div>
-
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Search Provider Services</label>
@@ -1051,7 +1065,7 @@
           </div>
 
           <div id="quickServiceDetails" class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1 text-slate-600 dark:text-slate-300">
-            <p>Select an in-house package or provider service to view details and pricing.</p>
+            <p>Select a provider service to view details and pricing.</p>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1526,6 +1540,7 @@
 
         const layout = ['classic', 'minimal', 'editorial'].includes(data.layout) ? data.layout : 'classic';
         document.body.dataset.themeLayout = layout;
+        document.body.dataset.themeName = data.active_theme || 'Default';
         const greetingWrap = document.getElementById('siteOccasionGreetingWrap');
         const greetingTrack = document.getElementById('siteOccasionGreetingTrack');
         const occasionMessage = typeof data.occasion_message === 'string' ? data.occasion_message.trim() : '';
@@ -1637,12 +1652,10 @@
 
     function handleHashRoute() {
       const hash = window.location.hash;
-      if (hash.startsWith('#service/')) {
-        const serviceId = parseInt(hash.replace('#service/', ''));
-        if (!isNaN(serviceId)) {
-          loadServiceDetailPage(serviceId);
-          return;
-        }
+      const hashServiceId = hash.startsWith('#service/') ? hash.slice('#service/'.length) : '';
+      const linkedServiceId = hashServiceId || new URLSearchParams(window.location.search).get('service');
+      if (linkedServiceId && /^\d+$/.test(linkedServiceId)) {
+        loadServiceDetailPage(Number(linkedServiceId));
       }
     }
 
@@ -1972,10 +1985,8 @@
         populateOrderProductSelect('orderPackageSelect', inhouseServices, 'Select an in-house package');
         populateOrderProductSelect('orderProviderServiceSelect', importedServices, 'Select a provider service');
         populateOrderProductSelect('orderServiceSelect', allServices, '');
-        populateOrderProductSelect('quickPackageSelect', inhouseServices, 'Select an in-house package');
         renderServiceDropdown('orderPackageSelect', 'orderPackageDropdown');
         renderServiceDropdown('orderProviderServiceSelect', 'orderProviderServiceDropdown');
-        renderServiceDropdown('quickPackageSelect', 'quickPackageDropdown');
         if (currentUser) applyPendingOrderCategory();
         renderQuickOrderCategories(importedCats);
 
@@ -2016,10 +2027,52 @@
       if (!container) return;
       const categoryNames = ['all', ...categories];
       if (!categoryNames.includes(quickOrderCategory)) quickOrderCategory = 'all';
-      renderCategoryDropdown(container, categoryNames, quickOrderCategory, category => {
-        quickOrderCategory = category;
-        renderQuickOrderCategories(categories);
-        filterQuickServices(document.getElementById('quickServiceSearch').value);
+      const platformIcons = [
+        ['instagram', 'fa-brands fa-instagram'],
+        ['facebook', 'fa-brands fa-facebook'],
+        ['youtube', 'fa-brands fa-youtube'],
+        ['twitter', 'fa-brands fa-x-twitter'],
+        ['tiktok', 'fa-brands fa-tiktok'],
+        ['telegram', 'fa-brands fa-telegram'],
+        ['spotify', 'fa-brands fa-spotify'],
+        ['whatsapp', 'fa-brands fa-whatsapp'],
+        ['linkedin', 'fa-brands fa-linkedin'],
+        ['pinterest', 'fa-brands fa-pinterest'],
+        ['snapchat', 'fa-brands fa-snapchat'],
+        ['twitch', 'fa-brands fa-twitch']
+      ];
+      container.className = 'flex flex-wrap gap-2';
+      container.replaceChildren();
+      categoryNames.forEach(category => {
+        const normalizedCategory = category.toLowerCase();
+        const iconClass = category === 'all'
+          ? 'fa-solid fa-layer-group'
+          : platformIcons.find(([platform]) => normalizedCategory.includes(platform.trim()))?.[1]
+            || (normalizedCategory.includes('music') ? 'fa-solid fa-music'
+              : normalizedCategory.includes('traffic') || normalizedCategory.includes('website') ? 'fa-solid fa-globe'
+                : 'fa-solid fa-hashtag');
+        const button = document.createElement('button');
+        const isSelected = category === quickOrderCategory;
+        button.type = 'button';
+        button.className = `inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition focus:outline-none focus:ring-2 focus:ring-fbBlue ${
+          isSelected
+            ? 'border-slate-900 bg-slate-900 text-white dark:border-white dark:bg-white dark:text-slate-900'
+            : 'border-slate-200 bg-white text-slate-600 hover:border-fbBlue hover:text-fbBlue dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300'
+        }`;
+        button.setAttribute('aria-pressed', String(isSelected));
+        button.setAttribute('aria-label', category === 'all' ? 'Show all provider categories' : `Filter by ${category}`);
+        const icon = document.createElement('i');
+        icon.className = iconClass;
+        icon.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.textContent = category === 'all' ? 'All' : category;
+        button.append(icon, label);
+        button.addEventListener('click', () => {
+          quickOrderCategory = category;
+          renderQuickOrderCategories(categories);
+          filterQuickServices(document.getElementById('quickServiceSearch').value);
+        });
+        container.append(button);
       });
     }
 
@@ -2030,50 +2083,6 @@
         const option = new Option(`${product.category} - ${product.name}`, product.id);
         select.append(option);
       });
-    }
-
-    function renderCategoryDropdown(container, categories, selectedCategory, onSelect) {
-      container.replaceChildren();
-      const wrapper = document.createElement('div');
-      wrapper.className = 'relative';
-      const toggle = document.createElement('button');
-      toggle.type = 'button';
-      toggle.className = 'flex w-full items-center justify-between rounded-xl border border-slate-300 bg-white px-4 py-3 text-left text-sm font-bold text-slate-800 shadow-sm transition hover:border-fbBlue focus:outline-none focus:ring-2 focus:ring-fbBlue';
-      toggle.setAttribute('aria-haspopup', 'listbox');
-      toggle.setAttribute('aria-expanded', 'false');
-      const selectedLabel = selectedCategory === 'all' ? 'All Categories' : selectedCategory;
-      toggle.append(document.createTextNode(selectedLabel || 'Select a category'));
-      const chevron = document.createElement('i');
-      chevron.className = 'fa-solid fa-chevron-down ml-3 text-xs text-slate-500 transition-transform';
-      chevron.setAttribute('aria-hidden', 'true');
-      toggle.append(chevron);
-
-      const options = document.createElement('div');
-      options.className = 'absolute left-0 right-0 top-full z-30 mt-1 hidden max-h-60 overflow-y-auto rounded-xl border border-slate-300 bg-white p-1 text-slate-800 shadow-xl';
-      options.setAttribute('role', 'listbox');
-      categories.forEach(category => {
-        const option = document.createElement('button');
-        option.type = 'button';
-        option.setAttribute('role', 'option');
-        option.setAttribute('aria-selected', String(category === selectedCategory));
-        option.className = `block w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition hover:bg-blue-50 hover:text-fbBlue ${category === selectedCategory ? 'bg-blue-50 text-fbBlue' : 'text-slate-700'}`;
-        option.textContent = category === 'all' ? 'All Categories' : category;
-        option.addEventListener('click', () => {
-          options.classList.add('hidden');
-          toggle.setAttribute('aria-expanded', 'false');
-          onSelect(category);
-        });
-        options.append(option);
-      });
-
-      toggle.addEventListener('click', () => {
-        const isOpen = toggle.getAttribute('aria-expanded') === 'true';
-        options.classList.toggle('hidden', isOpen);
-        toggle.setAttribute('aria-expanded', String(!isOpen));
-        chevron.classList.toggle('rotate-180', !isOpen);
-      });
-      wrapper.append(toggle, options);
-      container.append(wrapper);
     }
 
     function renderServiceDropdown(selectId, containerId) {
@@ -2255,10 +2264,11 @@
       if (!service) return;
 
       const shareUrl = new URL(window.location.href);
+      shareUrl.searchParams.set('service', String(serviceId));
       shareUrl.hash = `service/${serviceId}`;
       const shareData = {
         title: service.name,
-        text: `${service.name} - ${service.category}`,
+        text: `${service.name} - ${service.category}${service.description ? `: ${service.description}` : ''}`,
         url: shareUrl.href
       };
 
@@ -2474,24 +2484,11 @@
     }
 
     // ==================== QUICK ORDER FUNCTIONS ====================
-    function selectQuickOrderProduct(source) {
-      const packageSelect = document.getElementById('quickPackageSelect');
-      const providerSelect = document.getElementById('quickServiceSelect');
-      const otherSelect = source === 'package' ? providerSelect : packageSelect;
-      otherSelect.value = '';
-      renderServiceDropdown(
-        source === 'package' ? 'quickServiceSelect' : 'quickPackageSelect',
-        source === 'package' ? 'quickServiceDropdown' : 'quickPackageDropdown'
-      );
+    function selectQuickOrderProduct() {
       updateQuickServiceDetails();
     }
 
     function getSelectedQuickOrderService() {
-      const packageId = parseInt(document.getElementById('quickPackageSelect').value);
-      if (packageId) {
-        return inhouseServices.find(item => item.id === packageId) || null;
-      }
-
       const serviceId = parseInt(document.getElementById('quickServiceSelect').value);
       return importedServices.find(item => item.id === serviceId) || null;
     }
@@ -2523,7 +2520,7 @@
 
       if (filtered.length === 1) {
         select.value = filtered[0].id;
-        selectQuickOrderProduct('provider');
+        selectQuickOrderProduct();
       } else {
         updateQuickServiceDetails();
       }
@@ -2535,12 +2532,11 @@
 
     function updateQuickServiceDetails() {
       renderServiceDropdown('quickServiceSelect', 'quickServiceDropdown');
-      renderServiceDropdown('quickPackageSelect', 'quickPackageDropdown');
       const s = getSelectedQuickOrderService();
       const detailsBox = document.getElementById('quickServiceDetails');
 
       if (!s) {
-        detailsBox.innerHTML = '<p>Select an in-house package or provider service to view details and pricing.</p>';
+        detailsBox.innerHTML = '<p>Select a provider service to view details and pricing.</p>';
         document.getElementById('quickOrderTotal').innerText = '₹0.00';
         return;
       }
@@ -2580,7 +2576,7 @@
       const link = document.getElementById('quickOrderLink').value;
       const quantity = parseInt(document.getElementById('quickOrderQuantity').value);
 
-      if (!service_id) return alert('Please select an in-house package or provider service.');
+      if (!service_id) return alert('Please select a provider service.');
       if (!link) return alert('Please enter a target URL.');
       if (!quantity || quantity < 1) return alert('Please enter a valid quantity.');
 
@@ -2602,11 +2598,7 @@
         remainingBalance: data.remaining_balance
       });
       document.getElementById('quickOrderForm').reset();
-      document.getElementById('quickPackageSelect').value = '';
-      document.getElementById('quickServiceSelect').value = '';
-      renderServiceDropdown('quickPackageSelect', 'quickPackageDropdown');
-      renderServiceDropdown('quickServiceSelect', 'quickServiceDropdown');
-      updateQuickServiceDetails();
+      filterQuickServices('');
       fetchUserProfile();
       loadUserOrders();
     }
