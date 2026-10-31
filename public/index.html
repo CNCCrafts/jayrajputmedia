@@ -358,6 +358,26 @@
     html:not(.dark) body main [class*="dark:border-darkBorder"] {
       border-color: color-mix(in srgb, var(--theme-primary) 18%, #cbd5e1) !important;
     }
+    body header,
+    body #sidebarDrawer,
+    body footer {
+      border-color: color-mix(in srgb, var(--theme-primary) 12%, #cbd5e1) !important;
+    }
+    html:not(.dark) body header,
+    html:not(.dark) body #sidebarDrawer,
+    html:not(.dark) body footer {
+      background-color: color-mix(in srgb, var(--theme-primary) 4%, #ffffff) !important;
+    }
+    html.dark body header,
+    html.dark body #sidebarDrawer,
+    html.dark body footer {
+      background-color: color-mix(in srgb, var(--theme-primary) 8%, #111827) !important;
+      border-color: color-mix(in srgb, var(--theme-primary) 18%, #1f2937) !important;
+    }
+    body .ticker-wrap {
+      background: color-mix(in srgb, var(--theme-primary) 12%, #0f172a);
+      border-bottom-color: color-mix(in srgb, var(--theme-accent) 35%, transparent);
+    }
     html:not(.dark) body[data-theme-name="Black & Gold"] main {
       background-color: var(--theme-bg) !important;
       color: var(--theme-text) !important;
