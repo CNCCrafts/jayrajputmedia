@@ -297,18 +297,18 @@
       --theme-primary-text: color-mix(in srgb, var(--theme-primary) 40%, #ffffff);
       --theme-accent-text: color-mix(in srgb, var(--theme-accent) 55%, #ffffff);
     }
-    main {
+    body {
       font-family: var(--theme-body-font) !important;
     }
-    main h1,
-    main h2,
-    main h3,
-    main h4,
-    main .font-display {
+    body h1,
+    body h2,
+    body h3,
+    body h4,
+    body .font-display {
       font-family: var(--theme-heading-font) !important;
     }
-    main .meta-gradient-bg,
-    main .ig-gradient-bg {
+    body .meta-gradient-bg,
+    body .ig-gradient-bg {
       background: linear-gradient(135deg, var(--theme-primary), var(--theme-accent)) !important;
     }
     body [class*="text-fbBlue"] {
@@ -318,39 +318,64 @@
     body [class*="text-igPurple"] {
       color: var(--theme-accent-text) !important;
     }
-    main [class*="bg-fbBlue"],
-    main [class*="bg-purple-600"] {
+    body [class*="bg-fbBlue"],
+    body [class*="bg-purple-600"] {
       background-color: var(--theme-primary) !important;
+    }
+    html:not(.dark) body {
+      background-color: var(--theme-bg) !important;
+      color: var(--theme-text) !important;
     }
     html:not(.dark) body main {
       background-color: var(--theme-bg) !important;
       color: var(--theme-text) !important;
     }
+    html.dark body {
+      background-color: #090D16 !important;
+    }
     html.dark body main {
       color: var(--theme-text) !important;
     }
+    html.dark body[data-theme-contrast="dark"] {
+      background-color: var(--theme-bg) !important;
+    }
+    html:not(.dark) body [class~="text-slate-900"]:not([class*="dark:text-"]),
+    html:not(.dark) body [class~="text-slate-800"]:not([class*="dark:text-"]) {
+      color: var(--theme-text-light) !important;
+    }
+    html:not(.dark) body [class~="text-slate-700"]:not([class*="dark:text-"]),
+    html:not(.dark) body [class~="text-slate-600"]:not([class*="dark:text-"]) {
+      color: color-mix(in srgb, var(--theme-text-light) 82%, #64748b) !important;
+    }
+    html:not(.dark) body [class~="text-slate-500"]:not([class*="dark:text-"]) {
+      color: color-mix(in srgb, var(--theme-text-light) 65%, #94a3b8) !important;
+    }
     html.dark body [class~="text-slate-900"]:not([class*="dark:text-"]),
-    body[data-theme-contrast="dark"] [class~="text-slate-900"]:not([class*="dark:text-"]),
     html.dark body [class~="text-slate-800"]:not([class*="dark:text-"]),
+    body[data-theme-contrast="dark"] [class~="text-slate-900"]:not([class*="dark:text-"]),
     body[data-theme-contrast="dark"] [class~="text-slate-800"]:not([class*="dark:text-"]) {
-      color: #f8fafc !important;
+      color: var(--theme-text) !important;
     }
     html.dark body [class~="text-slate-700"]:not([class*="dark:text-"]),
-    body[data-theme-contrast="dark"] [class~="text-slate-700"]:not([class*="dark:text-"]),
     html.dark body [class~="text-slate-600"]:not([class*="dark:text-"]),
+    body[data-theme-contrast="dark"] [class~="text-slate-700"]:not([class*="dark:text-"]),
     body[data-theme-contrast="dark"] [class~="text-slate-600"]:not([class*="dark:text-"]) {
-      color: #cbd5e1 !important;
+      color: color-mix(in srgb, var(--theme-text) 82%, #94a3b8) !important;
     }
     html.dark body [class~="text-slate-500"]:not([class*="dark:text-"]),
     body[data-theme-contrast="dark"] [class~="text-slate-500"]:not([class*="dark:text-"]) {
-      color: #94a3b8 !important;
+      color: color-mix(in srgb, var(--theme-text) 65%, #64748b) !important;
     }
-    html:not(.dark) body main [class~="bg-white"],
-    html:not(.dark) body main [class~="dark:bg-darkCard"] {
+    html:not(.dark) body [class*="bg-white"]:not(img),
+    html:not(.dark) body [class*="dark:bg-darkCard"]:not(img) {
       background-color: var(--theme-surface) !important;
     }
-    html:not(.dark) body main [class*="border-slate-200"],
-    html:not(.dark) body main [class*="dark:border-darkBorder"] {
+    html:not(.dark) body [class*="bg-slate-50"]:not(img),
+    html:not(.dark) body [class*="bg-slate-100"]:not(img) {
+      background-color: color-mix(in srgb, var(--theme-primary) 4%, var(--theme-bg)) !important;
+    }
+    html:not(.dark) body [class*="border-slate-200"],
+    html:not(.dark) body [class*="border-darkBorder"] {
       border-color: color-mix(in srgb, var(--theme-primary) 18%, #cbd5e1) !important;
     }
     body header,
@@ -373,25 +398,54 @@
       background: color-mix(in srgb, var(--theme-primary) 12%, #0f172a);
       border-bottom-color: color-mix(in srgb, var(--theme-accent) 35%, transparent);
     }
-    body[data-theme-contrast="dark"] main {
+    html:not(.dark) body[data-theme-contrast="dark"],
+    html.dark body[data-theme-contrast="dark"] {
       background-color: var(--theme-bg) !important;
       color: var(--theme-text) !important;
     }
-    body[data-theme-contrast="dark"] main [class~="bg-white"],
-    body[data-theme-contrast="dark"] main [class~="dark:bg-darkCard"] {
+    html:not(.dark) body[data-theme-contrast="dark"] [class*="bg-white"]:not(img),
+    html:not(.dark) body[data-theme-contrast="dark"] [class*="dark:bg-darkCard"]:not(img),
+    body[data-theme-contrast="dark"] [class*="bg-white"]:not(img),
+    body[data-theme-contrast="dark"] [class*="dark:bg-darkCard"]:not(img) {
       background-color: var(--theme-surface) !important;
     }
-    body[data-theme-contrast="dark"] main [class*="bg-slate-50"],
-    body[data-theme-contrast="dark"] main [class*="bg-slate-100"] {
-      background-color: #0f172a !important;
+    html:not(.dark) body[data-theme-contrast="dark"] [class*="bg-slate-50"]:not(img),
+    html:not(.dark) body[data-theme-contrast="dark"] [class*="bg-slate-100"]:not(img),
+    body[data-theme-contrast="dark"] [class*="bg-slate-50"]:not(img),
+    body[data-theme-contrast="dark"] [class*="bg-slate-100"]:not(img) {
+      background-color: color-mix(in srgb, var(--theme-primary) 4%, var(--theme-bg)) !important;
     }
-    body[data-theme-contrast="dark"] main [class*="text-slate-900"],
-    body[data-theme-contrast="dark"] main [class*="text-slate-800"] {
+    html:not(.dark) body[data-theme-contrast="dark"] [class*="border-slate-200"],
+    html:not(.dark) body[data-theme-contrast="dark"] [class*="border-darkBorder"],
+    body[data-theme-contrast="dark"] [class*="border-slate-200"],
+    body[data-theme-contrast="dark"] [class*="border-darkBorder"] {
+      border-color: color-mix(in srgb, var(--theme-primary) 18%, var(--theme-bg)) !important;
+    }
+    html:not(.dark) body[data-theme-contrast="dark"] [class*="text-slate-900"],
+    html:not(.dark) body[data-theme-contrast="dark"] [class*="text-slate-800"],
+    body[data-theme-contrast="dark"] [class*="text-slate-900"],
+    body[data-theme-contrast="dark"] [class*="text-slate-800"] {
       color: var(--theme-text) !important;
     }
-    body[data-theme-contrast="dark"] main [class*="text-slate-700"],
-    body[data-theme-contrast="dark"] main [class*="text-slate-600"] {
-      color: #cbd5e1 !important;
+    html:not(.dark) body[data-theme-contrast="dark"] [class*="text-slate-700"],
+    html:not(.dark) body[data-theme-contrast="dark"] [class*="text-slate-600"],
+    body[data-theme-contrast="dark"] [class*="text-slate-700"],
+    body[data-theme-contrast="dark"] [class*="text-slate-600"] {
+      color: color-mix(in srgb, var(--theme-text) 82%, #94a3b8) !important;
+    }
+    html:not(.dark) body header,
+    html:not(.dark) body #sidebarDrawer,
+    html:not(.dark) body footer {
+      background-color: color-mix(in srgb, var(--theme-primary) 4%, var(--theme-bg)) !important;
+    }
+    html:not(.dark) body[data-theme-contrast="dark"] header,
+    html:not(.dark) body[data-theme-contrast="dark"] #sidebarDrawer,
+    html:not(.dark) body[data-theme-contrast="dark"] footer,
+    html.dark body[data-theme-contrast="dark"] header,
+    html.dark body[data-theme-contrast="dark"] #sidebarDrawer,
+    html.dark body[data-theme-contrast="dark"] footer {
+      background-color: var(--theme-surface) !important;
+      border-color: color-mix(in srgb, var(--theme-primary) 18%, var(--theme-bg)) !important;
     }
     body[data-theme-layout="minimal"] .ticker-wrap {
       display: none;
