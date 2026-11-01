@@ -258,40 +258,6 @@
     @media (prefers-reduced-motion: reduce) {
       .referral-gift-icon { animation: none; }
     }
-    #section-quick-order,
-    #section-new-order {
-      background-color: #ffffff !important;
-    }
-    #section-quick-order > div,
-    #section-new-order > div {
-      background-color: #ffffff !important;
-      color: #1e293b;
-    }
-    #section-quick-order label,
-    #section-new-order label,
-    #section-quick-order > div h2,
-    #section-new-order > div h2 {
-      color: #334155 !important;
-    }
-    #section-quick-order input,
-    #section-quick-order select,
-    #section-new-order input,
-    #section-new-order select {
-      background-color: #ffffff !important;
-      color: #1e293b !important;
-      border-color: #cbd5e1 !important;
-      color-scheme: light;
-    }
-    #section-quick-order select option,
-    #section-new-order select option {
-      background-color: #ffffff;
-      color: #1e293b;
-    }
-    #quickServiceDetails,
-    #serviceDetailsBox {
-      background-color: #ffffff !important;
-      color: #475569 !important;
-    }
     #metaVerifiedBadge {
       color: #1877F2 !important;
       background-color: #eff6ff !important;
@@ -315,11 +281,21 @@
     :root {
       --theme-primary: #1e40af;
       --theme-accent: #f59e0b;
+      --theme-primary-text: var(--theme-primary);
+      --theme-accent-text: var(--theme-accent);
       --theme-bg: #ffffff;
-      --theme-text: #1f2937;
+      --theme-text-light: #1f2937;
+      --theme-text-dark: #f8fafc;
+      --theme-text: var(--theme-text-light);
       --theme-surface: #ffffff;
       --theme-body-font: "Plus Jakarta Sans", sans-serif;
       --theme-heading-font: Outfit, sans-serif;
+    }
+    html.dark,
+    body[data-theme-contrast="dark"] {
+      --theme-text: var(--theme-text-dark);
+      --theme-primary-text: color-mix(in srgb, var(--theme-primary) 40%, #ffffff);
+      --theme-accent-text: color-mix(in srgb, var(--theme-accent) 55%, #ffffff);
     }
     main {
       font-family: var(--theme-body-font) !important;
@@ -335,12 +311,12 @@
     main .ig-gradient-bg {
       background: linear-gradient(135deg, var(--theme-primary), var(--theme-accent)) !important;
     }
-    main [class*="text-fbBlue"] {
-      color: var(--theme-primary) !important;
+    body [class*="text-fbBlue"] {
+      color: var(--theme-primary-text) !important;
     }
-    main [class*="text-igPink"],
-    main [class*="text-igPurple"] {
-      color: var(--theme-accent) !important;
+    body [class*="text-igPink"],
+    body [class*="text-igPurple"] {
+      color: var(--theme-accent-text) !important;
     }
     main [class*="bg-fbBlue"],
     main [class*="bg-purple-600"] {
@@ -349,6 +325,25 @@
     html:not(.dark) body main {
       background-color: var(--theme-bg) !important;
       color: var(--theme-text) !important;
+    }
+    html.dark body main {
+      color: var(--theme-text) !important;
+    }
+    html.dark body [class~="text-slate-900"]:not([class*="dark:text-"]),
+    body[data-theme-contrast="dark"] [class~="text-slate-900"]:not([class*="dark:text-"]),
+    html.dark body [class~="text-slate-800"]:not([class*="dark:text-"]),
+    body[data-theme-contrast="dark"] [class~="text-slate-800"]:not([class*="dark:text-"]) {
+      color: #f8fafc !important;
+    }
+    html.dark body [class~="text-slate-700"]:not([class*="dark:text-"]),
+    body[data-theme-contrast="dark"] [class~="text-slate-700"]:not([class*="dark:text-"]),
+    html.dark body [class~="text-slate-600"]:not([class*="dark:text-"]),
+    body[data-theme-contrast="dark"] [class~="text-slate-600"]:not([class*="dark:text-"]) {
+      color: #cbd5e1 !important;
+    }
+    html.dark body [class~="text-slate-500"]:not([class*="dark:text-"]),
+    body[data-theme-contrast="dark"] [class~="text-slate-500"]:not([class*="dark:text-"]) {
+      color: #94a3b8 !important;
     }
     html:not(.dark) body main [class~="bg-white"],
     html:not(.dark) body main [class~="dark:bg-darkCard"] {
@@ -378,24 +373,24 @@
       background: color-mix(in srgb, var(--theme-primary) 12%, #0f172a);
       border-bottom-color: color-mix(in srgb, var(--theme-accent) 35%, transparent);
     }
-    html:not(.dark) body[data-theme-name="Black & Gold"] main {
+    body[data-theme-contrast="dark"] main {
       background-color: var(--theme-bg) !important;
       color: var(--theme-text) !important;
     }
-    html:not(.dark) body[data-theme-name="Black & Gold"] main [class~="bg-white"],
-    html:not(.dark) body[data-theme-name="Black & Gold"] main [class~="dark:bg-darkCard"] {
+    body[data-theme-contrast="dark"] main [class~="bg-white"],
+    body[data-theme-contrast="dark"] main [class~="dark:bg-darkCard"] {
       background-color: var(--theme-surface) !important;
     }
-    html:not(.dark) body[data-theme-name="Black & Gold"] main [class*="bg-slate-50"],
-    html:not(.dark) body[data-theme-name="Black & Gold"] main [class*="bg-slate-100"] {
+    body[data-theme-contrast="dark"] main [class*="bg-slate-50"],
+    body[data-theme-contrast="dark"] main [class*="bg-slate-100"] {
       background-color: #0f172a !important;
     }
-    html:not(.dark) body[data-theme-name="Black & Gold"] main [class*="text-slate-900"],
-    html:not(.dark) body[data-theme-name="Black & Gold"] main [class*="text-slate-800"] {
+    body[data-theme-contrast="dark"] main [class*="text-slate-900"],
+    body[data-theme-contrast="dark"] main [class*="text-slate-800"] {
       color: var(--theme-text) !important;
     }
-    html:not(.dark) body[data-theme-name="Black & Gold"] main [class*="text-slate-700"],
-    html:not(.dark) body[data-theme-name="Black & Gold"] main [class*="text-slate-600"] {
+    body[data-theme-contrast="dark"] main [class*="text-slate-700"],
+    body[data-theme-contrast="dark"] main [class*="text-slate-600"] {
       color: #cbd5e1 !important;
     }
     body[data-theme-layout="minimal"] .ticker-wrap {
@@ -1228,7 +1223,7 @@
               </label>
               <label class="flex items-center gap-2 p-3 border border-slate-200 dark:border-slate-700 rounded-2xl cursor-pointer text-sm font-medium">
                 <input type="radio" name="walletPaymentMethod" value="upi" onchange="updateWalletPaymentMethod()">
-                <span>BharatPe UPI QR</span>
+                <span>PhonePe UPI QR</span>
               </label>
             </div>
           </div>
@@ -1237,8 +1232,8 @@
             <input type="number" min="10" max="1000000" step="0.01" id="fundAmount" required placeholder="500" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm font-medium">
           </div>
           <div id="upiPaymentDetails" class="hidden p-4 bg-slate-50 dark:bg-slate-800/60 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-3">
-            <p class="text-sm font-bold text-slate-800 dark:text-white">Scan to pay with BharatPe</p>
-            <img src="/images/bharatpe-qr.png" alt="BharatPe payment QR code" class="w-56 h-56 max-w-full object-contain mx-auto bg-white rounded-xl p-2">
+            <p class="text-sm font-bold text-slate-800 dark:text-white">Scan to pay with PhonePe</p>
+            <img src="/images/bharatpe-qr.png" alt="PhonePe payment QR code" class="w-56 h-56 max-w-full object-contain mx-auto bg-white rounded-xl p-2">
             <p class="text-center text-sm text-slate-700 dark:text-slate-300">UPI ID: <strong class="select-all">6375063791@ybl</strong></p>
             <p class="text-xs text-slate-500 dark:text-slate-400">Pay the amount above, then enter the UTR from your payment receipt. QR payments stay pending until an admin verifies them; wallet credit is not automatic.</p>
             <div>
@@ -1513,6 +1508,7 @@
   <script>
     let currentAuthMode = 'signin';
     let currentUser = null;
+    const ADMIN_WHATSAPP_NUMBER = '916375063791';
     let allServices = [];
     let inhouseServices = [];
     let importedServices = [];
@@ -1555,8 +1551,12 @@
         const validColor = (value, fallback) => /^#[0-9a-fA-F]{6}$/.test(value || '') ? value : fallback;
         root.style.setProperty('--theme-primary', validColor(palette.primary, '#1e40af'));
         root.style.setProperty('--theme-accent', validColor(palette.accent, '#f59e0b'));
-        root.style.setProperty('--theme-bg', validColor(palette.bg, '#ffffff'));
-        root.style.setProperty('--theme-text', validColor(palette.text, '#1f2937'));
+        const themeBackground = validColor(palette.bg, '#ffffff');
+        root.style.setProperty('--theme-bg', themeBackground);
+        const backgroundRgb = themeBackground.match(/[0-9a-f]{2}/gi).map(channel => parseInt(channel, 16));
+        const isDarkTheme = (backgroundRgb[0] * 0.299 + backgroundRgb[1] * 0.587 + backgroundRgb[2] * 0.114) < 128;
+        document.body.dataset.themeContrast = isDarkTheme ? 'dark' : 'light';
+        root.style.setProperty('--theme-text-light', validColor(palette.text, '#1f2937'));
         root.style.setProperty('--theme-surface', validColor(palette.surface, validColor(palette.bg, '#ffffff')));
         const supportedFonts = ['Plus Jakarta Sans', 'Outfit', 'Georgia', 'Arial'];
         const bodyFont = supportedFonts.includes(palette.font) ? palette.font : 'Plus Jakarta Sans';
@@ -2726,10 +2726,24 @@
           });
           const data = await response.json();
           if (!response.ok) throw new Error(data.error || 'Could not submit the QR payment.');
-          alert(data.message);
-          document.getElementById('addFundsForm').reset();
-          updateWalletPaymentMethod();
-          await loadPaymentHistory();
+          const confirmationMessage = [
+            'Hello, I have submitted a PhonePe QR wallet deposit for verification.',
+            '',
+            'Account details:',
+            `Name: ${currentUser?.name || 'Not available'}`,
+            `Email: ${currentUser?.email || 'Not available'}`,
+            `Account ID: ${currentUser?.id || 'Not available'}`,
+            '',
+            'Payment details:',
+            `Request ID: ${data.order_id}`,
+            `Amount: INR ${amount.toFixed(2)}`,
+            `UTR / Reference Number: ${utr.toUpperCase()}`,
+            'Request type: Wallet top-up (no service order)',
+            'Status: Pending admin verification',
+            '',
+            'Please verify this payment and credit my wallet.'
+          ].join('\n');
+          window.location.assign(`https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(confirmationMessage)}`);
         } catch (error) {
           alert(error.message);
         }
@@ -2744,7 +2758,7 @@
       const isUpi = document.querySelector('input[name="walletPaymentMethod"]:checked')?.value === 'upi';
       document.getElementById('upiPaymentDetails').classList.toggle('hidden', !isUpi);
       document.getElementById('upiUtr').required = isUpi;
-      document.getElementById('fundSubmitBtn').textContent = isUpi ? 'Submit UTR for Verification' : 'Pay Securely via Cashfree';
+      document.getElementById('fundSubmitBtn').textContent = isUpi ? 'Submit & Confirm on WhatsApp' : 'Pay Securely via Cashfree';
       document.getElementById('fundPaymentNote').textContent = isUpi
         ? 'QR payments are reviewed by an admin before your wallet is credited.'
         : 'Your wallet is credited only after Cashfree confirms the payment. Online deposits are in INR.';

@@ -639,7 +639,7 @@
             <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
               <h2 class="text-lg font-bold text-white flex items-center space-x-2"><i class="fa-solid fa-credit-card text-amber-400"></i><span>Payments</span></h2>
             </div>
-            <p class="text-xs text-slate-400 mb-4">For BharatPe QR deposits, verify the UTR and payment amount in BharatPe before selecting Verify &amp; Credit. You can enter or correct the UTR in the table.</p>
+            <p class="text-xs text-slate-400 mb-4">For PhonePe QR deposits, verify the UTR and payment amount in PhonePe before selecting Verify &amp; Credit. You can enter or correct the UTR in the table.</p>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-sm text-slate-300">
                 <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800"><tr><th class="p-3">Order / Transaction</th><th class="p-3">User</th><th class="p-3">Amount</th><th class="p-3">Currency</th><th class="p-3">Status</th><th class="p-3">Method</th><th class="p-3">UTR</th><th class="p-3">Created</th><th class="p-3 text-center">Actions</th></tr></thead>
@@ -1766,7 +1766,7 @@
         tbody.innerHTML = (data.payments || []).map((payment) => {
           const remainingAmount = Math.max(Number(payment.amount || 0) - Number(payment.refunded_amount || 0), 0);
           const canRefund = payment.record_type === 'payment' && payment.payment_status === 'PAID' && payment.credited && !payment.refunded && remainingAmount > 0;
-          const canReviewUpi = payment.record_type === 'payment' && payment.payment_method === 'BharatPe QR' && payment.payment_status === 'PENDING' && !payment.credited;
+          const canReviewUpi = payment.record_type === 'payment' && ['BharatPe QR', 'PhonePe QR'].includes(payment.payment_method) && payment.payment_status === 'PENDING' && !payment.credited;
           const action = canReviewUpi
             ? '<div class="flex flex-col gap-1"><button onclick="approveUpiPayment(this)" class="px-2 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 rounded-lg text-xs hover:bg-emerald-500/20">Verify &amp; Credit</button><button onclick="rejectUpiPayment(this)" class="px-2 py-1 bg-red-500/10 text-red-300 border border-red-500/30 rounded-lg text-xs hover:bg-red-500/20">Reject</button></div>'
             : canRefund
@@ -1775,7 +1775,8 @@
           const utrCell = canReviewUpi
             ? `<input type="text" class="upi-utr-input w-32 bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-white" maxlength="30" value="${escapeHtml(payment.utr || '')}" aria-label="UTR for ${escapeHtml(payment.order_id)}">`
             : escapeHtml(payment.utr || '—');
-          return `<tr data-order-id="${escapeHtml(payment.order_id || '')}"><td class="p-3 text-xs font-mono">${escapeHtml(payment.order_id || '')}</td><td class="p-3 text-xs">${escapeHtml(payment.user_name || '')}<br>${escapeHtml(payment.user_email || '')}</td><td class="p-3 text-xs">${Number(payment.amount).toFixed(2)}</td><td class="p-3 text-xs">${escapeHtml(payment.currency || '')}</td><td class="p-3 text-xs">${escapeHtml(payment.payment_status || '')}</td><td class="p-3 text-xs">${escapeHtml(payment.payment_method || '')}</td><td class="p-3 text-xs">${utrCell}</td><td class="p-3 text-xs">${payment.created_at ? new Date(payment.created_at).toLocaleString() : ''}</td><td class="p-3 text-center">${action}</td></tr>`;
+          const paymentMethod = payment.payment_method === 'BharatPe QR' ? 'PhonePe QR' : payment.payment_method;
+          return `<tr data-order-id="${escapeHtml(payment.order_id || '')}"><td class="p-3 text-xs font-mono">${escapeHtml(payment.order_id || '')}</td><td class="p-3 text-xs">${escapeHtml(payment.user_name || '')}<br>${escapeHtml(payment.user_email || '')}</td><td class="p-3 text-xs">${Number(payment.amount).toFixed(2)}</td><td class="p-3 text-xs">${escapeHtml(payment.currency || '')}</td><td class="p-3 text-xs">${escapeHtml(payment.payment_status || '')}</td><td class="p-3 text-xs">${escapeHtml(paymentMethod || '')}</td><td class="p-3 text-xs">${utrCell}</td><td class="p-3 text-xs">${payment.created_at ? new Date(payment.created_at).toLocaleString() : ''}</td><td class="p-3 text-center">${action}</td></tr>`;
         }).join('') || '<tr><td colspan="9" class="p-3 text-xs">No payments or wallet transactions</td></tr>';
       } catch (error) {
         console.error(error);

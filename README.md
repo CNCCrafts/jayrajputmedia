@@ -2,7 +2,7 @@
 
 ## Wallet deposits
 
-Customers can top up with Cashfree or by scanning the BharatPe QR code (`public/images/bharatpe-qr.png`, UPI ID `6375063791@ybl`). BharatPe QR deposits require a UTR and remain pending until an administrator verifies the payment and approves the wallet credit. A UTR submission alone does not confirm payment.
+Customers can top up with Cashfree or by scanning the PhonePe QR code (`public/images/bharatpe-qr.png`, UPI ID `6375063791@ybl`). PhonePe QR deposits require a UTR and remain pending until an administrator verifies the payment and approves the wallet credit. Submitting the UTR opens WhatsApp with a prefilled confirmation message; the deposit is not credited until it is verified.
 
 ## Automatic order status updates
 

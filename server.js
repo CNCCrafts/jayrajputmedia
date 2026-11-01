@@ -1869,7 +1869,7 @@ app.get('/api/admin/payments', authenticateToken, requireAdmin, async (req, res)
              u.id AS user_id, u.name AS user_name, u.email AS user_email, COALESCE(t.payment_method, 'Wallet transaction') AS payment_method,
              'transaction' AS record_type
       FROM transactions t JOIN users u ON t.user_id = u.id
-      WHERE COALESCE(t.payment_method, '') NOT IN ('Cashfree', 'BharatPe QR')
+      WHERE COALESCE(t.payment_method, '') NOT IN ('Cashfree', 'BharatPe QR', 'PhonePe QR')
     )
   `;
   const countRes = await pool.query(
@@ -1906,9 +1906,9 @@ app.post('/api/admin/payments/:orderId/approve-upi', authenticateToken, requireA
     }
 
     const record = payment.rows[0];
-    if (record.payment_method !== 'BharatPe QR' || record.payment_status !== 'PENDING' || record.credited) {
+    if (!['BharatPe QR', 'PhonePe QR'].includes(record.payment_method) || record.payment_status !== 'PENDING' || record.credited) {
       await client.query('ROLLBACK');
-      return res.status(409).json({ error: 'Only pending BharatPe QR payments can be approved.' });
+      return res.status(409).json({ error: 'Only pending PhonePe QR payments can be approved.' });
     }
     if (record.currency !== 'INR' || !Number.isFinite(Number(record.amount)) || Number(record.amount) <= 0) {
       await client.query('ROLLBACK');
@@ -1940,7 +1940,7 @@ app.post('/api/admin/payments/:orderId/approve-upi', authenticateToken, requireA
     );
     await client.query(
       `INSERT INTO transactions (user_id, amount, currency, payment_method, status)
-       VALUES ($1, $2, $3, 'BharatPe QR', 'Completed')`,
+       VALUES ($1, $2, $3, 'PhonePe QR', 'Completed')`,
       [record.user_id, record.amount, record.currency]
     );
     await client.query('COMMIT');
@@ -1948,7 +1948,7 @@ app.post('/api/admin/payments/:orderId/approve-upi', authenticateToken, requireA
   } catch (error) {
     await client.query('ROLLBACK');
     if (error.code === '23505') return res.status(409).json({ error: 'This UTR has already been used for another payment.' });
-    console.error('BharatPe QR payment approval failed:', error);
+    console.error('PhonePe QR payment approval failed:', error);
     res.status(500).json({ error: 'Could not approve this QR payment.' });
   } finally {
     client.release();
@@ -1959,14 +1959,14 @@ app.post('/api/admin/payments/:orderId/reject-upi', authenticateToken, requireAd
   try {
     const result = await pool.query(
       `UPDATE payment_orders SET payment_status = 'REJECTED', updated_at = CURRENT_TIMESTAMP
-       WHERE order_id = $1 AND payment_method = 'BharatPe QR' AND payment_status = 'PENDING' AND credited = 0
+       WHERE order_id = $1 AND payment_method IN ('BharatPe QR', 'PhonePe QR') AND payment_status = 'PENDING' AND credited = 0
        RETURNING order_id`,
       [req.params.orderId]
     );
-    if (!result.rows.length) return res.status(409).json({ error: 'Only pending BharatPe QR payments can be rejected.' });
+    if (!result.rows.length) return res.status(409).json({ error: 'Only pending PhonePe QR payments can be rejected.' });
     res.json({ success: true, message: 'QR payment rejected.' });
   } catch (error) {
-    console.error('BharatPe QR payment rejection failed:', error);
+    console.error('PhonePe QR payment rejection failed:', error);
     res.status(500).json({ error: 'Could not reject this QR payment.' });
   }
 });
@@ -2055,9 +2055,10 @@ app.get('/api/wallet/payments', authenticateToken, async (req, res) => {
     `SELECT 'TXN-' || id::text AS order_id, COALESCE(payment_method, 'Wallet transaction') AS description,
             amount, currency, UPPER(COALESCE(status, 'COMPLETED')) AS payment_status,
             TRUE AS credited, NULL::text AS utr, created_at
-     FROM transactions WHERE user_id = $1 AND COALESCE(payment_method, '') NOT IN ('Cashfree', 'BharatPe QR')
+     FROM transactions WHERE user_id = $1 AND COALESCE(payment_method, '') NOT IN ('Cashfree', 'BharatPe QR', 'PhonePe QR')
      UNION ALL
-     SELECT order_id, COALESCE(payment_method, 'Cashfree') || ' wallet deposit' AS description,
+     SELECT order_id,
+            CASE WHEN payment_method = 'BharatPe QR' THEN 'PhonePe QR' ELSE COALESCE(payment_method, 'Cashfree') END || ' wallet deposit' AS description,
             amount, currency, payment_status, (credited = 1) AS credited, utr, created_at
      FROM payment_orders WHERE user_id = $1
      ORDER BY created_at DESC LIMIT 50`,
@@ -2080,7 +2081,7 @@ app.post('/api/wallet/upi-payment', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(
       `INSERT INTO payment_orders (order_id, user_id, amount, currency, wallet_field, payment_method, utr, payment_status)
-       VALUES ($1, $2, $3, 'INR', 'wallet_inr', 'BharatPe QR', $4, 'PENDING')
+       VALUES ($1, $2, $3, 'INR', 'wallet_inr', 'PhonePe QR', $4, 'PENDING')
        RETURNING order_id, payment_status`,
       [orderId, req.user.id, amount, utr]
     );
@@ -2092,7 +2093,7 @@ app.post('/api/wallet/upi-payment', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     if (error.code === '23505') return res.status(409).json({ error: 'This UTR has already been submitted.' });
-    console.error('BharatPe QR payment submission failed:', error);
+    console.error('PhonePe QR payment submission failed:', error);
     res.status(500).json({ error: 'Could not submit this QR payment.' });
   }
 });
