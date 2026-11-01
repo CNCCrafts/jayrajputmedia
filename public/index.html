@@ -291,8 +291,7 @@
       --theme-body-font: "Plus Jakarta Sans", sans-serif;
       --theme-heading-font: Outfit, sans-serif;
     }
-    html.dark,
-    body[data-theme-contrast="dark"] {
+    html.dark {
       --theme-text: var(--theme-text-dark);
       --theme-primary-text: color-mix(in srgb, var(--theme-primary) 40%, #ffffff);
       --theme-accent-text: color-mix(in srgb, var(--theme-accent) 55%, #ffffff);
@@ -330,41 +329,48 @@
       background-color: var(--theme-bg) !important;
       color: var(--theme-text) !important;
     }
-    html.dark body {
-      background-color: #090D16 !important;
-    }
+    html.dark body,
     html.dark body main {
+      background-color: var(--theme-bg) !important;
       color: var(--theme-text) !important;
     }
-    html.dark body[data-theme-contrast="dark"] {
-      background-color: var(--theme-bg) !important;
-    }
-    html:not(.dark) body [class~="text-slate-900"]:not([class*="dark:text-"]),
-    html:not(.dark) body [class~="text-slate-800"]:not([class*="dark:text-"]) {
+    html:not(.dark) body [class~="text-slate-900"],
+    html:not(.dark) body [class~="text-slate-800"] {
       color: var(--theme-text-light) !important;
     }
-    html:not(.dark) body [class~="text-slate-700"]:not([class*="dark:text-"]),
-    html:not(.dark) body [class~="text-slate-600"]:not([class*="dark:text-"]) {
+    html:not(.dark) body [class~="text-slate-700"],
+    html:not(.dark) body [class~="text-slate-600"] {
       color: color-mix(in srgb, var(--theme-text-light) 82%, #64748b) !important;
     }
-    html:not(.dark) body [class~="text-slate-500"]:not([class*="dark:text-"]) {
+    html:not(.dark) body [class~="text-slate-500"],
+    html:not(.dark) body [class~="text-slate-400"],
+    html:not(.dark) body [class~="text-slate-300"] {
       color: color-mix(in srgb, var(--theme-text-light) 65%, #94a3b8) !important;
     }
-    html.dark body [class~="text-slate-900"]:not([class*="dark:text-"]),
-    html.dark body [class~="text-slate-800"]:not([class*="dark:text-"]),
-    body[data-theme-contrast="dark"] [class~="text-slate-900"]:not([class*="dark:text-"]),
-    body[data-theme-contrast="dark"] [class~="text-slate-800"]:not([class*="dark:text-"]) {
+    html.dark body [class~="text-slate-900"],
+    html.dark body [class~="text-slate-800"] {
       color: var(--theme-text) !important;
     }
-    html.dark body [class~="text-slate-700"]:not([class*="dark:text-"]),
-    html.dark body [class~="text-slate-600"]:not([class*="dark:text-"]),
-    body[data-theme-contrast="dark"] [class~="text-slate-700"]:not([class*="dark:text-"]),
-    body[data-theme-contrast="dark"] [class~="text-slate-600"]:not([class*="dark:text-"]) {
+    html.dark body [class*="text-slate-900"],
+    html.dark body [class*="text-slate-800"] {
+      color: var(--theme-text) !important;
+    }
+    html.dark body [class*="text-slate-700"],
+    html.dark body [class*="text-slate-600"] {
       color: color-mix(in srgb, var(--theme-text) 82%, #94a3b8) !important;
     }
-    html.dark body [class~="text-slate-500"]:not([class*="dark:text-"]),
-    body[data-theme-contrast="dark"] [class~="text-slate-500"]:not([class*="dark:text-"]) {
+    html.dark body [class*="text-slate-500"],
+    html.dark body [class*="text-slate-400"],
+    html.dark body [class*="text-slate-300"] {
       color: color-mix(in srgb, var(--theme-text) 65%, #64748b) !important;
+    }
+    html:not(.dark) body ::placeholder {
+      color: color-mix(in srgb, var(--theme-text-light) 55%, #94a3b8) !important;
+      opacity: 1;
+    }
+    html.dark body ::placeholder {
+      color: color-mix(in srgb, var(--theme-text) 65%, #64748b) !important;
+      opacity: 1;
     }
     html:not(.dark) body [class*="bg-white"]:not(img),
     html:not(.dark) body [class*="dark:bg-darkCard"]:not(img) {
@@ -398,51 +404,25 @@
       background: color-mix(in srgb, var(--theme-primary) 12%, #0f172a);
       border-bottom-color: color-mix(in srgb, var(--theme-accent) 35%, transparent);
     }
-    html:not(.dark) body[data-theme-contrast="dark"],
-    html.dark body[data-theme-contrast="dark"] {
-      background-color: var(--theme-bg) !important;
-      color: var(--theme-text) !important;
-    }
-    html:not(.dark) body[data-theme-contrast="dark"] [class*="bg-white"]:not(img),
-    html:not(.dark) body[data-theme-contrast="dark"] [class*="dark:bg-darkCard"]:not(img),
-    body[data-theme-contrast="dark"] [class*="bg-white"]:not(img),
-    body[data-theme-contrast="dark"] [class*="dark:bg-darkCard"]:not(img) {
+    html.dark body [class*="bg-white"]:not(img),
+    html.dark body [class*="dark:bg-darkCard"]:not(img) {
       background-color: var(--theme-surface) !important;
     }
-    html:not(.dark) body[data-theme-contrast="dark"] [class*="bg-slate-50"]:not(img),
-    html:not(.dark) body[data-theme-contrast="dark"] [class*="bg-slate-100"]:not(img),
-    body[data-theme-contrast="dark"] [class*="bg-slate-50"]:not(img),
-    body[data-theme-contrast="dark"] [class*="bg-slate-100"]:not(img) {
+    html.dark body [class*="bg-slate-50"]:not(img),
+    html.dark body [class*="bg-slate-100"]:not(img) {
       background-color: color-mix(in srgb, var(--theme-primary) 4%, var(--theme-bg)) !important;
     }
-    html:not(.dark) body[data-theme-contrast="dark"] [class*="border-slate-200"],
-    html:not(.dark) body[data-theme-contrast="dark"] [class*="border-darkBorder"],
-    body[data-theme-contrast="dark"] [class*="border-slate-200"],
-    body[data-theme-contrast="dark"] [class*="border-darkBorder"] {
+    html.dark body [class*="border-slate-200"],
+    html.dark body [class*="border-darkBorder"] {
       border-color: color-mix(in srgb, var(--theme-primary) 18%, var(--theme-bg)) !important;
     }
-    html:not(.dark) body[data-theme-contrast="dark"] [class*="text-slate-900"],
-    html:not(.dark) body[data-theme-contrast="dark"] [class*="text-slate-800"],
-    body[data-theme-contrast="dark"] [class*="text-slate-900"],
-    body[data-theme-contrast="dark"] [class*="text-slate-800"] {
-      color: var(--theme-text) !important;
-    }
-    html:not(.dark) body[data-theme-contrast="dark"] [class*="text-slate-700"],
-    html:not(.dark) body[data-theme-contrast="dark"] [class*="text-slate-600"],
-    body[data-theme-contrast="dark"] [class*="text-slate-700"],
-    body[data-theme-contrast="dark"] [class*="text-slate-600"] {
-      color: color-mix(in srgb, var(--theme-text) 82%, #94a3b8) !important;
-    }
-    html.dark body .order-total-bar,
-    body[data-theme-contrast="dark"] .order-total-bar {
+    html.dark body .order-total-bar {
       background: color-mix(in srgb, var(--theme-primary) 16%, #111827) !important;
       border-color: color-mix(in srgb, var(--theme-primary) 35%, #334155) !important;
       color: #cbd5e1 !important;
     }
     html.dark body .order-total-bar #quickOrderTotal,
-    html.dark body .order-total-bar #orderTotalCharge,
-    body[data-theme-contrast="dark"] .order-total-bar #quickOrderTotal,
-    body[data-theme-contrast="dark"] .order-total-bar #orderTotalCharge {
+    html.dark body .order-total-bar #orderTotalCharge {
       color: color-mix(in srgb, var(--theme-primary) 40%, #ffffff) !important;
     }
     html:not(.dark) body header,
@@ -450,9 +430,6 @@
     html:not(.dark) body footer {
       background-color: color-mix(in srgb, var(--theme-primary) 4%, var(--theme-bg)) !important;
     }
-    html:not(.dark) body[data-theme-contrast="dark"] header,
-    html:not(.dark) body[data-theme-contrast="dark"] #sidebarDrawer,
-    html:not(.dark) body[data-theme-contrast="dark"] footer,
     html.dark body[data-theme-contrast="dark"] header,
     html.dark body[data-theme-contrast="dark"] #sidebarDrawer,
     html.dark body[data-theme-contrast="dark"] footer {
@@ -1574,6 +1551,7 @@
   <script>
     let currentAuthMode = 'signin';
     let currentUser = null;
+    let activeThemePalette = null;
     const ADMIN_WHATSAPP_NUMBER = '916375063791';
     let allServices = [];
     let inhouseServices = [];
@@ -1583,6 +1561,71 @@
     let pendingAuthSection = null;
     let pendingOrderCategory = '';
     let pendingBuyServiceId = null;
+
+    function hexToRgb(hex) {
+      const value = hex.replace('#', '');
+      return [
+        parseInt(value.slice(0, 2), 16),
+        parseInt(value.slice(2, 4), 16),
+        parseInt(value.slice(4, 6), 16)
+      ];
+    }
+
+    function colorLuminance(hex) {
+      const channels = hexToRgb(hex).map(channel => {
+        const normalized = channel / 255;
+        return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+      });
+      return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+    }
+
+    function mixColors(color, target, targetWeight) {
+      const sourceRgb = hexToRgb(color);
+      const targetRgb = hexToRgb(target);
+      const mixed = sourceRgb.map((channel, index) => Math.round(channel * (1 - targetWeight) + targetRgb[index] * targetWeight));
+      return `#${mixed.map(channel => channel.toString(16).padStart(2, '0')).join('')}`;
+    }
+
+    function contrastRatio(first, second) {
+      const luminances = [colorLuminance(first), colorLuminance(second)].sort((a, b) => b - a);
+      return (luminances[0] + 0.05) / (luminances[1] + 0.05);
+    }
+
+    function readableTextColor(preferred, background, fallback) {
+      return contrastRatio(preferred, background) >= 4.5 ? preferred : fallback;
+    }
+
+    function applyThemeMode(mode) {
+      if (!activeThemePalette) return;
+
+      const isDark = mode === 'dark';
+      const palette = activeThemePalette;
+      const paletteBgIsDark = colorLuminance(palette.bg) < 0.45;
+      const paletteSurfaceIsDark = colorLuminance(palette.surface) < 0.45;
+      const background = isDark
+        ? (paletteBgIsDark ? palette.bg : mixColors('#090D16', palette.primary, 0.14))
+        : (paletteBgIsDark ? mixColors('#ffffff', palette.primary, 0.035) : palette.bg);
+      const surface = isDark
+        ? (paletteSurfaceIsDark ? palette.surface : mixColors('#111827', palette.primary, 0.12))
+        : (paletteSurfaceIsDark ? mixColors('#ffffff', palette.primary, 0.025) : palette.surface);
+      const lightText = readableTextColor(palette.text, surface, '#1f2937');
+      const darkText = readableTextColor(palette.text, surface, '#f8fafc');
+      const primaryText = isDark
+        ? mixColors(palette.primary, '#ffffff', 0.58)
+        : readableTextColor(palette.primary, surface, '#1e40af');
+      const accentText = isDark
+        ? mixColors(palette.accent, '#ffffff', 0.58)
+        : readableTextColor(palette.accent, surface, '#7c2d12');
+      const root = document.documentElement;
+
+      root.style.setProperty('--theme-bg', background);
+      root.style.setProperty('--theme-surface', surface);
+      root.style.setProperty('--theme-text-light', lightText);
+      root.style.setProperty('--theme-text-dark', darkText);
+      root.style.setProperty('--theme-text', isDark ? darkText : lightText);
+      root.style.setProperty('--theme-primary-text', primaryText);
+      root.style.setProperty('--theme-accent-text', accentText);
+    }
 
     function initTheme() {
       const storedTheme = localStorage.getItem('jr_theme') || 'light';
@@ -1604,6 +1647,7 @@
         icon.className = 'fa-solid fa-moon text-slate-700';
       }
       localStorage.setItem('jr_theme', mode);
+      applyThemeMode(mode);
     }
 
     async function applySiteTheme() {
@@ -1618,12 +1662,19 @@
         root.style.setProperty('--theme-primary', validColor(palette.primary, '#1e40af'));
         root.style.setProperty('--theme-accent', validColor(palette.accent, '#f59e0b'));
         const themeBackground = validColor(palette.bg, '#ffffff');
-        root.style.setProperty('--theme-bg', themeBackground);
+        const themeSurface = validColor(palette.surface, themeBackground);
+        const themeText = validColor(palette.text, '#1f2937');
+        activeThemePalette = {
+          primary: validColor(palette.primary, '#1e40af'),
+          accent: validColor(palette.accent, '#f59e0b'),
+          bg: themeBackground,
+          surface: themeSurface,
+          text: themeText
+        };
         const backgroundRgb = themeBackground.match(/[0-9a-f]{2}/gi).map(channel => parseInt(channel, 16));
         const isDarkTheme = (backgroundRgb[0] * 0.299 + backgroundRgb[1] * 0.587 + backgroundRgb[2] * 0.114) < 128;
         document.body.dataset.themeContrast = isDarkTheme ? 'dark' : 'light';
-        root.style.setProperty('--theme-text-light', validColor(palette.text, '#1f2937'));
-        root.style.setProperty('--theme-surface', validColor(palette.surface, validColor(palette.bg, '#ffffff')));
+        setTheme(document.documentElement.classList.contains('dark') ? 'dark' : 'light');
         const supportedFonts = ['Plus Jakarta Sans', 'Outfit', 'Georgia', 'Arial'];
         const bodyFont = supportedFonts.includes(palette.font) ? palette.font : 'Plus Jakarta Sans';
         const headingFont = supportedFonts.includes(palette.headingFont) ? palette.headingFont : 'Outfit';
