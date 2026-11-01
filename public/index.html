@@ -1107,19 +1107,19 @@
         <form id="quickOrderForm" onsubmit="withOrderLoading(handleQuickOrder, event, 'Quick order')" class="space-y-4">
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Search Provider Services</label>
+              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Search Services</label>
               <input type="text" id="quickServiceSearch" oninput="filterQuickServices(this.value)" placeholder="Search for followers, likes, views..." class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
             </div>
             <div>
-              <span class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">Provider Categories</span>
-              <div id="quickCategoryList" class="relative" aria-label="Filter provider services by category">
+              <span class="mb-1.5 block text-xs font-bold uppercase text-slate-600 dark:text-slate-300">Categories</span>
+              <div id="quickCategoryList" class="relative" aria-label="Filter services by category">
                 <span class="text-xs text-slate-500">Loading categories...</span>
               </div>
             </div>
           </div>
 
           <div>
-            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Select Provider Service</label>
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Select Service</label>
             <div id="quickServiceDropdown" class="relative"></div>
             <select id="quickServiceSelect" onchange="selectQuickOrderProduct('provider')" class="hidden" tabindex="-1" aria-hidden="true">
               <option value="">First search or select a category</option>
@@ -1127,7 +1127,7 @@
           </div>
 
           <div id="quickServiceDetails" class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1 text-slate-600 dark:text-slate-300">
-            <p>Select a provider service to view details and pricing.</p>
+            <p>Select a service to view details and pricing.</p>
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2669,7 +2669,7 @@
 
       const select = document.getElementById('quickServiceSelect');
       select.replaceChildren(new Option(
-        filtered.length ? 'Select a provider service' : 'No provider services found',
+        filtered.length ? 'Select a service' : 'No services found',
         ''
       ));
       filtered.forEach(service => {
@@ -2698,7 +2698,7 @@
       const detailsBox = document.getElementById('quickServiceDetails');
 
       if (!s) {
-        detailsBox.innerHTML = '<p>Select a provider service to view details and pricing.</p>';
+        detailsBox.innerHTML = '<p>Select a service to view details and pricing.</p>';
         document.getElementById('quickOrderTotal').innerText = '₹0.00';
         return;
       }
@@ -2738,7 +2738,7 @@
       const link = document.getElementById('quickOrderLink').value;
       const quantity = parseInt(document.getElementById('quickOrderQuantity').value);
 
-      if (!service_id) return alert('Please select a provider service.');
+      if (!service_id) return alert('Please select a service.');
       if (!link) return alert('Please enter a target URL.');
       if (!quantity || quantity < 1) return alert('Please enter a valid quantity.');
 
