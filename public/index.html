@@ -433,6 +433,18 @@
     body[data-theme-contrast="dark"] [class*="text-slate-600"] {
       color: color-mix(in srgb, var(--theme-text) 82%, #94a3b8) !important;
     }
+    html.dark body .order-total-bar,
+    body[data-theme-contrast="dark"] .order-total-bar {
+      background: color-mix(in srgb, var(--theme-primary) 16%, #111827) !important;
+      border-color: color-mix(in srgb, var(--theme-primary) 35%, #334155) !important;
+      color: #cbd5e1 !important;
+    }
+    html.dark body .order-total-bar #quickOrderTotal,
+    html.dark body .order-total-bar #orderTotalCharge,
+    body[data-theme-contrast="dark"] .order-total-bar #quickOrderTotal,
+    body[data-theme-contrast="dark"] .order-total-bar #orderTotalCharge {
+      color: color-mix(in srgb, var(--theme-primary) 40%, #ffffff) !important;
+    }
     html:not(.dark) body header,
     html:not(.dark) body #sidebarDrawer,
     html:not(.dark) body footer {
@@ -1152,7 +1164,7 @@
             </div>
           </div>
 
-          <div class="p-4 bg-gradient-to-r from-blue-50 to-pink-50 dark:from-slate-800 dark:to-slate-800 rounded-2xl border border-blue-200 dark:border-slate-700 flex justify-between items-center">
+          <div class="order-total-bar p-4 bg-gradient-to-r from-blue-50 to-pink-50 dark:from-slate-800 dark:to-slate-800 rounded-2xl border border-blue-200 dark:border-slate-700 flex justify-between items-center">
             <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Total Price:</span>
             <span id="quickOrderTotal" class="text-2xl font-display font-black text-fbBlue dark:text-pink-400">₹0.00</span>
           </div>
@@ -1209,7 +1221,7 @@
             <input type="number" id="orderQuantity" required oninput="calculateOrderCharge()" placeholder="1000" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
           </div>
 
-          <div class="p-4 bg-gradient-to-r from-blue-50 to-pink-50 dark:from-slate-800 dark:to-slate-800 rounded-2xl border border-blue-200 dark:border-slate-700 flex justify-between items-center">
+          <div class="order-total-bar p-4 bg-gradient-to-r from-blue-50 to-pink-50 dark:from-slate-800 dark:to-slate-800 rounded-2xl border border-blue-200 dark:border-slate-700 flex justify-between items-center">
             <span class="text-sm font-bold text-slate-700 dark:text-slate-300">Total Price:</span>
             <span id="orderTotalCharge" class="text-2xl font-display font-black text-fbBlue dark:text-pink-400">₹0.00</span>
           </div>
