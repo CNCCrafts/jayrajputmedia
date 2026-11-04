@@ -286,7 +286,7 @@
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
               <div>
                 <h2 class="text-lg font-bold text-white">Manage Categories</h2>
-                <p class="text-xs text-slate-400 mt-1">Add, rename, or remove service categories. Renaming updates linked services.</p>
+                <p class="text-xs text-slate-400 mt-1">Add, rename, or remove in-house package categories. Provider categories stay separate.</p>
               </div>
               <form id="categoryForm" onsubmit="createCategory(event)" class="flex gap-2">
                 <input type="text" id="newCategoryName" maxlength="80" required placeholder="New category name" class="min-w-0 bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-sm text-white outline-none focus:border-gold">
@@ -299,7 +299,7 @@
           <section class="bg-cardBg border border-gold/30 p-6 md:p-8 rounded-3xl shadow-xl">
             <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
               <h2 id="formHeading" class="text-lg font-bold text-gold flex items-center space-x-2">
-                <i class="fa-solid fa-circle-plus"></i><span>Add / Edit Service Package</span>
+                <i class="fa-solid fa-circle-plus"></i><span>Add / Edit In-House Package</span>
               </h2>
               <button id="cancelEditBtn" onclick="resetForm()" class="hidden text-xs text-slate-400 hover:text-red-400 underline">Cancel Editing</button>
             </div>
@@ -310,10 +310,15 @@
               <!-- All package fields -->
               <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start">
                 <div>
-                  <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Category</label>
-                  <select id="svcCategory" required class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
-                    <option value="">Add a category first</option>
-                  </select>
+                  <label for="svcCategory" class="text-xs uppercase font-bold text-slate-400 block mb-1">In-House Category</label>
+                  <div class="relative group">
+                    <i class="fa-solid fa-layer-group absolute left-4 top-1/2 -translate-y-1/2 text-gold pointer-events-none"></i>
+                    <select id="svcCategory" required aria-describedby="svcCategoryHint" class="w-full appearance-none bg-gradient-to-r from-slate-950 to-slate-900 border border-slate-700 rounded-xl py-3 pl-11 pr-11 text-white shadow-inner outline-none transition duration-200 hover:border-slate-500 focus:border-gold focus:ring-4 focus:ring-gold/10 cursor-pointer">
+                      <option value="">Add a category first</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none transition group-focus-within:rotate-180 group-focus-within:text-gold"></i>
+                  </div>
+                  <p id="svcCategoryHint" class="mt-2 text-[11px] text-slate-500">Only in-house categories are shown.</p>
                 </div>
 
                 <div>
@@ -376,7 +381,7 @@
 
               <div class="lg:col-span-3 pt-2">
                 <button type="submit" id="submitBtn" class="w-full py-3.5 bg-gradient-to-r from-gold to-yellow-600 text-black font-extrabold rounded-xl hover:brightness-110 shadow-lg transition duration-200 uppercase tracking-wider text-xs">
-                  Save & Publish Package
+                  Save & Publish In-House Package
                 </button>
               </div>
             </form>
@@ -1409,7 +1414,7 @@
               ? `<span class="text-gold font-bold">${(providersList.find(p => p.id === s.provider_id) || {}).name || 'Provider'}</span>`
               : '<span class="text-slate-500">Own</span>'}</td>
             <td class="p-3 text-center space-x-2">
-              <button onclick="startEditService(${s.id})" class="px-3 py-1 bg-brandBlue/20 text-brandBlue border border-brandBlue/30 rounded-lg text-xs hover:bg-brandBlue hover:text-white transition">Edit</button>
+              ${!s.provider_id ? `<button onclick="startEditService(${s.id})" class="px-3 py-1 bg-brandBlue/20 text-brandBlue border border-brandBlue/30 rounded-lg text-xs hover:bg-brandBlue hover:text-white transition">Edit</button>` : ''}
               <button onclick="deleteService(${s.id})" class="px-3 py-1 bg-red-600/20 text-red-400 border border-red-500/30 rounded-lg text-xs hover:bg-red-600 hover:text-white transition">Delete</button>
             </td>
           </tr>
@@ -1455,7 +1460,7 @@
 
     function startEditService(id) {
       const s = adminServicesList.find(item => item.id === id);
-      if (!s) return;
+      if (!s || s.provider_id) return;
 
       loadServiceImages();
       document.getElementById('editServiceId').value = s.id;
@@ -1470,8 +1475,8 @@
       document.getElementById('svcImage').value = s.image || '';
       updateImagePreview();
 
-      document.getElementById('formHeading').innerHTML = `<i class="fa-solid fa-pen-to-square"></i><span>Edit Package #${s.id}</span>`;
-      document.getElementById('submitBtn').innerText = 'Update Service Package';
+      document.getElementById('formHeading').innerHTML = `<i class="fa-solid fa-pen-to-square"></i><span>Edit In-House Package #${s.id}</span>`;
+      document.getElementById('submitBtn').innerText = 'Update In-House Package';
       document.getElementById('cancelEditBtn').classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1481,8 +1486,8 @@
       document.getElementById('editServiceId').value = '';
       document.getElementById('svcInlineFile').value = '';
       document.getElementById('svcLocalPreviewWrap').classList.add('hidden');
-      document.getElementById('formHeading').innerHTML = `<i class="fa-solid fa-circle-plus"></i><span>Add New Service Package</span>`;
-      document.getElementById('submitBtn').innerText = 'Save & Publish Package';
+      document.getElementById('formHeading').innerHTML = `<i class="fa-solid fa-circle-plus"></i><span>Add New In-House Package</span>`;
+      document.getElementById('submitBtn').innerText = 'Save & Publish In-House Package';
       document.getElementById('cancelEditBtn').classList.add('hidden');
       updateImagePreview();
     }

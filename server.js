@@ -784,10 +784,11 @@ app.post('/api/admin/services', authenticateToken, requireAdmin, async (req, res
 
 app.put('/api/admin/services/:id', authenticateToken, requireAdmin, async (req, res) => {
   const { category, name, rate_per_1000, min_quantity, max_quantity, description, status, image } = req.body;
-  await pool.query(
-    `UPDATE services SET category=$1, name=$2, rate_per_1000=$3, min_quantity=$4, max_quantity=$5, description=$6, status=$7, image=$8 WHERE id = $9`,
+  const updated = await pool.query(
+    `UPDATE services SET category=$1, name=$2, rate_per_1000=$3, min_quantity=$4, max_quantity=$5, description=$6, status=$7, image=$8 WHERE id = $9 AND provider_id IS NULL`,
     [category, name, rate_per_1000, min_quantity, max_quantity, description, status, image || null, req.params.id]
   );
+  if (!updated.rowCount) return res.status(404).json({ error: 'In-house package not found.' });
   res.json({ success: true, message: 'Service updated successfully.' });
 });
 
@@ -1745,16 +1746,30 @@ app.post('/api/admin/services/:id/duplicate', authenticateToken, requireAdmin, a
 app.get('/api/admin/categories', authenticateToken, requireAdmin, async (req, res) => {
   await pool.query(
     `INSERT INTO categories (name)
-     SELECT DISTINCT category_name
-     FROM (
-       SELECT TRIM(category) AS category_name FROM services
-       UNION
-       SELECT TRIM(category) AS category_name FROM provider_services
-     ) category_names
-     WHERE category_name IS NOT NULL AND category_name <> ''
+     SELECT DISTINCT TRIM(category)
+     FROM services
+     WHERE provider_id IS NULL AND category IS NOT NULL AND TRIM(category) <> ''
      ON CONFLICT (name) DO NOTHING`
   );
-  const rows = await pool.query('SELECT id, name FROM categories ORDER BY name');
+  const rows = await pool.query(
+    `SELECT id, name
+     FROM categories c
+     WHERE EXISTS (
+       SELECT 1 FROM services s
+       WHERE s.provider_id IS NULL AND LOWER(TRIM(s.category)) = LOWER(TRIM(c.name))
+     )
+     OR (
+       NOT EXISTS (
+         SELECT 1 FROM services s
+         WHERE s.provider_id IS NOT NULL AND LOWER(TRIM(s.category)) = LOWER(TRIM(c.name))
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM provider_services ps
+         WHERE LOWER(TRIM(ps.category)) = LOWER(TRIM(c.name))
+       )
+     )
+     ORDER BY name`
+  );
   res.json({ categories: rows.rows });
 });
 
@@ -1795,8 +1810,10 @@ app.put('/api/admin/categories/:id', authenticateToken, requireAdmin, async (req
     }
 
     const oldName = current.rows[0].name;
-    await client.query('UPDATE services SET category = $1 WHERE LOWER(TRIM(category)) = LOWER(TRIM($2))', [name, oldName]);
-    await client.query('UPDATE provider_services SET category = $1 WHERE LOWER(TRIM(category)) = LOWER(TRIM($2))', [name, oldName]);
+    await client.query(
+      'UPDATE services SET category = $1 WHERE provider_id IS NULL AND LOWER(TRIM(category)) = LOWER(TRIM($2))',
+      [name, oldName]
+    );
     const updated = await client.query('UPDATE categories SET name = $1 WHERE id = $2 RETURNING id, name', [name, id]);
     await client.query('COMMIT');
     res.json({ category: updated.rows[0] });
@@ -1823,8 +1840,10 @@ app.delete('/api/admin/categories/:id', authenticateToken, requireAdmin, async (
     }
     const name = current.rows[0].name;
     const usage = await client.query(
-      `SELECT EXISTS (SELECT 1 FROM services WHERE LOWER(TRIM(category)) = LOWER(TRIM($1)))
-       OR EXISTS (SELECT 1 FROM provider_services WHERE LOWER(TRIM(category)) = LOWER(TRIM($1))) AS in_use`,
+      `SELECT EXISTS (
+         SELECT 1 FROM services
+         WHERE provider_id IS NULL AND LOWER(TRIM(category)) = LOWER(TRIM($1))
+       ) AS in_use`,
       [name]
     );
     if (usage.rows[0].in_use) {
