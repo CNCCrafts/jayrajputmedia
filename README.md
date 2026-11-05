@@ -6,7 +6,7 @@ Customers can top up with Cashfree or by scanning the PhonePe QR code (`public/i
 
 ## Automatic order status updates
 
-Orders sent to an upstream provider are checked automatically every 60 seconds. The provider must support the standard SMM-panel `action=status&id=<provider-order-id>` request and return a status such as `Pending`, `In progress`, `Completed`, `Partial`, `Canceled`, or `Failed`. The interval can be changed with `DWR_INTERVAL_MS`; setting `ENABLE_DWR=false` disables scheduled checks. API clients requesting an order's `status` also trigger an immediate provider check for that order.
+Orders sent to an upstream provider are checked automatically every 60 seconds. Status checks use a form-encoded `POST` with `action=status` and `order=<provider-order-id>`, as documented by Smminsta, and expect a status such as `Pending`, `In progress`, `Completed`, `Partial`, `Canceled`, or `Failed`. The interval can be changed with `DWR_INTERVAL_MS`; setting `ENABLE_DWR=false` disables scheduled checks. API clients requesting an order's `status` also trigger an immediate provider check for that order. Orders stay `Pending` while the provider reports `Pending`; successful placement alone does not mean delivery has started or completed.
 
 API-created orders use the same provider forwarding and status synchronization as website orders. Explicit provider rejections are marked `Failed`, while network errors are left pending because the provider may have accepted the order without the response reaching this server.
 

@@ -873,7 +873,7 @@ app.post('/api/admin/upload-image', authenticateToken, requireAdmin, async (req,
 // Standard SMM-panel dialect used for every upstream call:
 //   services -> ?key=..&action=services   -> { data: [{ service, name, rate, min, max, category }] }
 //   add      -> ?key=..&action=add&service=&link=&quantity= -> { order: <id> }
-//   status   -> ?key=..&action=status&id=  -> { status: 'Pending' | 'In progress' | 'Completed' | 'Partial' | 'Canceled' }
+//   status   -> POST key=..&action=status&order=<id> -> { status: 'Pending' | 'In progress' | 'Completed' | 'Partial' | 'Canceled' }
 function providerRequest(provider, params, method = 'GET') {
   const config = {
     timeout: 60000,
@@ -1091,11 +1091,21 @@ async function refreshUpstreamOrderStatus(orderId = null, userId = null) {
     if (!provider.rows.length) continue;
 
     try {
-      const response = await providerRequest(provider.rows[0], { action: 'status', id: order.upstream_order_id });
+      const response = await providerRequest(provider.rows[0], {
+        action: 'status',
+        order: order.upstream_order_id
+      }, 'POST');
       const body = response.data;
+      if (body?.error) {
+        console.error(`Upstream status check rejected for order ${order.id}: ${body.error}`);
+        continue;
+      }
       const payload = body?.data ?? body?.order ?? body;
       const raw = String(payload?.status ?? body?.status ?? (typeof payload === 'string' ? payload : '')).trim();
-      if (!raw) continue;
+      if (!raw) {
+        console.error(`Upstream status response for order ${order.id} did not contain a status.`);
+        continue;
+      }
 
       const statusMap = {
         pending: 'Pending',
