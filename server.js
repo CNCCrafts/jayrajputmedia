@@ -1136,6 +1136,22 @@ async function refreshUpstreamOrderStatus(orderId = null, userId = null) {
   return checked;
 }
 
+async function autoCompleteTimedOutOrders() {
+  const updated = await pool.query(`
+    UPDATE orders
+    SET status = 'Completed'
+    WHERE status IN ('Awaiting', 'Pending', 'Processing', 'In Progress', 'Inprogress', 'In progress', 'Partial')
+      AND created_at <= CURRENT_TIMESTAMP - CASE
+        WHEN quantity >= 50000 THEN INTERVAL '4 hours'
+        ELSE INTERVAL '30 minutes'
+      END
+  `);
+
+  if (updated.rowCount) {
+    console.log(`Auto-completed ${updated.rowCount} timed-out order(s).`);
+  }
+}
+
 app.post('/api/admin/providers/sync-all', authenticateToken, requireAdmin, async (req, res) => {
   const providers = await pool.query("SELECT * FROM upstream_providers WHERE status = 'active'").rows;
   const results = [];
@@ -2811,6 +2827,10 @@ app.get('*', (req, res) => {
 // Initialize database and start server
 initDb().then(initializeAppData).then(() => {
   console.log('Database initialized successfully');
+  autoCompleteTimedOutOrders().catch((err) => console.error('Order auto-completion error:', err.message));
+  setInterval(() => {
+    autoCompleteTimedOutOrders().catch((err) => console.error('Order auto-completion error:', err.message));
+  }, 60000);
   app.listen(PORT, () => {
     console.log(`🚀 Jay Rajput Media Power Server live on http://localhost:${PORT}`);
     console.log(`💳 Cashfree return/webhook origin: ${PUBLIC_URL}`);
