@@ -702,7 +702,9 @@ app.post('/api/orders/create', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/orders/my-orders', authenticateToken, async (req, res) => {
+  await autoCompleteTimedOutOrders(req.user.id);
   const orders = await pool.query('SELECT * FROM orders WHERE user_id = $1 ORDER BY id DESC', [req.user.id]);
+  res.setHeader('Cache-Control', 'no-store');
   res.json(orders.rows);
 });
 
@@ -1136,16 +1138,17 @@ async function refreshUpstreamOrderStatus(orderId = null, userId = null) {
   return checked;
 }
 
-async function autoCompleteTimedOutOrders() {
+async function autoCompleteTimedOutOrders(userId = null) {
   const updated = await pool.query(`
     UPDATE orders
     SET status = 'Completed'
     WHERE status IN ('Awaiting', 'Pending', 'Processing', 'In Progress', 'Inprogress', 'In progress', 'Partial')
+      AND ($1::integer IS NULL OR user_id = $1)
       AND created_at <= CURRENT_TIMESTAMP - CASE
         WHEN quantity >= 50000 THEN INTERVAL '4 hours'
         ELSE INTERVAL '30 minutes'
       END
-  `);
+  `, [userId]);
 
   if (updated.rowCount) {
     console.log(`Auto-completed ${updated.rowCount} timed-out order(s).`);

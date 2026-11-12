@@ -1732,6 +1732,9 @@
       document.querySelectorAll('.content-section').forEach(sec => sec.classList.add('hidden'));
       const target = document.getElementById('section-' + sectionId);
       if (target) target.classList.remove('hidden');
+      if (sectionId === 'orders') {
+        loadUserOrders().catch(err => console.error('Could not load order history:', err));
+      }
       sidebarDrawer.classList.add('-translate-x-full');
       sidebarOverlay.classList.add('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2769,7 +2772,8 @@
       const token = getAuthToken();
       if (!token) return;
       const res = await fetch('/api/orders/my-orders', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}` },
+        cache: 'no-store'
       });
       const orders = await res.json();
       const tbody = document.getElementById('ordersTableBody');
