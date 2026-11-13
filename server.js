@@ -485,6 +485,15 @@ app.post('/api/auth/register', async (req, res) => {
   if (!name || !email || !password) return res.status(400).json({ error: 'All fields are required.' });
 
   try {
+    const referralCode = typeof referral_code === 'string' ? referral_code.trim().toUpperCase() : '';
+    if (referralCode) {
+      const referrer = await pool.query(
+        `SELECT id FROM users WHERE referral_code = $1 AND role = 'user'`,
+        [referralCode]
+      );
+      if (!referrer.rows.length) return res.status(400).json({ error: 'Referral code is not valid.' });
+    }
+
     console.log('Register attempt for:', email);
     const existing = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (existing.rows.length) return res.status(400).json({ error: 'Email already registered.' });
@@ -494,7 +503,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     const stmt = await pool.query(
       `INSERT INTO users (name, email, password, referral_code, referred_by) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [name, email, hash, myRefCode, referral_code || null]
+      [name, email, hash, myRefCode, referralCode || null]
     );
 
     const userId = stmt.rows[0].id;
@@ -553,7 +562,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '144460065869-cj42bposv
 const googleAuthClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 app.post('/api/auth/google', async (req, res) => {
-  const { credential } = req.body;
+  const { credential, referral_code } = req.body;
   if (typeof credential !== 'string' || !credential) {
     return res.status(400).json({ error: 'This page is out of date. Refresh it and try Google Sign-In again.' });
   }
@@ -589,9 +598,17 @@ app.post('/api/auth/google', async (req, res) => {
 
     if (!user.rows.length) {
       const myRefCode = 'JR' + Math.random().toString(36).substring(2, 7).toUpperCase();
+      const referralCode = typeof referral_code === 'string' ? referral_code.trim().toUpperCase() : '';
+      if (referralCode) {
+        const referrer = await pool.query(
+          `SELECT id FROM users WHERE referral_code = $1 AND role = 'user'`,
+          [referralCode]
+        );
+        if (!referrer.rows.length) return res.status(400).json({ error: 'Referral code is not valid.' });
+      }
       const info = await pool.query(
-        `INSERT INTO users (name, email, google_id, role, referral_code) VALUES ($1, $2, $3, 'user', $4) RETURNING id`,
-        [identity.name || email.split('@')[0], email, identity.sub, myRefCode]
+        `INSERT INTO users (name, email, google_id, role, referral_code, referred_by) VALUES ($1, $2, $3, 'user', $4, $5) RETURNING id`,
+        [identity.name || email.split('@')[0], email, identity.sub, myRefCode, referralCode || null]
       );
       const newUserId = info.rows[0].id;
       user = await pool.query('SELECT * FROM users WHERE id = $1', [newUserId]);
@@ -1634,6 +1651,57 @@ app.get('/api/admin/dashboard', authenticateToken, requireAdmin, async (req, res
 });
 
 // ==================== ADMIN USERS ====================
+app.get('/api/admin/referrals', authenticateToken, requireAdmin, async (req, res) => {
+  const [referrals, referrers] = await Promise.all([
+    pool.query(
+      `SELECT referred.id, referred.name, referred.email, referred.referral_code, referred.referred_by, referred.created_at,
+              referrer.name AS referrer_name, referrer.email AS referrer_email
+       FROM users referred
+       JOIN users referrer ON referrer.referral_code = referred.referred_by
+       WHERE referred.role = 'user' AND referrer.role = 'user'
+       ORDER BY referred.created_at DESC, referred.id DESC`
+    ),
+    pool.query(
+      `SELECT id, name, email, referral_code
+       FROM users
+       WHERE role = 'user' AND referral_code IS NOT NULL
+       ORDER BY name ASC, id ASC`
+    )
+  ]);
+  res.json({ referrals: referrals.rows, referrers: referrers.rows });
+});
+
+app.put('/api/admin/referrals/:id', authenticateToken, requireAdmin, async (req, res) => {
+  if (!/^[1-9]\d*$/.test(String(req.params.id))) {
+    return res.status(400).json({ error: 'Referral user ID must be a positive integer.' });
+  }
+  const referralCode = typeof req.body.referral_code === 'string'
+    ? req.body.referral_code.trim().toUpperCase()
+    : '';
+  const referredUser = await pool.query(
+    `SELECT id FROM users WHERE id = $1 AND role = 'user'`,
+    [req.params.id]
+  );
+  if (!referredUser.rows.length) return res.status(404).json({ error: 'Referred user not found.' });
+
+  if (!referralCode) {
+    await pool.query('UPDATE users SET referred_by = NULL WHERE id = $1', [req.params.id]);
+    return res.json({ success: true, referred_by: null });
+  }
+
+  const referrer = await pool.query(
+    `SELECT id FROM users WHERE referral_code = $1 AND role = 'user'`,
+    [referralCode]
+  );
+  if (!referrer.rows.length) return res.status(400).json({ error: 'Referral code is not valid.' });
+  if (Number(referrer.rows[0].id) === Number(req.params.id)) {
+    return res.status(400).json({ error: 'A user cannot refer themselves.' });
+  }
+
+  await pool.query('UPDATE users SET referred_by = $1 WHERE id = $2', [referralCode, req.params.id]);
+  res.json({ success: true, referred_by: referralCode });
+});
+
 app.get('/api/admin/users', authenticateToken, requireAdmin, async (req, res) => {
   const { q, page = 1, limit = 50 } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(limit);

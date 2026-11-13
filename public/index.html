@@ -258,7 +258,8 @@
     @media (prefers-reduced-motion: reduce) {
       .referral-gift-icon { animation: none; }
     }
-    #metaVerifiedBadge {
+    #metaVerifiedBadge,
+    #quickOrderMetaBadge {
       color: #1877F2 !important;
       background-color: #eff6ff !important;
       border-color: #bfdbfe !important;
@@ -1094,7 +1095,12 @@
     <!-- Quick Order Form for Logged-In Users -->
     <section id="section-quick-order" class="content-section space-y-6">
       <div class="max-w-4xl mx-auto bg-white dark:bg-darkCard p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard">
-        <div class="flex items-center space-x-3 mb-6 pb-4 border-b border-slate-200 dark:border-darkBorder">
+        <div class="flex flex-wrap items-center gap-3 mb-6 pb-4 border-b border-slate-200 dark:border-darkBorder">
+          <div id="quickOrderMetaBadge" class="inline-flex items-center gap-1.5 px-2.5 py-1 border text-[10px] sm:text-xs font-bold rounded-full whitespace-nowrap">
+            <i class="fa-brands fa-meta" aria-hidden="true"></i>
+            <span>100% Meta verified services</span>
+            <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
+          </div>
           <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-pink-500 flex items-center justify-center text-white">
             <i class="fa-solid fa-bolt"></i>
           </div>
@@ -1912,6 +1918,11 @@
       const toggleBtn = document.getElementById('authToggleBtn');
 
       if (mode === 'signup') {
+        const linkedReferralCode = new URLSearchParams(window.location.search).get('ref');
+        const referralInput = document.getElementById('authReferral');
+        if (linkedReferralCode && !referralInput.value.trim()) {
+          referralInput.value = linkedReferralCode.trim().toUpperCase();
+        }
         title.innerText = 'Create Account';
         nameGrp.classList.remove('hidden');
         refGrp.classList.remove('hidden');
@@ -2049,7 +2060,10 @@
         const res = await fetch('/api/auth/google', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ credential })
+          body: JSON.stringify({
+            credential,
+            referral_code: currentAuthMode === 'signup' ? document.getElementById('authReferral').value : ''
+          })
         });
         const data = await res.json();
         if (!res.ok) return alert('Google Sign-In Error: ' + (data.error || 'Sign-in failed.'));

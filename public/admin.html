@@ -201,6 +201,9 @@
             <button onclick="switchAdminTab('users')" data-tab="users" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
               <i class="fa-solid fa-users w-5 text-emerald-400"></i><span>Users</span>
             </button>
+            <button onclick="switchAdminTab('referrals')" data-tab="referrals" class="admin-nav-btn w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
+              <i class="fa-solid fa-user-group w-5 text-violet-400"></i><span>Referrals</span>
+            </button>
             <button onclick="switchAdminTab('services')" data-tab="services" class="admin-nav-btn active w-full flex items-center space-x-3 px-4 py-3 rounded-2xl text-sm font-bold transition text-left">
               <i class="fa-solid fa-box-open w-5"></i><span>Services</span>
             </button>
@@ -277,6 +280,26 @@
               </table>
             </div>
             <div id="usersPagination" class="flex justify-between items-center mt-3 text-xs text-slate-400"></div>
+          </section>
+        </div>
+
+        <!-- Referrals Tab -->
+        <div id="admin-tab-referrals" class="admin-tab-panel hidden">
+          <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 pb-3 border-b border-slate-800">
+              <div>
+                <h2 class="text-lg font-bold text-white flex items-center gap-2"><i class="fa-solid fa-user-group text-violet-400"></i><span>Successful Referrals</span></h2>
+                <p id="referralsSummary" class="text-xs text-slate-400 mt-1">Loading referrals...</p>
+                <p class="text-[11px] text-slate-500 mt-1">A referral is successful once a new account signs up with a valid referral code.</p>
+              </div>
+              <button onclick="loadReferrals()" class="px-3 py-2 bg-violet-700 text-white rounded-xl text-xs font-bold hover:bg-violet-600"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-sm text-slate-300">
+                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800"><tr><th class="p-3">Referred User</th><th class="p-3">Referrer</th><th class="p-3">Joined</th><th class="p-3">Manage Referrer</th></tr></thead>
+                <tbody id="referralsTbody" class="divide-y divide-slate-800"></tbody>
+              </table>
+            </div>
           </section>
         </div>
 
@@ -1762,6 +1785,61 @@
       }
     }
 
+    async function loadReferrals() {
+      const token = localStorage.getItem('jr_admin_token');
+      const tbody = document.getElementById('referralsTbody');
+      const summary = document.getElementById('referralsSummary');
+      tbody.innerHTML = '<tr><td colspan="4" class="p-3 text-xs">Loading referrals...</td></tr>';
+      try {
+        const response = await fetch('/api/admin/referrals', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load referrals.');
+
+        const referrers = data.referrers || [];
+        const referrals = data.referrals || [];
+        summary.textContent = `${referrals.length} successful referral signup(s)`;
+        tbody.innerHTML = referrals.map((referral) => {
+          const options = ['<option value="">No referrer</option>']
+            .concat(referrers
+              .filter((referrer) => Number(referrer.id) !== Number(referral.id))
+              .map((referrer) => `<option value="${escapeHtml(referrer.referral_code)}" ${referrer.referral_code === referral.referred_by ? 'selected' : ''}>${escapeHtml(referrer.name || referrer.email)} (${escapeHtml(referrer.referral_code)})</option>`))
+            .join('');
+          return `<tr>
+            <td class="p-3 text-xs">${escapeHtml(referral.name || '')}<br>${escapeHtml(referral.email || '')}</td>
+            <td class="p-3 text-xs">${escapeHtml(referral.referrer_name || '')}<br>${escapeHtml(referral.referrer_email || '')}<br><span class="font-mono text-slate-400">${escapeHtml(referral.referred_by || '')}</span></td>
+            <td class="p-3 text-xs">${referral.created_at ? new Date(referral.created_at).toLocaleDateString() : ''}</td>
+            <td class="p-3 text-xs"><div class="flex min-w-[240px] gap-2">
+              <select id="referrerSelect-${Number(referral.id)}" class="min-w-0 flex-1 bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white">${options}</select>
+              <button onclick="saveReferral(${Number(referral.id)})" class="px-2 py-1.5 bg-violet-700 text-white font-bold rounded-lg hover:bg-violet-600">Save</button>
+            </div></td>
+          </tr>`;
+        }).join('') || '<tr><td colspan="4" class="p-3 text-xs">No successful referrals found.</td></tr>';
+      } catch (error) {
+        console.error(error);
+        summary.textContent = 'Could not load referrals.';
+        tbody.innerHTML = `<tr><td colspan="4" class="p-3 text-xs text-red-300">${escapeHtml(error.message)}</td></tr>`;
+      }
+    }
+
+    async function saveReferral(userId) {
+      const token = localStorage.getItem('jr_admin_token');
+      const referralCode = document.getElementById(`referrerSelect-${userId}`).value;
+      try {
+        const response = await fetch(`/api/admin/referrals/${userId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ referral_code: referralCode })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not update referral.');
+        await loadReferrals();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
     async function loadPayments() {
       const token = localStorage.getItem('jr_admin_token');
       try {
@@ -2441,6 +2519,7 @@
       if (tabName === 'uploads') { loadServiceImages(); loadAdminServices(); }
       if (tabName === 'dashboard') loadDashboard();
       if (tabName === 'users') loadUsers();
+      if (tabName === 'referrals') loadReferrals();
       if (tabName === 'payments') loadPayments();
       if (tabName === 'tickets') loadTickets();
       if (tabName === 'appearance') loadAppearance();
