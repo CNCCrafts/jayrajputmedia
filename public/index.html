@@ -2370,7 +2370,14 @@
       toggle.setAttribute('aria-haspopup', 'listbox');
       toggle.setAttribute('aria-expanded', 'false');
       const selectedLabel = selectedCategory === 'all' ? 'All Categories' : selectedCategory;
-      toggle.append(document.createTextNode(selectedLabel || 'Select a category'));
+      const selectedContent = document.createElement('span');
+      selectedContent.className = 'flex min-w-0 flex-1 items-center gap-2';
+      selectedContent.append(createCategoryPlatformIcon(selectedCategory));
+      const selectedText = document.createElement('span');
+      selectedText.className = 'min-w-0 flex-1 truncate';
+      selectedText.textContent = selectedLabel || 'Select a category';
+      selectedContent.append(selectedText);
+      toggle.append(selectedContent);
       const chevron = document.createElement('i');
       chevron.className = 'fa-solid fa-chevron-down ml-3 text-xs text-slate-500 transition-transform';
       chevron.setAttribute('aria-hidden', 'true');
@@ -2385,7 +2392,14 @@
         option.setAttribute('role', 'option');
         option.setAttribute('aria-selected', String(category === selectedCategory));
         option.className = `block w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition hover:bg-blue-50 hover:text-fbBlue ${category === selectedCategory ? 'bg-blue-50 text-fbBlue' : 'text-slate-700'}`;
-        option.textContent = category === 'all' ? 'All Categories' : category;
+        const content = document.createElement('span');
+        content.className = 'flex min-w-0 items-center gap-2';
+        content.append(createCategoryPlatformIcon(category));
+        const text = document.createElement('span');
+        text.className = 'min-w-0 flex-1 truncate';
+        text.textContent = category === 'all' ? 'All Categories' : category;
+        content.append(text);
+        option.append(content);
         option.addEventListener('click', () => {
           options.classList.add('hidden');
           toggle.setAttribute('aria-expanded', 'false');
@@ -2402,6 +2416,17 @@
       });
       wrapper.append(toggle, options);
       container.append(wrapper);
+    }
+
+    function createCategoryPlatformIcon(category) {
+      if (category !== 'all') return createServicePlatformIcon({ category });
+      const wrapper = document.createElement('span');
+      wrapper.className = 'inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-sm text-slate-600';
+      wrapper.setAttribute('aria-hidden', 'true');
+      const icon = document.createElement('i');
+      icon.className = 'fa-solid fa-layer-group';
+      wrapper.append(icon);
+      return wrapper;
     }
 
     function getServicePlatform(service) {
