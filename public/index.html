@@ -2404,6 +2404,61 @@
       container.append(wrapper);
     }
 
+    function getServicePlatform(service) {
+      const source = [service?.category, service?.name, service?.description]
+        .filter(value => typeof value === 'string')
+        .join(' ')
+        .toLowerCase();
+      const platforms = [
+        { name: 'instagram', match: /\b(instagram|insta|ig)\b/, icon: 'fa-brands fa-instagram', color: 'bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 text-white', aliases: 'instagram insta ig' },
+        { name: 'facebook', match: /\b(facebook|fb|meta)\b/, icon: 'fa-brands fa-facebook-f', color: 'bg-blue-600 text-white', aliases: 'facebook fb meta' },
+        { name: 'youtube', match: /\b(youtube|you tube|yt)\b/, icon: 'fa-brands fa-youtube', color: 'bg-red-600 text-white', aliases: 'youtube you tube yt' },
+        { name: 'tiktok', match: /\b(tiktok|tik tok|tt)\b/, icon: 'fa-brands fa-tiktok', color: 'bg-slate-950 text-white', aliases: 'tiktok tik tok tt' },
+        { name: 'telegram', match: /\btelegram\b/, icon: 'fa-brands fa-telegram', color: 'bg-sky-500 text-white', aliases: 'telegram tg' },
+        { name: 'whatsapp', match: /\bwhatsapp\b/, icon: 'fa-brands fa-whatsapp', color: 'bg-emerald-500 text-white', aliases: 'whatsapp' },
+        { name: 'twitter', match: /\b(twitter|tweet|x|x\.com)\b/, icon: 'fa-brands fa-x-twitter', color: 'bg-slate-950 text-white', aliases: 'twitter tweet x' },
+        { name: 'linkedin', match: /\blinkedin\b/, icon: 'fa-brands fa-linkedin-in', color: 'bg-sky-700 text-white', aliases: 'linkedin' },
+        { name: 'snapchat', match: /\bsnapchat\b/, icon: 'fa-brands fa-snapchat', color: 'bg-yellow-300 text-slate-950', aliases: 'snapchat snap' },
+        { name: 'spotify', match: /\bspotify\b/, icon: 'fa-brands fa-spotify', color: 'bg-green-600 text-white', aliases: 'spotify' },
+        { name: 'pinterest', match: /\bpinterest\b/, icon: 'fa-brands fa-pinterest-p', color: 'bg-red-700 text-white', aliases: 'pinterest pin' },
+        { name: 'threads', match: /\bthreads\b/, icon: 'fa-solid fa-at', color: 'bg-slate-950 text-white', aliases: 'threads' }
+      ];
+      return platforms.find(platform => platform.match.test(source)) || {
+        name: 'other',
+        icon: 'fa-solid fa-globe',
+        color: 'bg-slate-200 text-slate-600',
+        aliases: 'social media service'
+      };
+    }
+
+    function createServicePlatformIcon(service) {
+      const platform = getServicePlatform(service);
+      const wrapper = document.createElement('span');
+      wrapper.className = `inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm ${platform.color}`;
+      wrapper.setAttribute('aria-hidden', 'true');
+      const icon = document.createElement('i');
+      icon.className = platform.icon;
+      wrapper.append(icon);
+      return wrapper;
+    }
+
+    function getServiceSearchIndex(service, fallback = '') {
+      const platform = getServicePlatform(service);
+      return [
+        fallback,
+        service?.category,
+        service?.name,
+        service?.description,
+        platform.name,
+        platform.aliases
+      ].filter(value => typeof value === 'string').join(' ').toLowerCase();
+    }
+
+    function serviceMatchesQuery(searchIndex, query) {
+      const terms = String(query || '').trim().toLowerCase().split(/\s+/).filter(Boolean);
+      return terms.every(term => searchIndex.includes(term));
+    }
+
     function renderServiceDropdown(selectId, containerId) {
       const select = document.getElementById(selectId);
       const container = document.getElementById(containerId);
@@ -2422,14 +2477,9 @@
       const selectedOption = getSelectedOption();
       const label = document.createElement('span');
       label.className = 'flex min-w-0 flex-1 items-center gap-2';
-      const includeAppLogo = containerId === 'quickServiceDropdown';
-      if (includeAppLogo) {
-        const logo = document.createElement('img');
-        logo.src = '/logo.png';
-        logo.alt = '';
-        logo.className = 'h-6 w-6 shrink-0 rounded-full object-cover';
-        logo.setAttribute('aria-hidden', 'true');
-        label.append(logo);
+      const includePlatformIcon = containerId === 'quickServiceDropdown';
+      if (includePlatformIcon && selectedOption?.value) {
+        label.append(createServicePlatformIcon(getSelectedQuickOrderService()));
       }
       const labelText = document.createElement('span');
       labelText.className = 'min-w-0 flex-1 truncate';
@@ -2460,17 +2510,17 @@
         option.type = 'button';
         option.setAttribute('role', 'option');
         option.setAttribute('aria-selected', String(sourceOption.value === select.value));
-        option.dataset.searchText = sourceOption.textContent.toLowerCase();
+        const service = includePlatformIcon
+          ? importedServices.find(item => String(item.id) === sourceOption.value)
+          : null;
+        option.dataset.searchText = includePlatformIcon
+          ? getServiceSearchIndex(service, sourceOption.textContent)
+          : sourceOption.textContent.toLowerCase();
         option.className = `block w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition hover:bg-blue-50 hover:text-fbBlue ${sourceOption.value === select.value ? 'bg-blue-50 text-fbBlue' : 'text-slate-700'}`;
         const optionContent = document.createElement('span');
         optionContent.className = 'flex min-w-0 items-center gap-2';
-        if (includeAppLogo && sourceOption.value) {
-          const logo = document.createElement('img');
-          logo.src = '/logo.png';
-          logo.alt = '';
-          logo.className = 'h-6 w-6 shrink-0 rounded-full object-cover';
-          logo.setAttribute('aria-hidden', 'true');
-          optionContent.append(logo);
+        if (includePlatformIcon && sourceOption.value) {
+          optionContent.append(createServicePlatformIcon(service));
         }
         const optionText = document.createElement('span');
         optionText.className = 'min-w-0 flex-1';
@@ -2482,6 +2532,14 @@
           select.value = sourceOption.value;
           toggle.setAttribute('aria-expanded', 'false');
           menu.classList.add('hidden');
+          label.replaceChildren();
+          const selectedService = includePlatformIcon
+            ? importedServices.find(item => String(item.id) === sourceOption.value)
+            : null;
+          if (includePlatformIcon && selectedService) {
+            label.append(createServicePlatformIcon(selectedService));
+          }
+          label.append(labelText);
           labelText.textContent = sourceOption.textContent.trim();
           select.dispatchEvent(new Event('change'));
         });
@@ -2498,7 +2556,7 @@
       search.addEventListener('input', () => {
         const query = search.value.trim().toLowerCase();
         optionList.querySelectorAll('[role="option"]').forEach(option => {
-          option.classList.toggle('hidden', !option.dataset.searchText.includes(query));
+          option.classList.toggle('hidden', !serviceMatchesQuery(option.dataset.searchText, query));
         });
       });
       toggle.addEventListener('click', () => {
@@ -2843,7 +2901,7 @@
     }
 
     function filterQuickServices(query) {
-      const q = query.toLowerCase();
+      const q = String(query || '').trim().toLowerCase();
       let filtered = importedServices.slice();
 
       if (quickOrderCategory !== 'all') {
@@ -2851,7 +2909,7 @@
       }
 
       if (q) {
-        filtered = filtered.filter(s => s.name.toLowerCase().includes(q) || s.category.toLowerCase().includes(q));
+        filtered = filtered.filter(service => serviceMatchesQuery(getServiceSearchIndex(service), q));
       }
 
       const select = document.getElementById('quickServiceSelect');
