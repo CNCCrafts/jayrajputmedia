@@ -333,7 +333,7 @@
               <!-- All package fields -->
               <div class="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4 content-start">
                 <div>
-                  <label for="svcCategory" class="text-xs uppercase font-bold text-slate-400 block mb-1">In-House Category</label>
+                  <label for="svcCategory" class="text-xs uppercase font-bold text-slate-400 block mb-1">Service Category</label>
                   <div class="relative group">
                     <i class="fa-solid fa-layer-group absolute left-4 top-1/2 -translate-y-1/2 text-gold pointer-events-none"></i>
                     <select id="svcCategory" required aria-describedby="svcCategoryHint" class="w-full appearance-none bg-white border border-slate-300 rounded-xl py-3 pl-11 pr-11 text-slate-900 shadow-sm outline-none transition duration-200 hover:border-slate-400 focus:border-gold focus:ring-4 focus:ring-gold/10 cursor-pointer">
@@ -367,6 +367,13 @@
                 <div class="sm:col-span-2">
                   <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Package Description & Specifications</label>
                   <input type="text" id="svcDesc" required placeholder="Instant start speed, 30 days refill button enabled" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+                </div>
+                <div id="svcStatusGroup" class="hidden">
+                  <label for="svcStatus" class="text-xs uppercase font-bold text-slate-400 block mb-1">Service Status</label>
+                  <select id="svcStatus" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
                 </div>
               </div>
 
@@ -426,7 +433,7 @@
                   <i class="fa-solid fa-copy mr-1"></i> Remove In-House Duplicates
                 </button>
               </div>
-              <span class="text-[10px] text-slate-500">Duplicates are detected by matching name + category</span>
+              <span class="text-[10px] text-slate-500">Edit imported services here; saved overrides are preserved during provider imports.</span>
             </div>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <section class="min-w-0 rounded-2xl border border-slate-800 overflow-hidden">
@@ -698,15 +705,31 @@
           <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
             <div class="mb-6 border-b border-slate-800 pb-3">
               <h2 class="flex items-center gap-2 text-lg font-bold text-white"><i class="fa-solid fa-newspaper text-cyan-400"></i><span>Home Page Content</span></h2>
-              <p class="mt-1 text-xs text-slate-400">Edit the latest-news list on the home page and the disclaimer below Quick Order.</p>
+              <p class="mt-1 text-xs text-slate-400">Set a guest-only homepage banner, edit Latest News, and update the Quick Order disclaimer.</p>
             </div>
             <p id="homeContentStatus" class="hidden mb-5 rounded-xl border px-3 py-2 text-xs" role="status" aria-live="polite"></p>
             <form id="homeContentForm" onsubmit="saveHomeContent(event)" class="space-y-5">
               <label class="block text-xs font-bold text-slate-300">
                 Latest News
-                <span class="mt-1 block font-normal text-slate-400">Add one announcement per line. Leave empty to hide the section.</span>
+                <span class="mt-1 block font-normal text-slate-400">Shown to signed-in users when available. Add one announcement per line.</span>
                 <textarea id="homeLatestNewsInput" maxlength="5000" rows="7" placeholder="New services are now available&#10;Check out this week's offers" class="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-white outline-none focus:border-cyan-500"></textarea>
               </label>
+              <div>
+                <label class="block text-xs font-bold text-slate-300 mb-2">Homepage Banner for Visitors</label>
+                <p class="text-[11px] text-slate-400 mb-3">Visitors who are not signed in see this banner in the Latest News area. Upload an image up to 8 MB.</p>
+                <input type="hidden" id="homeBannerImageInput">
+                <div id="homeBannerPreview" class="hidden mb-3 max-w-2xl overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
+                  <img id="homeBannerPreviewImage" alt="Homepage banner preview" class="max-h-72 w-full object-contain">
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <label class="cursor-pointer rounded-xl border border-dashed border-cyan-500/50 bg-cyan-500/10 px-4 py-3 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20">
+                    <i class="fa-solid fa-cloud-arrow-up mr-1"></i>Upload Banner Image
+                    <input type="file" id="homeBannerFile" accept="image/*" class="hidden">
+                  </label>
+                  <button type="button" onclick="clearHomeBanner()" class="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-300 hover:bg-red-500/20">Remove Banner</button>
+                </div>
+                <p id="homeBannerUploadStatus" class="hidden mt-2 text-xs text-cyan-300" role="status" aria-live="polite"></p>
+              </div>
               <label class="block text-xs font-bold text-slate-300">
                 Quick Order Disclaimer
                 <span class="mt-1 block font-normal text-slate-400">Shown directly below the Quick Order form. Leave empty to hide it.</span>
@@ -1437,7 +1460,7 @@
               ? `<span class="text-gold font-bold">${(providersList.find(p => p.id === s.provider_id) || {}).name || 'Provider'}</span>`
               : '<span class="text-slate-500">Own</span>'}</td>
             <td class="p-3 text-center space-x-2">
-              ${!s.provider_id ? `<button onclick="startEditService(${s.id})" class="px-3 py-1 bg-brandBlue/20 text-brandBlue border border-brandBlue/30 rounded-lg text-xs hover:bg-brandBlue hover:text-white transition">Edit</button>` : ''}
+              <button onclick="startEditService(${s.id})" class="px-3 py-1 bg-brandBlue/20 text-brandBlue border border-brandBlue/30 rounded-lg text-xs hover:bg-brandBlue hover:text-white transition">Edit</button>
               <button onclick="deleteService(${s.id})" class="px-3 py-1 bg-red-600/20 text-red-400 border border-red-500/30 rounded-lg text-xs hover:bg-red-600 hover:text-white transition">Delete</button>
             </td>
           </tr>
@@ -1462,7 +1485,7 @@
         max_quantity: parseInt(document.getElementById('svcMax').value),
         description: document.getElementById('svcDesc').value,
         image: document.getElementById('svcImage').value,
-        status: 'active'
+        status: document.getElementById('svcStatus').value || 'active'
       };
 
       const url = editId ? `/api/admin/services/${editId}` : '/api/admin/services';
@@ -1481,25 +1504,35 @@
       loadAdminServices();
     }
 
-    function startEditService(id) {
+    async function startEditService(id) {
       const s = adminServicesList.find(item => item.id === id);
-      if (!s || s.provider_id) return;
+      if (!s) return;
 
-      loadServiceImages();
+      await loadServiceImages();
       document.getElementById('editServiceId').value = s.id;
-      document.getElementById('svcCategory').value = s.category;
+      const categorySelect = document.getElementById('svcCategory');
+      if (![...categorySelect.options].some(option => option.value === s.category)) {
+        categorySelect.add(new Option(s.category, s.category));
+      }
+      categorySelect.value = s.category;
       document.getElementById('svcName').value = s.name;
       document.getElementById('svcRate').value = s.rate_per_1000;
       document.getElementById('svcMin').value = s.min_quantity;
       document.getElementById('svcMax').value = s.max_quantity;
       document.getElementById('svcDesc').value = s.description;
+      document.getElementById('svcStatus').value = s.status || 'active';
+      document.getElementById('svcStatusGroup').classList.toggle('hidden', !s.provider_id);
       document.getElementById('svcInlineFile').value = '';
       document.getElementById('svcLocalPreviewWrap').classList.add('hidden');
-      document.getElementById('svcImage').value = s.image || '';
+      const imageSelect = document.getElementById('svcImage');
+      if (s.image && ![...imageSelect.options].some(option => option.value === s.image)) {
+        imageSelect.add(new Option('Current image', s.image));
+      }
+      imageSelect.value = s.image || '';
       updateImagePreview();
 
-      document.getElementById('formHeading').innerHTML = `<i class="fa-solid fa-pen-to-square"></i><span>Edit In-House Package #${s.id}</span>`;
-      document.getElementById('submitBtn').innerText = 'Update In-House Package';
+      document.getElementById('formHeading').innerHTML = `<i class="fa-solid fa-pen-to-square"></i><span>Edit ${s.provider_id ? 'Provider Service' : 'In-House Package'} #${s.id}</span>`;
+      document.getElementById('submitBtn').innerText = `Update ${s.provider_id ? 'Provider Service' : 'In-House Package'}`;
       document.getElementById('cancelEditBtn').classList.remove('hidden');
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1509,6 +1542,8 @@
       document.getElementById('editServiceId').value = '';
       document.getElementById('svcInlineFile').value = '';
       document.getElementById('svcLocalPreviewWrap').classList.add('hidden');
+      document.getElementById('svcStatusGroup').classList.add('hidden');
+      document.getElementById('svcStatus').value = 'active';
       document.getElementById('formHeading').innerHTML = `<i class="fa-solid fa-circle-plus"></i><span>Add New In-House Package</span>`;
       document.getElementById('submitBtn').innerText = 'Save & Publish In-House Package';
       document.getElementById('cancelEditBtn').classList.add('hidden');
@@ -2090,6 +2125,55 @@
       status.className = `mb-5 rounded-xl border px-3 py-2 text-xs ${isError ? 'bg-red-500/10 text-red-300 border-red-500/30' : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30'}`;
     }
 
+    function setHomeBannerPreview(url) {
+      const preview = document.getElementById('homeBannerPreview');
+      const image = document.getElementById('homeBannerPreviewImage');
+      document.getElementById('homeBannerImageInput').value = url || '';
+      image.src = url || '';
+      preview.classList.toggle('hidden', !url);
+    }
+
+    async function handleHomeBannerUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const status = document.getElementById('homeBannerUploadStatus');
+      if (file.size > 8 * 1024 * 1024) {
+        status.textContent = 'Choose an image smaller than 8 MB.';
+        status.className = 'mt-2 text-xs text-red-300';
+        status.classList.remove('hidden');
+        event.target.value = '';
+        return;
+      }
+
+      status.textContent = 'Uploading banner image...';
+      status.className = 'mt-2 text-xs text-cyan-300';
+      status.classList.remove('hidden');
+      try {
+        const imageData = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = () => reject(new Error('Could not read the selected image.'));
+          reader.readAsDataURL(file);
+        });
+        const url = await uploadToCloudinary(imageData);
+        setHomeBannerPreview(url);
+        status.textContent = 'Banner uploaded. Save Home Page Content to publish it.';
+      } catch (error) {
+        status.textContent = error.message;
+        status.className = 'mt-2 text-xs text-red-300';
+      } finally {
+        event.target.value = '';
+      }
+    }
+
+    function clearHomeBanner() {
+      setHomeBannerPreview('');
+      const status = document.getElementById('homeBannerUploadStatus');
+      status.textContent = 'Banner removed. Save Home Page Content to publish the change.';
+      status.className = 'mt-2 text-xs text-slate-400';
+      status.classList.remove('hidden');
+    }
+
     async function loadHomeContent() {
       try {
         const response = await fetch('/api/admin/settings/home-content', {
@@ -2099,6 +2183,7 @@
         if (!response.ok) throw new Error(data.error || 'Could not load home page content.');
         document.getElementById('homeLatestNewsInput').value = data.latest_news || '';
         document.getElementById('quickOrderDisclaimerInput').value = data.quick_order_disclaimer || '';
+        setHomeBannerPreview(data.banner_image || '');
       } catch (error) {
         setHomeContentStatus(error.message, true);
       }
@@ -2117,7 +2202,8 @@
           },
           body: JSON.stringify({
             latest_news: document.getElementById('homeLatestNewsInput').value,
-            quick_order_disclaimer: document.getElementById('quickOrderDisclaimerInput').value
+            quick_order_disclaimer: document.getElementById('quickOrderDisclaimerInput').value,
+            banner_image: document.getElementById('homeBannerImageInput').value
           })
         });
         const data = await response.json();
@@ -2129,6 +2215,8 @@
         submit.disabled = false;
       }
     }
+
+    document.getElementById('homeBannerFile').addEventListener('change', handleHomeBannerUpload);
 
     function getThemePalette(theme) {
       try {

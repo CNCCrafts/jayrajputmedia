@@ -709,10 +709,15 @@
       </div>
 
       <section id="homeLatestNews" class="hidden rounded-3xl border border-blue-200 dark:border-blue-900 bg-white dark:bg-darkCard p-6 sm:p-8 shadow-socialCard" aria-labelledby="homeLatestNewsHeading">
-        <h2 id="homeLatestNewsHeading" class="mb-4 flex items-center gap-2 text-xl font-display font-black text-slate-900 dark:text-white">
-          <i class="fa-solid fa-bullhorn text-fbBlue" aria-hidden="true"></i><span>Latest News</span>
-        </h2>
-        <ul id="homeLatestNewsList" class="space-y-3 text-sm text-slate-700 dark:text-slate-300"></ul>
+        <div id="homeBanner" class="hidden">
+          <img id="homeBannerImage" alt="Homepage banner" class="max-h-[28rem] w-full rounded-2xl object-contain">
+        </div>
+        <div id="homeNewsContent">
+          <h2 id="homeLatestNewsHeading" class="mb-4 flex items-center gap-2 text-xl font-display font-black text-slate-900 dark:text-white">
+            <i class="fa-solid fa-bullhorn text-fbBlue" aria-hidden="true"></i><span>Latest News</span>
+          </h2>
+          <ul id="homeLatestNewsList" class="space-y-3 text-sm text-slate-700 dark:text-slate-300"></ul>
+        </div>
       </section>
 
       <div class="p-8 sm:p-14 rounded-3xl bg-white dark:bg-darkCard border border-slate-200/80 dark:border-darkBorder shadow-socialCard flex flex-col md:flex-row items-center justify-between gap-10 relative overflow-hidden transition-colors" id="heroBranding">
@@ -1540,12 +1545,59 @@
         <button type="submit" id="authSubmitBtn" class="w-full py-3.5 text-white font-display font-bold rounded-2xl meta-gradient-bg shadow-igGlow hover:opacity-95 transition">
           Sign In
         </button>
+        <button id="forgotPasswordLink" type="button" onclick="showForgotPassword()" class="hidden w-full text-center text-xs font-bold text-fbBlue dark:text-pink-400 hover:underline">
+          Forgot password?
+        </button>
       </form>
 
       <div class="text-center mt-5 text-xs text-slate-500">
         <span id="authToggleText">Don't have an account?</span>
         <button onclick="toggleAuthMode()" id="authToggleBtn" class="text-fbBlue dark:text-pink-400 font-bold ml-1 hover:underline">Create Account</button>
       </div>
+    </div>
+  </div>
+
+  <div id="forgotPasswordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] hidden flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-darkBorder dark:bg-darkCard">
+      <div class="mb-5 flex items-center justify-between">
+        <h3 class="text-xl font-display font-black text-slate-900 dark:text-white">Reset your password</h3>
+        <button type="button" onclick="closeForgotPassword()" class="text-lg text-slate-400 hover:text-slate-700 dark:hover:text-white" aria-label="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <p class="mb-4 text-xs text-slate-500 dark:text-slate-400">Enter your account email and we’ll send a password reset link if the account is eligible.</p>
+      <form onsubmit="requestPasswordReset(event)" class="space-y-4">
+        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">
+          Email Address
+          <input type="email" id="forgotPasswordEmail" required autocomplete="email" class="mt-1 w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+        </label>
+        <p id="forgotPasswordStatus" class="hidden rounded-xl border px-3 py-2 text-xs" role="status" aria-live="polite"></p>
+        <button id="forgotPasswordSubmit" type="submit" class="w-full rounded-2xl bg-slate-900 py-3 text-sm font-bold text-white hover:bg-slate-800 dark:bg-slate-700">Send Reset Link</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="resetPasswordModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[60] hidden flex items-center justify-center p-4">
+    <div class="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-darkBorder dark:bg-darkCard">
+      <div class="mb-5 flex items-center justify-between">
+        <h3 class="text-xl font-display font-black text-slate-900 dark:text-white">Choose a new password</h3>
+        <button type="button" onclick="closeResetPassword()" class="text-lg text-slate-400 hover:text-slate-700 dark:hover:text-white" aria-label="Close">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <form onsubmit="submitPasswordReset(event)" class="space-y-4">
+        <input type="hidden" id="resetPasswordToken">
+        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">
+          New Password
+          <input type="password" id="resetPasswordValue" required minlength="8" autocomplete="new-password" placeholder="At least 8 characters" class="mt-1 w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+        </label>
+        <label class="block text-xs font-bold text-slate-600 dark:text-slate-300">
+          Confirm New Password
+          <input type="password" id="resetPasswordConfirm" required minlength="8" autocomplete="new-password" class="mt-1 w-full rounded-2xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-900 outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white">
+        </label>
+        <p id="resetPasswordStatus" class="hidden rounded-xl border px-3 py-2 text-xs" role="status" aria-live="polite"></p>
+        <button id="resetPasswordSubmit" type="submit" class="w-full rounded-2xl bg-slate-900 py-3 text-sm font-bold text-white hover:bg-slate-800 dark:bg-slate-700">Update Password</button>
+      </form>
     </div>
   </div>
 
@@ -1563,6 +1615,7 @@
     let inhouseServices = [];
     let importedServices = [];
     let quickOrderCategory = 'all';
+    let homeContentState = { latestNews: '', disclaimer: '', bannerImage: '' };
     let activeCurrency = 'INR';
     let pendingAuthSection = null;
     let pendingOrderCategory = '';
@@ -1661,7 +1714,7 @@
         const response = await fetch('/api/settings');
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Could not load the storefront theme.');
-        renderHomeContent(data.latest_news || '', data.quick_order_disclaimer || '');
+        renderHomeContent(data.latest_news || '', data.quick_order_disclaimer || '', data.banner_image || '');
         const palette = data.palette || {};
         const root = document.documentElement;
         const validColor = (value, fallback) => /^#[0-9a-fA-F]{6}$/.test(value || '') ? value : fallback;
@@ -1916,6 +1969,8 @@
       const submitBtn = document.getElementById('authSubmitBtn');
       const toggleText = document.getElementById('authToggleText');
       const toggleBtn = document.getElementById('authToggleBtn');
+      const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+      forgotPasswordLink.classList.toggle('hidden', mode !== 'signin');
 
       if (mode === 'signup') {
         const linkedReferralCode = new URLSearchParams(window.location.search).get('ref');
@@ -1971,6 +2026,85 @@
 
     function closeAuthModal() {
       document.getElementById('authModal').classList.add('hidden');
+    }
+
+    function showForgotPassword() {
+      document.getElementById('forgotPasswordEmail').value = document.getElementById('authEmail').value.trim();
+      document.getElementById('forgotPasswordStatus').classList.add('hidden');
+      closeAuthModal();
+      document.getElementById('forgotPasswordModal').classList.remove('hidden');
+    }
+
+    function closeForgotPassword() {
+      document.getElementById('forgotPasswordModal').classList.add('hidden');
+    }
+
+    function setPasswordResetStatus(id, message, isError = false) {
+      const status = document.getElementById(id);
+      status.textContent = message;
+      status.className = `rounded-xl border px-3 py-2 text-xs ${isError ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950/30 dark:text-red-300' : 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300'}`;
+    }
+
+    async function requestPasswordReset(event) {
+      event.preventDefault();
+      const submit = document.getElementById('forgotPasswordSubmit');
+      submit.disabled = true;
+      try {
+        const response = await fetch('/api/auth/forgot-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: document.getElementById('forgotPasswordEmail').value.trim() })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not request a password reset.');
+        setPasswordResetStatus('forgotPasswordStatus', data.message);
+      } catch (error) {
+        setPasswordResetStatus('forgotPasswordStatus', error.message, true);
+      } finally {
+        submit.disabled = false;
+      }
+    }
+
+    function showResetPassword(token) {
+      document.getElementById('resetPasswordToken').value = token || '';
+      document.getElementById('resetPasswordStatus').classList.add('hidden');
+      document.getElementById('resetPasswordModal').classList.remove('hidden');
+    }
+
+    function closeResetPassword() {
+      document.getElementById('resetPasswordModal').classList.add('hidden');
+    }
+
+    async function submitPasswordReset(event) {
+      event.preventDefault();
+      const password = document.getElementById('resetPasswordValue').value;
+      const confirmPassword = document.getElementById('resetPasswordConfirm').value;
+      if (password !== confirmPassword) {
+        setPasswordResetStatus('resetPasswordStatus', 'The passwords do not match.', true);
+        return;
+      }
+      const submit = document.getElementById('resetPasswordSubmit');
+      submit.disabled = true;
+      try {
+        const response = await fetch('/api/auth/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: document.getElementById('resetPasswordToken').value, password })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not reset your password.');
+        closeResetPassword();
+        const url = new URL(window.location.href);
+        url.searchParams.delete('reset_token');
+        history.replaceState(null, '', `${url.pathname}${url.search}${url.hash}`);
+        document.getElementById('authEmail').value = data.email || '';
+        openAuthModal('signin');
+        alert('Password updated. Sign in with your new password.');
+      } catch (error) {
+        setPasswordResetStatus('resetPasswordStatus', error.message, true);
+      } finally {
+        submit.disabled = false;
+      }
     }
 
     function toggleAuthMode() {
@@ -2105,6 +2239,7 @@
       document.getElementById('accRefCode').innerText = currentUser.referral_code;
       document.getElementById('myReferralLink').value = `${window.location.origin}/?ref=${currentUser.referral_code}`;
 
+      renderHomeContent(homeContentState.latestNews, homeContentState.disclaimer, homeContentState.bannerImage);
       loadApiKey();
       loadUserOrders();
       
@@ -2171,9 +2306,13 @@
       }
     }
 
-    function renderHomeContent(latestNews, disclaimer) {
+    function renderHomeContent(latestNews, disclaimer, bannerImage) {
+      homeContentState = { latestNews, disclaimer, bannerImage };
       const newsSection = document.getElementById('homeLatestNews');
       const newsList = document.getElementById('homeLatestNewsList');
+      const banner = document.getElementById('homeBanner');
+      const bannerImg = document.getElementById('homeBannerImage');
+      const newsContent = document.getElementById('homeNewsContent');
       const newsItems = String(latestNews || '').split(/\r?\n/).map(item => item.trim()).filter(Boolean);
       newsList.replaceChildren();
       newsItems.forEach(item => {
@@ -2187,7 +2326,12 @@
         row.append(icon, text);
         newsList.append(row);
       });
-      newsSection.classList.toggle('hidden', newsItems.length === 0);
+      const bannerUrl = String(bannerImage || '').trim();
+      const showGuestBanner = !currentUser && Boolean(bannerUrl);
+      bannerImg.src = showGuestBanner ? bannerUrl : '';
+      banner.classList.toggle('hidden', !showGuestBanner);
+      newsContent.classList.toggle('hidden', showGuestBanner);
+      newsSection.classList.toggle('hidden', !showGuestBanner && newsItems.length === 0);
 
       const disclaimerBox = document.getElementById('quickOrderDisclaimer');
       const disclaimerText = String(disclaimer || '').trim();
@@ -2277,8 +2421,20 @@
       const getSelectedOption = () => [...select.options].find(option => option.value === select.value);
       const selectedOption = getSelectedOption();
       const label = document.createElement('span');
-      label.className = 'min-w-0 flex-1 truncate';
-      label.textContent = selectedOption?.textContent.trim() || 'Select a service';
+      label.className = 'flex min-w-0 flex-1 items-center gap-2';
+      const includeAppLogo = containerId === 'quickServiceDropdown';
+      if (includeAppLogo) {
+        const logo = document.createElement('img');
+        logo.src = '/logo.png';
+        logo.alt = '';
+        logo.className = 'h-6 w-6 shrink-0 rounded-full object-cover';
+        logo.setAttribute('aria-hidden', 'true');
+        label.append(logo);
+      }
+      const labelText = document.createElement('span');
+      labelText.className = 'min-w-0 flex-1 truncate';
+      labelText.textContent = selectedOption?.textContent.trim() || 'Select a service';
+      label.append(labelText);
       toggle.append(label);
 
       const chevron = document.createElement('i');
@@ -2306,13 +2462,27 @@
         option.setAttribute('aria-selected', String(sourceOption.value === select.value));
         option.dataset.searchText = sourceOption.textContent.toLowerCase();
         option.className = `block w-full rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition hover:bg-blue-50 hover:text-fbBlue ${sourceOption.value === select.value ? 'bg-blue-50 text-fbBlue' : 'text-slate-700'}`;
-        option.textContent = sourceOption.textContent.trim();
+        const optionContent = document.createElement('span');
+        optionContent.className = 'flex min-w-0 items-center gap-2';
+        if (includeAppLogo && sourceOption.value) {
+          const logo = document.createElement('img');
+          logo.src = '/logo.png';
+          logo.alt = '';
+          logo.className = 'h-6 w-6 shrink-0 rounded-full object-cover';
+          logo.setAttribute('aria-hidden', 'true');
+          optionContent.append(logo);
+        }
+        const optionText = document.createElement('span');
+        optionText.className = 'min-w-0 flex-1';
+        optionText.textContent = sourceOption.textContent.trim();
+        optionContent.append(optionText);
+        option.append(optionContent);
         option.disabled = !sourceOption.value;
         option.addEventListener('click', () => {
           select.value = sourceOption.value;
           toggle.setAttribute('aria-expanded', 'false');
           menu.classList.add('hidden');
-          label.textContent = sourceOption.textContent.trim();
+          labelText.textContent = sourceOption.textContent.trim();
           select.dispatchEvent(new Event('change'));
         });
         optionList.append(option);
@@ -3061,6 +3231,8 @@
       loadServicesData();
       loadPaymentHistory();
       handlePaymentReturn();
+      const resetToken = new URLSearchParams(window.location.search).get('reset_token');
+      if (resetToken) showResetPassword(resetToken);
       
       // Render Google Sign-In button when GIS SDK is ready
       let attempts = 0;

@@ -9,6 +9,7 @@ const crypto = require('crypto');
 const axios = require('axios');
 const { OAuth2Client } = require('google-auth-library');
 const cloudinary = require('cloudinary').v2;
+const nodemailer = require('nodemailer');
 require('dotenv').config();
 
 const app = express();
@@ -164,6 +165,14 @@ async function initDb() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        token_hash TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        expires_at TIMESTAMP NOT NULL,
+        used_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+
       CREATE TABLE IF NOT EXISTS services (
         id SERIAL PRIMARY KEY,
         category TEXT,
@@ -172,7 +181,8 @@ async function initDb() {
         min_quantity INTEGER,
         max_quantity INTEGER,
         description TEXT,
-        status TEXT DEFAULT 'active'
+        status TEXT DEFAULT 'active',
+        admin_override BOOLEAN DEFAULT false
       );
 
       CREATE TABLE IF NOT EXISTS orders (
@@ -332,6 +342,7 @@ async function initializeAppData() {
   await addColumnIfMissing('services', 'upstream_service_id', 'TEXT');
   await addColumnIfMissing('services', 'cost_per_1000', 'REAL');
   await addColumnIfMissing('services', 'image', 'TEXT');
+  await addColumnIfMissing('services', 'admin_override', 'BOOLEAN DEFAULT false');
   await addColumnIfMissing('orders', 'upstream_order_id', 'TEXT');
   await addColumnIfMissing('orders', 'cost', 'REAL DEFAULT 0');
   await addColumnIfMissing('users', 'status', "TEXT DEFAULT 'active'");
@@ -343,6 +354,7 @@ async function initializeAppData() {
   await addColumnIfMissing('payment_orders', 'payment_method', "TEXT NOT NULL DEFAULT 'Cashfree'");
   await addColumnIfMissing('payment_orders', 'utr', 'TEXT');
   await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS payment_orders_utr_unique_idx ON payment_orders (LOWER(utr)) WHERE utr IS NOT NULL AND BTRIM(utr) <> ''");
+  await pool.query('CREATE INDEX IF NOT EXISTS password_reset_tokens_user_created_idx ON password_reset_tokens (user_id, created_at DESC)');
 
   // Insert default Admin if not exists
   const adminCheck = await pool.query('SELECT * FROM users WHERE email = $1', ['admin@jayrajputmediapower.com']);
@@ -555,6 +567,121 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ error: 'Enter a valid email address.' });
+  }
+
+  const { SMTP_HOST, SMTP_USER, SMTP_PASSWORD } = process.env;
+  if (!SMTP_HOST || !SMTP_USER || !SMTP_PASSWORD) {
+    return res.status(503).json({ error: 'Password reset email is not configured. Please contact support.' });
+  }
+
+  try {
+    const account = await pool.query(
+      'SELECT id, name, email, password FROM users WHERE LOWER(email) = $1',
+      [email]
+    );
+    if (!account.rows.length || !account.rows[0].password) {
+      return res.json({ message: 'If an eligible account exists for that email, a password reset link will be sent.' });
+    }
+
+    const user = account.rows[0];
+    const recentRequest = await pool.query(
+      `SELECT 1 FROM password_reset_tokens
+       WHERE user_id = $1 AND created_at > CURRENT_TIMESTAMP - INTERVAL '1 minute'
+       LIMIT 1`,
+      [user.id]
+    );
+    if (recentRequest.rows.length) {
+      return res.json({ message: 'If an eligible account exists for that email, a password reset link will be sent.' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    await pool.query('DELETE FROM password_reset_tokens WHERE user_id = $1', [user.id]);
+    await pool.query(
+      `INSERT INTO password_reset_tokens (token_hash, user_id, expires_at)
+       VALUES ($1, $2, CURRENT_TIMESTAMP + INTERVAL '1 hour')`,
+      [tokenHash, user.id]
+    );
+
+    const port = Number(process.env.SMTP_PORT || 587);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      await pool.query('DELETE FROM password_reset_tokens WHERE token_hash = $1', [tokenHash]);
+      return res.status(503).json({ error: 'Password reset email is not configured correctly. Please contact support.' });
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port,
+      secure: String(process.env.SMTP_SECURE || '').toLowerCase() === 'true',
+      auth: { user: SMTP_USER, pass: SMTP_PASSWORD },
+      connectionTimeout: 10000,
+      socketTimeout: 10000
+    });
+    const resetUrl = new URL('/', PUBLIC_URL);
+    resetUrl.searchParams.set('reset_token', token);
+    try {
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || SMTP_USER,
+        to: user.email,
+        subject: 'Reset your Jay Rajput Media Power password',
+        text: `Hello ${user.name || 'there'},\n\nUse the link below to set a new password. This link expires in one hour and can only be used once.\n\n${resetUrl.toString()}\n\nIf you did not request this, you can ignore this email.`
+      });
+    } catch (error) {
+      await pool.query('DELETE FROM password_reset_tokens WHERE token_hash = $1', [tokenHash]);
+      throw error;
+    }
+
+    res.json({ message: 'If an eligible account exists for that email, a password reset link will be sent.' });
+  } catch (error) {
+    console.error('Password reset email could not be sent:', error);
+    res.status(503).json({ error: 'Could not send the password reset email. Please try again later or contact support.' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { token, password } = req.body || {};
+  if (typeof token !== 'string' || !/^[a-f0-9]{64}$/i.test(token)) {
+    return res.status(400).json({ error: 'This password reset link is invalid or expired.' });
+  }
+  if (typeof password !== 'string' || password.length < 8 || Buffer.byteLength(password, 'utf8') > 72) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters and no more than 72 bytes.' });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+    const reset = await client.query(
+      `SELECT user_id FROM password_reset_tokens
+       WHERE token_hash = $1 AND expires_at > CURRENT_TIMESTAMP AND used_at IS NULL
+       FOR UPDATE`,
+      [tokenHash]
+    );
+    if (!reset.rows.length) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ error: 'This password reset link is invalid or expired.' });
+    }
+
+    const userId = reset.rows[0].user_id;
+    const passwordHash = bcrypt.hashSync(password, 10);
+    const account = await client.query('UPDATE users SET password = $1 WHERE id = $2 RETURNING email', [passwordHash, userId]);
+    await client.query('UPDATE password_reset_tokens SET used_at = CURRENT_TIMESTAMP WHERE token_hash = $1', [tokenHash]);
+    await client.query('DELETE FROM password_reset_tokens WHERE user_id = $1 AND token_hash <> $2', [userId, tokenHash]);
+    await client.query('COMMIT');
+    res.json({ success: true, email: account.rows[0]?.email });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Password reset failed:', error);
+    res.status(500).json({ error: 'Could not reset the password. Please try again.' });
+  } finally {
+    client.release();
   }
 });
 
@@ -803,12 +930,37 @@ app.post('/api/admin/services', authenticateToken, requireAdmin, async (req, res
 
 app.put('/api/admin/services/:id', authenticateToken, requireAdmin, async (req, res) => {
   const { category, name, rate_per_1000, min_quantity, max_quantity, description, status, image } = req.body;
+  const rate = Number(rate_per_1000);
+  const min = Number(min_quantity);
+  const max = Number(max_quantity);
+  if (
+    typeof category !== 'string' || !category.trim()
+    || typeof name !== 'string' || !name.trim()
+    || !Number.isFinite(rate) || rate < 0
+    || !Number.isInteger(min) || min < 1
+    || !Number.isInteger(max) || max < min
+    || typeof description !== 'string'
+    || !['active', 'inactive'].includes(status)
+    || (image != null && typeof image !== 'string')
+  ) {
+    return res.status(400).json({ error: 'Provide valid service details, quantity limits, status, and image.' });
+  }
   const updated = await pool.query(
-    `UPDATE services SET category=$1, name=$2, rate_per_1000=$3, min_quantity=$4, max_quantity=$5, description=$6, status=$7, image=$8 WHERE id = $9 AND provider_id IS NULL`,
-    [category, name, rate_per_1000, min_quantity, max_quantity, description, status, image || null, req.params.id]
+    `UPDATE services
+     SET category=$1, name=$2, rate_per_1000=$3, min_quantity=$4, max_quantity=$5,
+         description=$6, status=$7, image=$8,
+         admin_override = CASE WHEN provider_id IS NOT NULL THEN true ELSE admin_override END
+     WHERE id = $9
+     RETURNING provider_id`,
+    [category.trim(), name.trim(), rate, min, max, description.trim(), status, image || null, req.params.id]
   );
-  if (!updated.rowCount) return res.status(404).json({ error: 'In-house package not found.' });
-  res.json({ success: true, message: 'Service updated successfully.' });
+  if (!updated.rowCount) return res.status(404).json({ error: 'Service not found.' });
+  res.json({
+    success: true,
+    message: updated.rows[0].provider_id
+      ? 'Provider service updated. Your changes will be preserved during future imports.'
+      : 'Package updated successfully.'
+  });
 });
 
 // Bulk image assignment: { assignments: [{ id, image }] } or { category, image }
@@ -960,25 +1112,35 @@ async function syncProviderServices(provider) {
       const description = item.description || `Supplied by ${provider.name}`;
       const status = String(item.status || 'active').toLowerCase() === 'inactive' ? 'inactive' : 'active';
 
-      const existing = await client.query('SELECT id FROM services WHERE provider_id = $1 AND upstream_service_id = $2', [provider.id, upstreamId]);
+      const existing = await client.query('SELECT id, admin_override FROM services WHERE provider_id = $1 AND upstream_service_id = $2', [provider.id, upstreamId]);
       if (existing.rows.length) {
-        await client.query(
-          `UPDATE services SET category = $1, name = $2, rate_per_1000 = $3, min_quantity = $4, max_quantity = $5, description = $6, cost_per_1000 = $7, status = $8 WHERE id = $9`,
-          [category, name, retailRate, min, max, description, wholesaleRate, status, existing.rows[0].id]
-        );
+        if (existing.rows[0].admin_override) {
+          await client.query('UPDATE services SET cost_per_1000 = $1 WHERE id = $2', [wholesaleRate, existing.rows[0].id]);
+        } else {
+          await client.query(
+            `UPDATE services SET category = $1, name = $2, rate_per_1000 = $3, min_quantity = $4, max_quantity = $5, description = $6, cost_per_1000 = $7, status = $8 WHERE id = $9`,
+            [category, name, retailRate, min, max, description, wholesaleRate, status, existing.rows[0].id]
+          );
+        }
         updated++;
       } else {
         // Also check for duplicates by normalized name + category across all providers
         const duplicate = await client.query(
-          `SELECT id FROM services WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) AND LOWER(TRIM(category)) = LOWER(TRIM($2)) AND provider_id IS NOT NULL LIMIT 1`,
+          `SELECT id, admin_override FROM services WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) AND LOWER(TRIM(category)) = LOWER(TRIM($2)) AND provider_id IS NOT NULL LIMIT 1`,
           [name, category]
         );
         if (duplicate.rows.length) {
-          // Update existing duplicate instead of inserting
-          await client.query(
-            `UPDATE services SET rate_per_1000 = $1, min_quantity = $2, max_quantity = $3, description = $4, provider_id = $5, upstream_service_id = $6, cost_per_1000 = $7, status = $8 WHERE id = $9`,
-            [retailRate, min, max, description, provider.id, upstreamId, wholesaleRate, status, duplicate.rows[0].id]
-          );
+          if (duplicate.rows[0].admin_override) {
+            await client.query(
+              `UPDATE services SET provider_id = $1, upstream_service_id = $2, cost_per_1000 = $3 WHERE id = $4`,
+              [provider.id, upstreamId, wholesaleRate, duplicate.rows[0].id]
+            );
+          } else {
+            await client.query(
+              `UPDATE services SET rate_per_1000 = $1, min_quantity = $2, max_quantity = $3, description = $4, provider_id = $5, upstream_service_id = $6, cost_per_1000 = $7, status = $8 WHERE id = $9`,
+              [retailRate, min, max, description, provider.id, upstreamId, wholesaleRate, status, duplicate.rows[0].id]
+            );
+          }
           updated++;
         } else {
           await client.query(
@@ -1468,24 +1630,35 @@ app.post('/api/admin/providers/:id/import-selected', authenticateToken, requireA
       const description = row.description || `Supplied by ${provider.rows[0].name}`;
       const status = row.status || 'active';
 
-      const existing = await pool.query('SELECT id FROM services WHERE provider_id = $1 AND upstream_service_id = $2', [provider.rows[0].id, upstreamId]);
+      const existing = await pool.query('SELECT id, admin_override FROM services WHERE provider_id = $1 AND upstream_service_id = $2', [provider.rows[0].id, upstreamId]);
       if (existing.rows.length) {
-        await pool.query(
-          `UPDATE services SET category = $1, name = $2, rate_per_1000 = $3, min_quantity = $4, max_quantity = $5, description = $6, cost_per_1000 = $7, status = $8 WHERE id = $9`,
-          [category, name, retailRate, min, max, description, wholesaleRate, status, existing.rows[0].id]
-        );
+        if (existing.rows[0].admin_override) {
+          await pool.query('UPDATE services SET cost_per_1000 = $1 WHERE id = $2', [wholesaleRate, existing.rows[0].id]);
+        } else {
+          await pool.query(
+            `UPDATE services SET category = $1, name = $2, rate_per_1000 = $3, min_quantity = $4, max_quantity = $5, description = $6, cost_per_1000 = $7, status = $8 WHERE id = $9`,
+            [category, name, retailRate, min, max, description, wholesaleRate, status, existing.rows[0].id]
+          );
+        }
         updated++;
       } else {
         // Also check for duplicates by normalized name + category across all providers
         const duplicate = await pool.query(
-          `SELECT id FROM services WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) AND LOWER(TRIM(category)) = LOWER(TRIM($2)) AND provider_id IS NOT NULL LIMIT 1`,
+          `SELECT id, admin_override FROM services WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) AND LOWER(TRIM(category)) = LOWER(TRIM($2)) AND provider_id IS NOT NULL LIMIT 1`,
           [name, category]
         );
         if (duplicate.rows.length) {
-          await pool.query(
-            `UPDATE services SET rate_per_1000 = $1, min_quantity = $2, max_quantity = $3, description = $4, provider_id = $5, upstream_service_id = $6, cost_per_1000 = $7, status = $8 WHERE id = $9`,
-            [retailRate, min, max, description, provider.rows[0].id, upstreamId, wholesaleRate, status, duplicate.rows[0].id]
-          );
+          if (duplicate.rows[0].admin_override) {
+            await pool.query(
+              `UPDATE services SET provider_id = $1, upstream_service_id = $2, cost_per_1000 = $3 WHERE id = $4`,
+              [provider.rows[0].id, upstreamId, wholesaleRate, duplicate.rows[0].id]
+            );
+          } else {
+            await pool.query(
+              `UPDATE services SET rate_per_1000 = $1, min_quantity = $2, max_quantity = $3, description = $4, provider_id = $5, upstream_service_id = $6, cost_per_1000 = $7, status = $8 WHERE id = $9`,
+              [retailRate, min, max, description, provider.rows[0].id, upstreamId, wholesaleRate, status, duplicate.rows[0].id]
+            );
+          }
           updated++;
         } else {
           await pool.query(
@@ -2310,7 +2483,7 @@ app.put('/api/admin/tickets/:id/status', authenticateToken, requireAdmin, async 
 app.get('/api/settings', async (req, res) => {
   try {
     const contentRows = await pool.query(
-      "SELECT key, value FROM site_settings WHERE key IN ('home_latest_news', 'quick_order_disclaimer')"
+      "SELECT key, value FROM site_settings WHERE key IN ('home_latest_news', 'quick_order_disclaimer', 'home_banner_image')"
     );
     const homeContent = Object.fromEntries(contentRows.rows.map(row => [row.key, row.value]));
     const setting = await pool.query("SELECT value FROM site_settings WHERE key = 'active_theme'");
@@ -2323,7 +2496,8 @@ app.get('/api/settings', async (req, res) => {
         occasion_message: null,
         layout: 'classic',
         latest_news: homeContent.home_latest_news ?? '',
-        quick_order_disclaimer: homeContent.quick_order_disclaimer ?? DEFAULT_QUICK_ORDER_DISCLAIMER
+        quick_order_disclaimer: homeContent.quick_order_disclaimer ?? DEFAULT_QUICK_ORDER_DISCLAIMER,
+        banner_image: homeContent.home_banner_image ?? ''
       });
     }
     res.json({
@@ -2333,7 +2507,8 @@ app.get('/api/settings', async (req, res) => {
       occasion_message: theme.rows[0].occasion_message,
       layout: theme.rows[0].layout || 'classic',
       latest_news: homeContent.home_latest_news ?? '',
-      quick_order_disclaimer: homeContent.quick_order_disclaimer ?? DEFAULT_QUICK_ORDER_DISCLAIMER
+      quick_order_disclaimer: homeContent.quick_order_disclaimer ?? DEFAULT_QUICK_ORDER_DISCLAIMER,
+      banner_image: homeContent.home_banner_image ?? ''
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -2343,12 +2518,13 @@ app.get('/api/settings', async (req, res) => {
 app.get('/api/admin/settings/home-content', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
-      "SELECT key, value FROM site_settings WHERE key IN ('home_latest_news', 'quick_order_disclaimer')"
+      "SELECT key, value FROM site_settings WHERE key IN ('home_latest_news', 'quick_order_disclaimer', 'home_banner_image')"
     );
     const content = Object.fromEntries(result.rows.map(row => [row.key, row.value]));
     res.json({
       latest_news: content.home_latest_news ?? '',
-      quick_order_disclaimer: content.quick_order_disclaimer ?? DEFAULT_QUICK_ORDER_DISCLAIMER
+      quick_order_disclaimer: content.quick_order_disclaimer ?? DEFAULT_QUICK_ORDER_DISCLAIMER,
+      banner_image: content.home_banner_image ?? ''
     });
   } catch (err) {
     console.error('Could not load editable homepage content:', err);
@@ -2357,20 +2533,27 @@ app.get('/api/admin/settings/home-content', authenticateToken, requireAdmin, asy
 });
 
 app.put('/api/admin/settings/home-content', authenticateToken, requireAdmin, async (req, res) => {
-  const { latest_news, quick_order_disclaimer } = req.body || {};
-  if (typeof latest_news !== 'string' || typeof quick_order_disclaimer !== 'string') {
-    return res.status(400).json({ error: 'Latest news and quick-order disclaimer must be text.' });
+  const { latest_news, quick_order_disclaimer, banner_image } = req.body || {};
+  if (typeof latest_news !== 'string' || typeof quick_order_disclaimer !== 'string' || typeof banner_image !== 'string') {
+    return res.status(400).json({ error: 'Latest news, banner image, and quick-order disclaimer must be provided.' });
   }
-  if (latest_news.length > 5000 || quick_order_disclaimer.length > 3000) {
-    return res.status(400).json({ error: 'Latest news is limited to 5,000 characters and the disclaimer to 3,000 characters.' });
+  if (latest_news.length > 5000 || quick_order_disclaimer.length > 3000 || banner_image.length > 2048) {
+    return res.status(400).json({ error: 'Latest news, banner image URL, or disclaimer exceeds its allowed length.' });
+  }
+  if (banner_image.trim()) {
+    try {
+      if (new URL(banner_image).protocol !== 'https:') throw new Error('HTTPS is required.');
+    } catch {
+      return res.status(400).json({ error: 'Banner image must be a valid HTTPS URL.' });
+    }
   }
 
   try {
     await pool.query(
       `INSERT INTO site_settings (key, value)
-       VALUES ('home_latest_news', $1), ('quick_order_disclaimer', $2)
+       VALUES ('home_latest_news', $1), ('quick_order_disclaimer', $2), ('home_banner_image', $3)
        ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
-      [latest_news.trim(), quick_order_disclaimer.trim()]
+      [latest_news.trim(), quick_order_disclaimer.trim(), banner_image.trim()]
     );
     res.json({ success: true });
   } catch (err) {

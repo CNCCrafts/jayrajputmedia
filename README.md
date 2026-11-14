@@ -28,4 +28,12 @@ Use `"Failed"` when fulfillment fails. The order ID is the local ID returned by 
 
 ## Homepage content
 
-Administrators can edit the homepage's Latest News (one item per line) and the disclaimer displayed below Quick Order in the Admin Portal under **Home Page Content**.
+Administrators can edit the homepage's Latest News (one item per line), upload a visitor-only homepage banner, and update the disclaimer displayed below Quick Order in the Admin Portal under **Home Page Content**. Signed-in users see Latest News in that area; visitors see the uploaded banner when one is configured.
+
+## Provider services
+
+Provider services can be edited from **Admin Portal → Services**. Admin edits are retained when provider services are imported or synced again; provider cost updates continue to sync.
+
+## Password recovery
+
+Password reset links are sent by email and expire after one hour. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and optionally `SMTP_FROM` in the deployment environment. Do not commit SMTP credentials. If SMTP is not configured, users are directed to contact support.
