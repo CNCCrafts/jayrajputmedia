@@ -34,6 +34,14 @@ Administrators can edit the homepage's Latest News (one item per line), upload a
 
 Provider services can be edited from **Admin Portal → Services**. Admin edits are retained when provider services are imported or synced again; provider cost updates continue to sync.
 
+## In-house package pricing and order details
+
+In-house packages can be priced per 1,000 or per unit/day and can independently require a target URL and/or phone number. Per-unit packages charge `rate × quantity`; per-1,000 packages keep the existing `rate × quantity ÷ 1,000` calculation. Order history displays provider start count, remaining quantity, and average time when the provider API supplies them.
+
+## Referral rewards
+
+Users receive a unique referral code and link. A referred user's first order of at least ₹2,100 creates a ₹750 reward record for the referrer. The system caps successful rewards at 10 per referrer, flags accounts registered from the same IP for review, and exposes referral/order history, reward status, earnings, and slot counts in the Admin Portal. Admins can approve, reject/block, and mark approved rewards as paid.
+
 ## Password recovery
 
 Password reset links are sent by email and expire after one hour. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, and optionally `SMTP_FROM` in the deployment environment. Do not commit SMTP credentials. If SMTP is not configured, users are directed to contact support.

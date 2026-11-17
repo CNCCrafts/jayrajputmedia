@@ -1100,18 +1100,20 @@
     <!-- Quick Order Form for Logged-In Users -->
     <section id="section-quick-order" class="content-section space-y-6">
       <div class="max-w-4xl mx-auto bg-white dark:bg-darkCard p-6 sm:p-8 rounded-3xl border border-slate-200/80 dark:border-darkBorder shadow-socialCard">
-        <div class="flex flex-wrap items-center gap-3 mb-6 pb-4 border-b border-slate-200 dark:border-darkBorder">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-6 pb-4 border-b border-slate-200 dark:border-darkBorder">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-pink-500 flex items-center justify-center text-white">
+              <i class="fa-solid fa-bolt"></i>
+            </div>
+            <div>
+              <h2 class="text-xl font-display font-black text-slate-900 dark:text-white">Quick Order</h2>
+              <p class="text-xs text-slate-500 dark:text-slate-400">Search and order services instantly</p>
+            </div>
+          </div>
           <div id="quickOrderMetaBadge" class="inline-flex items-center gap-1.5 px-2.5 py-1 border text-[10px] sm:text-xs font-bold rounded-full whitespace-nowrap">
             <i class="fa-brands fa-meta" aria-hidden="true"></i>
             <span>100% Meta verified services</span>
             <i class="fa-solid fa-circle-check" aria-hidden="true"></i>
-          </div>
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-pink-500 flex items-center justify-center text-white">
-            <i class="fa-solid fa-bolt"></i>
-          </div>
-          <div>
-            <h2 class="text-xl font-display font-black text-slate-900 dark:text-white">Quick Order</h2>
-            <p class="text-xs text-slate-500 dark:text-slate-400">Search and order services instantly</p>
           </div>
         </div>
 
@@ -1142,13 +1144,17 @@
           </div>
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Target URL</label>
-              <input type="url" id="quickOrderLink" required placeholder="https://instagram.com/yourprofile" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
+            <div id="quickTargetField">
+              <label id="quickTargetLabel" class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Target URL</label>
+              <input type="url" id="quickOrderLink" placeholder="https://instagram.com/yourprofile" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
             </div>
             <div>
-              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Quantity</label>
+              <label id="quickQuantityLabel" class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Quantity</label>
               <input type="number" id="quickOrderQuantity" required oninput="calculateQuickOrderCharge()" placeholder="1000" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
+            </div>
+            <div id="quickPhoneField" class="hidden">
+              <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Phone Number</label>
+              <input type="tel" id="quickOrderPhone" placeholder="Enter phone number" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
             </div>
           </div>
 
@@ -1194,18 +1200,22 @@
 
           <div id="serviceDetailsBox" class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs space-y-1 text-slate-600 dark:text-slate-300">
             <p><strong>Selected service:</strong> <span id="displayServiceName" class="font-semibold text-slate-800 dark:text-white">Choose a service</span></p>
-            <p><strong>Rate / 1000:</strong> <span id="displayRate" class="text-fbBlue dark:text-pink-400 font-bold">₹0</span></p>
+            <p><strong id="displayRateLabel">Rate / 1000:</strong> <span id="displayRate" class="text-fbBlue dark:text-pink-400 font-bold">₹0</span></p>
             <p><strong>Min / Max Limits:</strong> <span id="displayMinMax" class="font-semibold text-slate-800 dark:text-white">0 / 0</span></p>
             <p id="displayDesc" class="text-slate-500 italic">Select a package or provider service to view specifications.</p>
           </div>
 
-          <div>
-            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Target URL (Instagram Profile/Reel or FB Page)</label>
-            <input type="url" id="orderLink" required placeholder="https://instagram.com/yourprofile" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
+          <div id="orderTargetField">
+            <label id="orderTargetLabel" class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Target URL (Instagram Profile/Reel or FB Page)</label>
+            <input type="url" id="orderLink" placeholder="https://instagram.com/yourprofile" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
           </div>
 
+          <div id="orderPhoneField" class="hidden">
+            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Phone Number</label>
+            <input type="tel" id="orderPhone" placeholder="Enter phone number" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
+          </div>
           <div>
-            <label class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Quantity</label>
+            <label id="orderQuantityLabel" class="block text-xs uppercase font-bold text-slate-600 dark:text-slate-300 mb-1.5">Quantity</label>
             <input type="number" id="orderQuantity" required oninput="calculateOrderCharge()" placeholder="1000" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 text-slate-800 dark:text-white outline-none text-sm transition">
           </div>
 
@@ -1241,7 +1251,11 @@
                 <th class="p-3.5">ID</th>
                 <th class="p-3.5">Package</th>
                 <th class="p-3.5">Target Link</th>
+                <th class="p-3.5">Phone Number</th>
                 <th class="p-3.5">Qty</th>
+                <th class="p-3.5">Start Count</th>
+                <th class="p-3.5">Remains / Count Left</th>
+                <th class="p-3.5">Average Time</th>
                 <th class="p-3.5">Cost</th>
                 <th class="p-3.5">Status</th>
                 <th class="p-3.5">Date</th>
@@ -1318,18 +1332,22 @@
           <i class="fa-solid fa-gift"></i>
         </div>
         <div>
-          <h2 class="text-3xl font-display font-black text-slate-900 dark:text-white">REFER & EARN – INSTANT 10% CASHBACK OFFER</h2>
+          <h2 class="text-3xl font-display font-black text-slate-900 dark:text-white">Refer & Earn ₹750</h2>
           <div class="text-left text-sm text-slate-600 dark:text-slate-300 space-y-3 mt-3">
-            <p>अब हमारे साथ कस्टमर रेफर करें और पाएं शानदार <strong class="text-fbBlue">10% इंस्टेंट कैशबैक रिवॉर्ड!</strong> 💰</p>
-            <h3 class="font-bold text-slate-900 dark:text-white">कैशबैक पाने का तरीका:</h3>
-            <p>1. ₹100 से ऊपर की खरीदारी: आपके रेफरल से साइन अप करने वाला कस्टमर ₹100 से ऊपर का कोई भी पैकेज खरीदता है, तो आपको खरीदारी की राशि का 10% इंस्टेंट कैशबैक मिलेगा।</p>
-            <p class="font-bold">🚀 जितनी बड़ी खरीदारी, उतना बड़ा रिवॉर्ड!</p>
-            <p>अपने दोस्तों, बिजनेस पार्टनर्स और कस्टमर्स को रेफर करें और हर योग्य खरीदारी पर तुरंत 10% कैशबैक पाएं।</p>
-            <p class="font-bold text-slate-900 dark:text-white">JAY Rajput Media Power<br>Digital Marketing • Social Media Promotion • Instagram Growth</p>
+            <p>Share your referral code or link. Earn a fixed <strong class="text-fbBlue">₹750 reward</strong> when a referred customer places an eligible order of ₹2,100 or more.</p>
+            <p>Rewards are reviewed and paid by our admin team. Each account can earn rewards for up to 10 successful referrals.</p>
           </div>
         </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-left">
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800"><div class="text-[10px] uppercase text-slate-500">Total Referrals</div><div id="myReferralTotal" class="text-xl font-black text-slate-900 dark:text-white">0</div></div>
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800"><div class="text-[10px] uppercase text-slate-500">Successful</div><div id="myReferralSuccess" class="text-xl font-black text-emerald-500">0</div></div>
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800"><div class="text-[10px] uppercase text-slate-500">Earnings</div><div id="myReferralEarnings" class="text-xl font-black text-fbBlue">₹0</div></div>
+          <div class="p-3 rounded-xl bg-slate-50 dark:bg-slate-800"><div class="text-[10px] uppercase text-slate-500">Slots Remaining</div><div id="myReferralSlots" class="text-xl font-black text-slate-900 dark:text-white">10</div></div>
+        </div>
+        <p id="myReferralLimitMessage" class="hidden text-sm font-bold text-amber-600">You have reached the 10 successful referral limit.</p>
         <div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 text-left space-y-1.5">
           <label class="text-xs uppercase font-bold text-slate-600 dark:text-slate-300">Your Shareable Referral Link</label>
+          <p class="text-xs text-slate-600 dark:text-slate-300">Referral Code: <strong id="myReferralCode" class="font-mono text-fbBlue"></strong></p>
           <div class="flex items-center space-x-2">
             <input type="text" id="myReferralLink" readonly class="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-slate-800 dark:text-white font-mono text-xs outline-none">
             <button onclick="copyReferralLink()" class="px-5 py-3 text-white font-bold rounded-xl text-xs bg-fbBlue hover:bg-fbBlueHover shadow-sm transition">Copy</button>
@@ -1922,7 +1940,7 @@
 
           <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
-              <p class="text-[10px] text-slate-400 font-bold uppercase">Rate per 1000</p>
+              <p class="text-[10px] text-slate-400 font-bold uppercase">${s.pricing_type === 'per_unit' ? 'Rate per unit' : 'Rate per 1000'}</p>
               <p class="text-xl font-display font-black text-slate-900 dark:text-white mt-1">${symbol}${(s.rate_per_1000 * multiplier).toFixed(2)}</p>
             </div>
             <div class="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-200 dark:border-slate-700">
@@ -2237,7 +2255,9 @@
       document.getElementById('accName').innerText = currentUser.name;
       document.getElementById('accEmail').innerText = currentUser.email;
       document.getElementById('accRefCode').innerText = currentUser.referral_code;
+      document.getElementById('myReferralCode').textContent = currentUser.referral_code || '';
       document.getElementById('myReferralLink').value = `${window.location.origin}/?ref=${currentUser.referral_code}`;
+      loadUserReferralSummary();
 
       renderHomeContent(homeContentState.latestNews, homeContentState.disclaimer, homeContentState.bannerImage);
       loadApiKey();
@@ -2666,7 +2686,7 @@
               
               <div class="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-darkBorder">
                 <div>
-                  <p class="text-[10px] uppercase font-bold text-slate-400">Rate / 1000</p>
+                  <p class="text-[10px] uppercase font-bold text-slate-400">${s.pricing_type === 'per_unit' ? 'Rate / Unit' : 'Rate / 1000'}</p>
                   <p class="text-lg font-display font-black text-slate-900 dark:text-white">${symbol}${(s.rate_per_1000 * multiplier).toFixed(2)}</p>
                 </div>
                 <div class="flex flex-wrap items-center justify-end gap-1.5">
@@ -2792,7 +2812,9 @@
       const serviceId = parseInt(document.getElementById('orderServiceSelect').value);
       const s = allServices.find(item => item.id === serviceId);
       if (!s) {
+        configureOrderFields('order', null);
         document.getElementById('displayServiceName').innerText = 'Choose a service';
+        document.getElementById('displayRateLabel').innerText = 'Rate / 1000:';
         document.getElementById('displayRate').innerText = '₹0';
         document.getElementById('displayMinMax').innerText = '0 / 0';
         document.getElementById('displayDesc').innerText = 'Select a package or service to view specifications.';
@@ -2800,8 +2822,10 @@
         return;
       }
 
+      configureOrderFields('order', s);
       document.getElementById('displayServiceName').innerText = `${s.category} · ${s.name}`;
-      document.getElementById('displayRate').innerText = `₹${s.rate_per_1000} per 1000`;
+      document.getElementById('displayRateLabel').innerText = s.pricing_type === 'per_unit' ? 'Rate / unit:' : 'Rate / 1000:';
+      document.getElementById('displayRate').innerText = `₹${s.rate_per_1000} ${s.pricing_type === 'per_unit' ? 'per unit' : 'per 1000'}`;
       document.getElementById('displayMinMax').innerText = `${s.min_quantity} - ${s.max_quantity}`;
       document.getElementById('displayDesc').innerText = s.description;
       calculateOrderCharge();
@@ -2818,8 +2842,32 @@
       if (activeCurrency === 'USD') { multiplier = 0.012; symbol = '$'; }
       if (activeCurrency === 'EUR') { multiplier = 0.011; symbol = '€'; }
 
-      const charge = ((s.rate_per_1000 * multiplier) / 1000) * qty;
+      const charge = (s.rate_per_1000 * multiplier * qty) / (s.pricing_type === 'per_unit' ? 1 : 1000);
       document.getElementById('orderTotalCharge').innerText = `${symbol}${charge.toFixed(2)}`;
+    }
+
+    function configureOrderFields(prefix, service) {
+      const isQuick = prefix === 'quick';
+      const target = document.getElementById(isQuick ? 'quickTargetField' : 'orderTargetField');
+      const targetInput = document.getElementById(isQuick ? 'quickOrderLink' : 'orderLink');
+      const targetLabel = document.getElementById(isQuick ? 'quickTargetLabel' : 'orderTargetLabel');
+      const phoneField = document.getElementById(isQuick ? 'quickPhoneField' : 'orderPhoneField');
+      const phoneInput = document.getElementById(isQuick ? 'quickOrderPhone' : 'orderPhone');
+      const quantity = document.getElementById(isQuick ? 'quickOrderQuantity' : 'orderQuantity');
+      const quantityLabel = document.getElementById(isQuick ? 'quickQuantityLabel' : 'orderQuantityLabel');
+      const requiresUrl = Boolean(service && service.requires_target_url !== false);
+      const requiresPhone = Boolean(service && service.requires_phone === true);
+      target.classList.toggle('hidden', !requiresUrl);
+      targetInput.required = requiresUrl;
+      if (!requiresUrl) targetInput.value = '';
+      targetLabel.textContent = isQuick ? 'Target URL' : 'Target URL (Instagram Profile/Reel or FB Page)';
+      phoneField.classList.toggle('hidden', !requiresPhone);
+      phoneInput.required = requiresPhone;
+      if (!requiresPhone) phoneInput.value = '';
+      quantity.min = service ? service.min_quantity : '';
+      quantity.max = service ? service.max_quantity : '';
+      quantity.placeholder = service ? String(service.min_quantity) : isQuick ? '1000' : '1000';
+      quantityLabel.textContent = service?.pricing_type === 'per_unit' ? 'Quantity / Duration (units or days)' : 'Quantity';
     }
 
     // ==================== ORDER INVOICE MODAL ====================
@@ -2836,9 +2884,10 @@
         <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Order ID</span><span class="font-mono text-slate-900 dark:text-white">#${opts.orderId}</span></div>
         <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Service</span><span class="text-slate-900 dark:text-white font-medium truncate max-w-[220px]">${s.name || '—'}</span></div>
         <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Category</span><span class="text-slate-700 dark:text-slate-300">${s.category || '—'}</span></div>
-        <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Target URL</span><a href="${opts.link || '#'}" target="_blank" class="text-fbBlue truncate max-w-[180px] block text-right">${opts.link || '—'}</a></div>
+        ${opts.link ? `<div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Target URL</span><a href="${opts.link}" target="_blank" rel="noopener noreferrer" class="text-fbBlue truncate max-w-[180px] block text-right">${opts.link}</a></div>` : ''}
+        ${opts.phoneNumber ? `<div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Phone Number</span><span>${opts.phoneNumber}</span></div>` : ''}
         <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Quantity</span><span class="font-mono text-slate-900 dark:text-white">${qty}</span></div>
-        <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Rate / 1000</span><span class="font-mono text-slate-900 dark:text-white">${sym}${rate.toFixed(2)}</span></div>
+        <div class="flex justify-between"><span class="text-slate-500 dark:text-slate-400">Rate / ${s.pricing_type === 'per_unit' ? 'unit' : '1000'}</span><span class="font-mono text-slate-900 dark:text-white">${sym}${rate.toFixed(2)}</span></div>
         <div class="border-t border-dashed border-slate-200 dark:border-slate-700 my-2"></div>
         <div class="flex justify-between"><span class="text-slate-600 dark:text-slate-300 font-semibold">Total Charged</span><span class="font-mono font-black text-lg text-fbBlue">${sym}${Number(opts.charge).toFixed(2)}</span></div>
         <div class="flex justify-between"><span class="text-slate-600 dark:text-slate-300 font-semibold">Wallet Balance After</span><span class="font-mono text-slate-900 dark:text-white">${sym}${Number(opts.remainingBalance || 0).toFixed(2)}</span></div>
@@ -2890,12 +2939,13 @@
 
       const service_id = parseInt(document.getElementById('orderServiceSelect').value);
       const link = document.getElementById('orderLink').value;
+      const phone_number = document.getElementById('orderPhone').value;
       const quantity = parseInt(document.getElementById('orderQuantity').value);
 
       const res = await fetch('/api/orders/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ service_id, link, quantity, currency: activeCurrency })
+        body: JSON.stringify({ service_id, link, phone_number, quantity, currency: activeCurrency })
       });
       const data = await res.json();
       if (data.error) return alert(data.error);
@@ -2906,6 +2956,7 @@
         service,
         quantity,
         link,
+        phoneNumber: phone_number,
         currency: activeCurrency,
         charge: data.charge,
         remainingBalance: data.remaining_balance
@@ -2945,7 +2996,7 @@
       filtered.forEach(service => {
         const option = document.createElement('option');
         option.value = service.id;
-        option.textContent = `${service.category} - ${service.name} (₹${service.rate_per_1000}/1000)`;
+        option.textContent = `${service.category} - ${service.name} (₹${service.rate_per_1000}/${service.pricing_type === 'per_unit' ? 'unit' : '1000'})`;
         select.append(option);
       });
       renderServiceDropdown('quickServiceSelect', 'quickServiceDropdown');
@@ -2968,16 +3019,18 @@
       const detailsBox = document.getElementById('quickServiceDetails');
 
       if (!s) {
+        configureOrderFields('quick', null);
         detailsBox.innerHTML = '<p>Select a service to view details and pricing.</p>';
         document.getElementById('quickOrderTotal').innerText = '₹0.00';
         return;
       }
 
+      configureOrderFields('quick', s);
       detailsBox.innerHTML = `
         <div class="space-y-1">
           <p><strong>Service:</strong> <span class="text-slate-900 dark:text-white font-medium">${s.name}</span></p>
           <p><strong>Category:</strong> <span class="text-slate-700 dark:text-slate-300">${s.category}</span></p>
-          <p><strong>Rate / 1000:</strong> <span class="text-fbBlue dark:text-pink-400 font-bold">₹${s.rate_per_1000}</span></p>
+          <p><strong>${s.pricing_type === 'per_unit' ? 'Rate / unit:' : 'Rate / 1000:'}</strong> <span class="text-fbBlue dark:text-pink-400 font-bold">₹${s.rate_per_1000}</span></p>
           <p><strong>Min / Max:</strong> <span class="font-semibold text-slate-800 dark:text-white">${s.min_quantity} / ${s.max_quantity}</span></p>
           <p class="text-slate-500 italic">${s.description || 'Professional social media growth service with high retention and fast delivery.'}</p>
         </div>
@@ -2994,8 +3047,10 @@
         return;
       }
 
-      const charge = (s.rate_per_1000 / 1000) * qty;
-      document.getElementById('quickOrderTotal').innerText = `₹${charge.toFixed(2)}`;
+      const multiplier = activeCurrency === 'USD' ? 0.012 : activeCurrency === 'EUR' ? 0.011 : 1;
+      const symbol = activeCurrency === 'USD' ? '$' : activeCurrency === 'EUR' ? '€' : '₹';
+      const charge = (s.rate_per_1000 * multiplier * qty) / (s.pricing_type === 'per_unit' ? 1 : 1000);
+      document.getElementById('quickOrderTotal').innerText = `${symbol}${charge.toFixed(2)}`;
     }
 
     async function handleQuickOrder(e) {
@@ -3006,16 +3061,18 @@
       const service = getSelectedQuickOrderService();
       const service_id = service?.id;
       const link = document.getElementById('quickOrderLink').value;
+      const phone_number = document.getElementById('quickOrderPhone').value;
       const quantity = parseInt(document.getElementById('quickOrderQuantity').value);
 
       if (!service_id) return alert('Please select a service.');
-      if (!link) return alert('Please enter a target URL.');
+      if (service.requires_target_url !== false && !link) return alert('Please enter a target URL.');
+      if (service.requires_phone === true && !phone_number) return alert('Please enter a phone number.');
       if (!quantity || quantity < 1) return alert('Please enter a valid quantity.');
 
       const res = await fetch('/api/orders/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ service_id, link, quantity, currency: activeCurrency })
+        body: JSON.stringify({ service_id, link, phone_number, quantity, currency: activeCurrency })
       });
       const data = await res.json();
       if (data.error) return alert(data.error);
@@ -3025,6 +3082,7 @@
         service,
         quantity,
         link,
+        phoneNumber: phone_number,
         currency: activeCurrency,
         charge: data.charge,
         remainingBalance: data.remaining_balance
@@ -3045,15 +3103,19 @@
       const orders = await res.json();
       const tbody = document.getElementById('ordersTableBody');
       if (!orders || orders.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-400">No orders placed yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" class="p-6 text-center text-slate-400">No orders placed yet.</td></tr>`;
         return;
       }
       tbody.innerHTML = orders.map(o => `
         <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
           <td class="p-3.5 font-mono text-fbBlue font-bold">#${o.id}</td>
           <td class="p-3.5 font-semibold text-slate-800 dark:text-slate-200">${o.service_name}</td>
-          <td class="p-3.5"><a href="${o.link}" target="_blank" class="text-fbBlue hover:underline truncate block max-w-xs">${o.link}</a></td>
+          <td class="p-3.5">${o.link ? `<a href="${o.link}" target="_blank" rel="noopener noreferrer" class="text-fbBlue hover:underline truncate block max-w-xs">${o.link}</a>` : '—'}</td>
+          <td class="p-3.5">${o.phone_number || '—'}</td>
           <td class="p-3.5 font-bold">${o.quantity}</td>
+          <td class="p-3.5">${o.start_count ?? '—'}</td>
+          <td class="p-3.5">${o.remains ?? '—'}</td>
+          <td class="p-3.5">${o.average_time || '—'}</td>
           <td class="p-3.5 text-slate-900 dark:text-white font-semibold">${o.currency} ${o.charge}</td>
           <td class="p-3.5"><span class="px-2.5 py-0.5 rounded-full text-xs bg-pink-100 text-igPink font-bold">${o.status}</span></td>
           <td class="p-3.5 text-xs text-slate-400">${new Date(o.created_at).toLocaleDateString()}</td>
@@ -3228,6 +3290,26 @@
 
       const whatsappURL = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${message}`;
       window.open(whatsappURL, '_blank');
+    }
+
+    async function loadUserReferralSummary() {
+      const token = getAuthToken();
+      if (!token) return;
+      try {
+        const response = await fetch('/api/user/referrals', {
+          headers: { Authorization: 'Bearer ' + token },
+          cache: 'no-store'
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load referral summary.');
+        document.getElementById('myReferralTotal').textContent = data.total_referrals || 0;
+        document.getElementById('myReferralSuccess').textContent = data.successful_referrals || 0;
+        document.getElementById('myReferralEarnings').textContent = `₹${Number(data.total_earnings || 0).toFixed(0)}`;
+        document.getElementById('myReferralSlots').textContent = data.remaining_slots || 0;
+        document.getElementById('myReferralLimitMessage').classList.toggle('hidden', Number(data.remaining_slots) > 0);
+      } catch (error) {
+        console.error('Could not load referral summary:', error);
+      }
     }
 
     function copyReferralLink() {

@@ -250,13 +250,19 @@
             <div class="flex items-center justify-between mb-6 pb-3 border-b border-slate-800">
               <h2 class="text-lg font-bold text-white flex items-center space-x-2"><i class="fa-solid fa-gauge-high text-gold"></i><span>Dashboard</span></h2>
             </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
               <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4"><div class="text-xs text-slate-400">Users (active)</div><div id="dashUsers" class="text-2xl font-black text-gold">0</div></div>
               <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4"><div class="text-xs text-slate-400">Active Services</div><div id="dashServices" class="text-2xl font-black text-gold">0</div></div>
               <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4"><div class="text-xs text-slate-400">Total Orders</div><div id="dashOrders" class="text-2xl font-black text-gold">0</div></div>
               <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4"><div class="text-xs text-slate-400">Pending Orders</div><div id="dashPending" class="text-2xl font-black text-gold">0</div></div>
               <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4"><div class="text-xs text-slate-400">Revenue Today</div><div id="dashRevenueToday" class="text-2xl font-black text-gold">₹0.00</div></div>
               <div class="bg-slate-950/60 border border-slate-800 rounded-2xl p-4"><div class="text-xs text-slate-400">Revenue Total</div><div id="dashRevenueTotal" class="text-2xl font-black text-gold">₹0.00</div></div>
+              <div class="bg-slate-950/60 border border-violet-900 rounded-2xl p-4"><div class="text-xs text-slate-400">Total Referrals</div><div id="dashTotalReferrals" class="text-2xl font-black text-violet-300">0</div></div>
+              <div class="bg-slate-950/60 border border-violet-900 rounded-2xl p-4"><div class="text-xs text-slate-400">Successful Referrals</div><div id="dashSuccessfulReferrals" class="text-2xl font-black text-violet-300">0</div></div>
+              <div class="bg-slate-950/60 border border-violet-900 rounded-2xl p-4"><div class="text-xs text-slate-400">Pending Referrals</div><div id="dashPendingReferrals" class="text-2xl font-black text-violet-300">0</div></div>
+              <div class="bg-slate-950/60 border border-violet-900 rounded-2xl p-4"><div class="text-xs text-slate-400">₹750 Rewards Generated</div><div id="dashRewardsGenerated" class="text-2xl font-black text-violet-300">₹0</div></div>
+              <div class="bg-slate-950/60 border border-violet-900 rounded-2xl p-4"><div class="text-xs text-slate-400">Paid Rewards</div><div id="dashRewardsPaid" class="text-2xl font-black text-violet-300">₹0</div></div>
+              <div class="bg-slate-950/60 border border-violet-900 rounded-2xl p-4"><div class="text-xs text-slate-400">Remaining Referral Slots</div><div id="dashReferralSlots" class="text-2xl font-black text-violet-300">0</div></div>
             </div>
             <h3 class="text-sm font-bold text-gold mb-2">Recent Orders</h3>
             <div class="overflow-x-auto"><table class="w-full text-left text-sm text-slate-300"><thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800"><tr><th class="p-2">ID</th><th class="p-2">Service</th><th class="p-2">User</th><th class="p-2">Charge</th><th class="p-2">Status</th></tr></thead><tbody id="dashRecentOrders" class="divide-y divide-slate-800"></tbody></table></div>
@@ -288,15 +294,35 @@
           <section class="bg-cardBg border border-cardBorder p-6 md:p-8 rounded-3xl shadow-xl">
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6 pb-3 border-b border-slate-800">
               <div>
-                <h2 class="text-lg font-bold text-white flex items-center gap-2"><i class="fa-solid fa-user-group text-violet-400"></i><span>Successful Referrals</span></h2>
+                <h2 class="text-lg font-bold text-white flex items-center gap-2"><i class="fa-solid fa-user-group text-violet-400"></i><span>Referral Rewards & History</span></h2>
                 <p id="referralsSummary" class="text-xs text-slate-400 mt-1">Loading referrals...</p>
-                <p class="text-[11px] text-slate-500 mt-1">A referral is successful once a new account signs up with a valid referral code.</p>
+                <p class="text-[11px] text-slate-500 mt-1">₹750 reward for a referred customer's first order of ₹2,100 or more. Maximum 10 successful referrals per user.</p>
               </div>
-              <button onclick="loadReferrals()" class="px-3 py-2 bg-violet-700 text-white rounded-xl text-xs font-bold hover:bg-violet-600"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+              <div class="flex gap-2">
+                <input id="referralsSearch" type="search" placeholder="Search referral code" oninput="loadReferrals()" class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-violet-400">
+                <button onclick="loadReferrals()" class="px-3 py-2 bg-violet-700 text-white rounded-xl text-xs font-bold hover:bg-violet-600"><i class="fa-solid fa-rotate mr-1"></i>Refresh</button>
+              </div>
             </div>
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
+              <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">Total Referrals</div><div id="refTotal" class="text-lg font-black text-violet-300">0</div></div>
+              <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">Successful</div><div id="refSuccessful" class="text-lg font-black text-emerald-300">0</div></div>
+              <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">Pending</div><div id="refPending" class="text-lg font-black text-amber-300">0</div></div>
+              <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">Rejected / Invalid</div><div id="refRejected" class="text-lg font-black text-rose-300">0</div></div>
+              <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">Rewards Generated</div><div id="refGenerated" class="text-lg font-black text-violet-300">₹0</div></div>
+              <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">Paid Rewards</div><div id="refPaid" class="text-lg font-black text-emerald-300">₹0</div></div>
+              <div class="rounded-xl border border-slate-800 bg-slate-950/60 p-3"><div class="text-[10px] text-slate-400">Slots Remaining</div><div id="refSlots" class="text-lg font-black text-violet-300">0</div></div>
+            </div>
+            <h3 class="text-sm font-bold text-violet-300 mb-2">Per-user totals & referral limits</h3>
+            <div class="overflow-x-auto mb-6">
+              <table class="w-full text-left text-sm text-slate-300 min-w-[760px]">
+                <thead class="bg-slate-950 text-violet-300 uppercase text-[10px] border-b border-slate-800"><tr><th class="p-3">Referrer</th><th class="p-3">Referral Code</th><th class="p-3">Total</th><th class="p-3">Successful</th><th class="p-3">Pending</th><th class="p-3">Rejected</th><th class="p-3">Earnings</th><th class="p-3">Slots Left</th></tr></thead>
+                <tbody id="referrerTotalsTbody" class="divide-y divide-slate-800"></tbody>
+              </table>
+            </div>
+            <h3 class="text-sm font-bold text-violet-300 mb-2">Referral purchase history</h3>
             <div class="overflow-x-auto">
               <table class="w-full text-left text-sm text-slate-300">
-                <thead class="bg-slate-950 text-gold uppercase text-xs border-b border-slate-800"><tr><th class="p-3">Referred User</th><th class="p-3">Referrer</th><th class="p-3">Joined</th><th class="p-3">Manage Referrer</th></tr></thead>
+                <thead class="bg-slate-950 text-violet-300 uppercase text-[10px] border-b border-slate-800"><tr><th class="p-3">Referred User</th><th class="p-3">Referrer / Code</th><th class="p-3">Order ID</th><th class="p-3">Purchase Date</th><th class="p-3">Purchase Amount</th><th class="p-3">Reward</th><th class="p-3">Fraud Check</th><th class="p-3">Manage</th></tr></thead>
                 <tbody id="referralsTbody" class="divide-y divide-slate-800"></tbody>
               </table>
             </div>
@@ -345,8 +371,15 @@
                 </div>
 
                 <div>
-                  <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Rate per 1000 (INR ₹)</label>
+                  <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Rate (INR ₹)</label>
                   <input type="number" step="0.01" id="svcRate" required placeholder="120.00" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+                </div>
+                <div id="svcPricingTypeGroup">
+                  <label for="svcPricingType" class="text-xs uppercase font-bold text-slate-400 block mb-1">Price calculation</label>
+                  <select id="svcPricingType" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+                    <option value="per_1000">Rate per 1,000</option>
+                    <option value="per_unit">Rate per unit / day</option>
+                  </select>
                 </div>
 
                 <div class="sm:col-span-2">
@@ -367,6 +400,10 @@
                 <div class="sm:col-span-2">
                   <label class="text-xs uppercase font-bold text-slate-400 block mb-1">Package Description & Specifications</label>
                   <input type="text" id="svcDesc" required placeholder="Instant start speed, 30 days refill button enabled" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:border-gold outline-none">
+                </div>
+                <div id="svcOrderRequirementsGroup" class="sm:col-span-2 flex flex-wrap gap-5">
+                  <label class="inline-flex items-center gap-2 text-xs text-slate-300"><input id="svcRequiresUrl" type="checkbox" checked class="accent-amber-400"> Collect target URL</label>
+                  <label class="inline-flex items-center gap-2 text-xs text-slate-300"><input id="svcRequiresPhone" type="checkbox" class="accent-amber-400"> Collect phone number</label>
                 </div>
                 <div id="svcStatusGroup" class="hidden">
                   <label for="svcStatus" class="text-xs uppercase font-bold text-slate-400 block mb-1">Service Status</label>
@@ -449,7 +486,7 @@
                         <th class="p-3">Category</th>
                         <th class="p-3">Name</th>
                         <th class="p-3">Provider Rate/1000</th>
-                        <th class="p-3">Your Rate/1000</th>
+                        <th class="p-3">Your Rate</th>
                         <th class="p-3">Min / Max</th>
                         <th class="p-3">Image</th>
                         <th class="p-3">Source</th>
@@ -473,7 +510,7 @@
                         <th class="p-3">Category</th>
                         <th class="p-3">Name</th>
                         <th class="p-3">Provider Rate/1000</th>
-                        <th class="p-3">Your Rate/1000</th>
+                        <th class="p-3">Your Rate</th>
                         <th class="p-3">Min / Max</th>
                         <th class="p-3">Image</th>
                         <th class="p-3">Source</th>
@@ -1451,7 +1488,7 @@
             <td class="p-3 font-semibold text-slate-200">${s.category}</td>
             <td class="p-3">${s.name}</td>
             <td class="p-3 text-slate-600 font-mono">${s.cost_per_1000 == null ? '—' : `₹${Number(s.cost_per_1000).toFixed(4)}`}</td>
-            <td class="p-3 text-gold font-mono font-bold">₹${Number(s.rate_per_1000).toFixed(4)}</td>
+            <td class="p-3 text-gold font-mono font-bold">₹${Number(s.rate_per_1000).toFixed(4)}${s.pricing_type === 'per_unit' ? '/unit' : '/1k'}</td>
             <td class="p-3 text-xs text-slate-400">${s.min_quantity} - ${s.max_quantity}</td>
             <td class="p-3">${s.image
               ? `<div class="w-28 h-16 flex items-center justify-center bg-slate-950/60 rounded-lg overflow-hidden border border-slate-700"><img src="${s.image}" alt="${s.name}" loading="lazy" class="w-full h-full object-cover object-center" onerror="this.closest('div').innerHTML='<span class=\'text-slate-500 text-xs\'>none</span>'"></div>`
@@ -1485,7 +1522,10 @@
         max_quantity: parseInt(document.getElementById('svcMax').value),
         description: document.getElementById('svcDesc').value,
         image: document.getElementById('svcImage').value,
-        status: document.getElementById('svcStatus').value || 'active'
+        status: document.getElementById('svcStatus').value || 'active',
+        pricing_type: document.getElementById('svcPricingType').value,
+        requires_target_url: document.getElementById('svcRequiresUrl').checked,
+        requires_phone: document.getElementById('svcRequiresPhone').checked
       };
 
       const url = editId ? `/api/admin/services/${editId}` : '/api/admin/services';
@@ -1517,11 +1557,16 @@
       categorySelect.value = s.category;
       document.getElementById('svcName').value = s.name;
       document.getElementById('svcRate').value = s.rate_per_1000;
+      document.getElementById('svcPricingType').value = s.pricing_type || 'per_1000';
       document.getElementById('svcMin').value = s.min_quantity;
       document.getElementById('svcMax').value = s.max_quantity;
       document.getElementById('svcDesc').value = s.description;
+      document.getElementById('svcRequiresUrl').checked = s.requires_target_url !== false;
+      document.getElementById('svcRequiresPhone').checked = s.requires_phone === true;
       document.getElementById('svcStatus').value = s.status || 'active';
       document.getElementById('svcStatusGroup').classList.toggle('hidden', !s.provider_id);
+      document.getElementById('svcPricingTypeGroup').classList.toggle('hidden', Boolean(s.provider_id));
+      document.getElementById('svcOrderRequirementsGroup').classList.toggle('hidden', Boolean(s.provider_id));
       document.getElementById('svcInlineFile').value = '';
       document.getElementById('svcLocalPreviewWrap').classList.add('hidden');
       const imageSelect = document.getElementById('svcImage');
@@ -1543,7 +1588,12 @@
       document.getElementById('svcInlineFile').value = '';
       document.getElementById('svcLocalPreviewWrap').classList.add('hidden');
       document.getElementById('svcStatusGroup').classList.add('hidden');
+      document.getElementById('svcPricingTypeGroup').classList.remove('hidden');
+      document.getElementById('svcOrderRequirementsGroup').classList.remove('hidden');
       document.getElementById('svcStatus').value = 'active';
+      document.getElementById('svcPricingType').value = 'per_1000';
+      document.getElementById('svcRequiresUrl').checked = true;
+      document.getElementById('svcRequiresPhone').checked = false;
       document.getElementById('formHeading').innerHTML = `<i class="fa-solid fa-circle-plus"></i><span>Add New In-House Package</span>`;
       document.getElementById('submitBtn').innerText = 'Save & Publish In-House Package';
       document.getElementById('cancelEditBtn').classList.add('hidden');
@@ -1869,6 +1919,83 @@
         });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || 'Could not update referral.');
+        await loadReferrals();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    async function loadReferrals() {
+      const token = localStorage.getItem('jr_admin_token');
+      const tbody = document.getElementById('referralsTbody');
+      const summary = document.getElementById('referralsSummary');
+      const search = document.getElementById('referralsSearch').value.trim();
+      tbody.innerHTML = '<tr><td colspan="8" class="p-3 text-xs">Loading referrals...</td></tr>';
+      try {
+        const response = await fetch(`/api/admin/referrals?${new URLSearchParams({ search })}`, {
+          headers: { Authorization: 'Bearer ' + token }
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not load referrals.');
+        const metrics = data.summary || {};
+        const referrers = data.referrers || [];
+        summary.textContent = `${Number(metrics.total_referrals || 0)} referrals · ${Number(metrics.successful_referrals || 0)} successful · ${Number(metrics.pending_referrals || 0)} pending`;
+        document.getElementById('refTotal').textContent = metrics.total_referrals || 0;
+        document.getElementById('refSuccessful').textContent = metrics.successful_referrals || 0;
+        document.getElementById('refPending').textContent = metrics.pending_referrals || 0;
+        document.getElementById('refRejected').textContent = metrics.rejected_referrals || 0;
+        document.getElementById('refGenerated').textContent = `₹${Number(metrics.rewards_generated || 0).toFixed(0)}`;
+        document.getElementById('refPaid').textContent = `₹${Number(metrics.rewards_paid || 0).toFixed(0)}`;
+        document.getElementById('refSlots').textContent = metrics.remaining_slots || 0;
+        document.getElementById('referrerTotalsTbody').innerHTML = (data.referrer_totals || []).map((referrer) => `
+          <tr>
+            <td class="p-3 text-xs">${escapeHtml(referrer.name || referrer.email)}<br>${escapeHtml(referrer.email || '')}</td>
+            <td class="p-3 text-xs font-mono">${escapeHtml(referrer.referral_code || '')}</td>
+            <td class="p-3 text-xs">${Number(referrer.total_referrals || 0)}</td>
+            <td class="p-3 text-xs text-emerald-300">${Number(referrer.successful_referrals || 0)}</td>
+            <td class="p-3 text-xs text-amber-300">${Number(referrer.pending_referrals || 0)}</td>
+            <td class="p-3 text-xs text-rose-300">${Number(referrer.rejected_referrals || 0)}</td>
+            <td class="p-3 text-xs font-bold text-gold">₹${Number(referrer.total_earnings || 0).toFixed(0)}</td>
+            <td class="p-3 text-xs">${Number(referrer.remaining_slots || 0)} / 10</td>
+          </tr>`).join('') || '<tr><td colspan="8" class="p-3 text-xs text-slate-500">No referrers yet.</td></tr>';
+        tbody.innerHTML = (data.referrals || []).map((referral) => {
+          const options = ['<option value="">No referrer</option>']
+            .concat(referrers.filter((referrer) => Number(referrer.id) !== Number(referral.referred_user_id))
+              .map((referrer) => `<option value="${escapeHtml(referrer.referral_code)}" ${referrer.referral_code === referral.referred_by ? 'selected' : ''}>${escapeHtml(referrer.name || referrer.email)} (${escapeHtml(referrer.referral_code)})</option>`))
+            .join('');
+          const rewardStatus = referral.reward_status || (referral.first_order_id ? 'No reward - below ₹2,100' : 'Pending purchase');
+          const rewardActions = referral.reward_id && ['Pending', 'Approved'].includes(rewardStatus)
+            ? `<div class="flex flex-wrap gap-1 mt-2">${rewardStatus === 'Pending' ? `<button onclick="updateReferralReward(${Number(referral.reward_id)}, 'Approved')" class="px-2 py-1 bg-emerald-700 text-white rounded text-[10px] font-bold">Approve</button>` : `<button onclick="updateReferralReward(${Number(referral.reward_id)}, 'Paid')" class="px-2 py-1 bg-blue-700 text-white rounded text-[10px] font-bold">Mark Paid</button>`}<button onclick="updateReferralReward(${Number(referral.reward_id)}, 'Rejected')" class="px-2 py-1 bg-rose-800 text-white rounded text-[10px] font-bold">Reject / Block</button></div>`
+            : '';
+          return `<tr>
+            <td class="p-3 text-xs">${escapeHtml(referral.referred_name || '')}<br>${escapeHtml(referral.referred_email || '')}<br><span class="text-slate-500">Joined ${referral.joined_at ? new Date(referral.joined_at).toLocaleDateString() : '—'}</span></td>
+            <td class="p-3 text-xs">${escapeHtml(referral.referrer_name || '')}<br><span class="font-mono text-slate-400">${escapeHtml(referral.referrer_code || '')}</span></td>
+            <td class="p-3 text-xs font-mono">${referral.order_id || referral.first_order_id ? `#${Number(referral.order_id || referral.first_order_id)}` : '—'}</td>
+            <td class="p-3 text-xs">${referral.purchase_at || referral.first_purchase_at ? new Date(referral.purchase_at || referral.first_purchase_at).toLocaleString() : '—'}</td>
+            <td class="p-3 text-xs">${referral.purchase_amount != null ? `₹${Number(referral.purchase_amount).toFixed(2)}` : referral.first_purchase_amount == null ? '—' : `${escapeHtml(referral.first_purchase_currency || '')} ${Number(referral.first_purchase_amount).toFixed(2)}`}</td>
+            <td class="p-3 text-xs"><span class="font-bold">${escapeHtml(rewardStatus)}</span>${referral.reward_id ? `<br>₹${Number(referral.reward_amount || 750).toFixed(0)}` : ''}</td>
+            <td class="p-3 text-xs ${referral.fraud_flag ? 'text-rose-300' : 'text-emerald-300'}">${referral.fraud_flag ? `Flagged: ${escapeHtml(referral.fraud_reason || 'Review required')}` : 'No flag'}</td>
+            <td class="p-3 text-xs min-w-[230px]"><select id="referrerSelect-${Number(referral.referred_user_id)}" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2 py-1.5 text-xs text-white">${options}</select><button onclick="saveReferral(${Number(referral.referred_user_id)})" class="mt-1 px-2 py-1 bg-violet-700 text-white font-bold rounded text-[10px]">Update Referrer</button>${rewardActions}</td>
+          </tr>`;
+        }).join('') || '<tr><td colspan="8" class="p-3 text-xs">No referrals found.</td></tr>';
+      } catch (error) {
+        console.error(error);
+        summary.textContent = 'Could not load referrals.';
+        tbody.innerHTML = `<tr><td colspan="8" class="p-3 text-xs text-red-300">${escapeHtml(error.message)}</td></tr>`;
+      }
+    }
+
+    async function updateReferralReward(rewardId, status) {
+      if (status === 'Rejected' && !confirm('Reject and block this referral reward?')) return;
+      const token = localStorage.getItem('jr_admin_token');
+      try {
+        const response = await fetch(`/api/admin/referral-rewards/${rewardId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+          body: JSON.stringify({ status })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Could not update reward.');
         await loadReferrals();
       } catch (error) {
         alert(error.message);
@@ -2294,6 +2421,13 @@
         document.getElementById('dashPending').textContent = d.pending_orders ?? 0;
         document.getElementById('dashRevenueToday').textContent = `₹${Number(d.revenue_today || 0).toFixed(2)}`;
         document.getElementById('dashRevenueTotal').textContent = `₹${Number(d.revenue_total || 0).toFixed(2)}`;
+        const referrals = d.referrals || {};
+        document.getElementById('dashTotalReferrals').textContent = referrals.total_referrals || 0;
+        document.getElementById('dashSuccessfulReferrals').textContent = referrals.successful_referrals || 0;
+        document.getElementById('dashPendingReferrals').textContent = referrals.pending_referrals || 0;
+        document.getElementById('dashRewardsGenerated').textContent = `₹${Number(referrals.rewards_generated || 0).toFixed(0)}`;
+        document.getElementById('dashRewardsPaid').textContent = `₹${Number(referrals.rewards_paid || 0).toFixed(0)}`;
+        document.getElementById('dashReferralSlots').textContent = referrals.remaining_slots || 0;
         const tbody = document.getElementById('dashRecentOrders');
         tbody.innerHTML = (d.recent_orders || []).map(o => `
           <tr class="hover:bg-slate-900/40">

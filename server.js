@@ -48,7 +48,7 @@ app.get('/', async (req, res, next) => {
 
   try {
     const result = await pool.query(
-      "SELECT id, category, name, rate_per_1000, description, image FROM services WHERE id = $1 AND status = 'active'",
+      "SELECT id, category, name, rate_per_1000, pricing_type, description, image FROM services WHERE id = $1 AND status = 'active'",
       [serviceId]
     );
     if (!result.rows.length) return res.status(404).send('Package not found.');
@@ -73,7 +73,7 @@ app.get('/', async (req, res, next) => {
     const description = [
       service.category,
       service.description,
-      `₹${Number(service.rate_per_1000).toFixed(2)} per 1,000`
+      `₹${Number(service.rate_per_1000).toFixed(2)} per ${service.pricing_type === 'per_unit' ? 'unit' : '1,000'}`
     ].filter(Boolean).join(' · ');
     const title = `${service.name} | Jay Rajput Media Power`;
     const indexPath = path.join(__dirname, 'public', 'index.html');
@@ -178,11 +178,14 @@ async function initDb() {
         category TEXT,
         name TEXT,
         rate_per_1000 REAL,
+        pricing_type TEXT NOT NULL DEFAULT 'per_1000',
         min_quantity INTEGER,
         max_quantity INTEGER,
         description TEXT,
         status TEXT DEFAULT 'active',
-        admin_override BOOLEAN DEFAULT false
+        admin_override BOOLEAN DEFAULT false,
+        requires_target_url BOOLEAN NOT NULL DEFAULT true,
+        requires_phone BOOLEAN NOT NULL DEFAULT false
       );
 
       CREATE TABLE IF NOT EXISTS orders (
@@ -191,12 +194,31 @@ async function initDb() {
         service_id INTEGER,
         service_name TEXT,
         link TEXT,
+        phone_number TEXT,
         quantity INTEGER,
         charge REAL,
         currency TEXT,
+        start_count INTEGER,
+        remains INTEGER,
+        average_time TEXT,
         status TEXT DEFAULT 'Pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id)
+      );
+
+      CREATE TABLE IF NOT EXISTS referral_rewards (
+        id SERIAL PRIMARY KEY,
+        referrer_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        referred_user_id INTEGER NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        order_id INTEGER UNIQUE REFERENCES orders(id) ON DELETE SET NULL,
+        purchase_amount REAL NOT NULL,
+        purchase_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        reward_amount REAL NOT NULL DEFAULT 750,
+        status TEXT NOT NULL DEFAULT 'Pending',
+        fraud_flag BOOLEAN NOT NULL DEFAULT false,
+        fraud_reason TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
 
       CREATE TABLE IF NOT EXISTS tickets (
@@ -343,9 +365,17 @@ async function initializeAppData() {
   await addColumnIfMissing('services', 'cost_per_1000', 'REAL');
   await addColumnIfMissing('services', 'image', 'TEXT');
   await addColumnIfMissing('services', 'admin_override', 'BOOLEAN DEFAULT false');
+  await addColumnIfMissing('services', 'pricing_type', "TEXT NOT NULL DEFAULT 'per_1000'");
+  await addColumnIfMissing('services', 'requires_target_url', 'BOOLEAN NOT NULL DEFAULT true');
+  await addColumnIfMissing('services', 'requires_phone', 'BOOLEAN NOT NULL DEFAULT false');
   await addColumnIfMissing('orders', 'upstream_order_id', 'TEXT');
   await addColumnIfMissing('orders', 'cost', 'REAL DEFAULT 0');
+  await addColumnIfMissing('orders', 'phone_number', 'TEXT');
+  await addColumnIfMissing('orders', 'start_count', 'INTEGER');
+  await addColumnIfMissing('orders', 'remains', 'INTEGER');
+  await addColumnIfMissing('orders', 'average_time', 'TEXT');
   await addColumnIfMissing('users', 'status', "TEXT DEFAULT 'active'");
+  await addColumnIfMissing('users', 'signup_ip', 'TEXT');
   await addColumnIfMissing('tickets', 'resolved_at', 'TIMESTAMP');
   await addColumnIfMissing('site_themes', 'layout', "TEXT NOT NULL DEFAULT 'classic'");
   await addColumnIfMissing('site_themes', 'occasion_message', 'TEXT');
@@ -355,6 +385,7 @@ async function initializeAppData() {
   await addColumnIfMissing('payment_orders', 'utr', 'TEXT');
   await pool.query("CREATE UNIQUE INDEX IF NOT EXISTS payment_orders_utr_unique_idx ON payment_orders (LOWER(utr)) WHERE utr IS NOT NULL AND BTRIM(utr) <> ''");
   await pool.query('CREATE INDEX IF NOT EXISTS password_reset_tokens_user_created_idx ON password_reset_tokens (user_id, created_at DESC)');
+  await pool.query('CREATE INDEX IF NOT EXISTS referral_rewards_referrer_status_idx ON referral_rewards (referrer_id, status)');
 
   // Insert default Admin if not exists
   const adminCheck = await pool.query('SELECT * FROM users WHERE email = $1', ['admin@jayrajputmediapower.com']);
@@ -364,6 +395,16 @@ async function initializeAppData() {
       `INSERT INTO users (name, email, password, role, referral_code) VALUES ($1, $2, $3, $4, $5)`,
       ['Admin Jay Rajput', 'admin@jayrajputmediapower.com', hash, 'admin', 'JRADMIN']
     );
+  }
+  const usersWithoutReferralCode = await pool.query('SELECT id FROM users WHERE referral_code IS NULL OR BTRIM(referral_code) = \'\'');
+  for (const account of usersWithoutReferralCode.rows) {
+    let referralCode;
+    let existingCode;
+    do {
+      referralCode = `JR${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+      existingCode = await pool.query('SELECT 1 FROM users WHERE referral_code = $1', [referralCode]);
+    } while (existingCode.rowCount);
+    await pool.query('UPDATE users SET referral_code = $1 WHERE id = $2 AND (referral_code IS NULL OR BTRIM(referral_code) = \'\')', [referralCode, account.id]);
   }
 
   // Recover default in-house services if they were deleted
@@ -500,10 +541,13 @@ app.post('/api/auth/register', async (req, res) => {
     const referralCode = typeof referral_code === 'string' ? referral_code.trim().toUpperCase() : '';
     if (referralCode) {
       const referrer = await pool.query(
-        `SELECT id FROM users WHERE referral_code = $1 AND role = 'user'`,
+        `SELECT id, email FROM users WHERE referral_code = $1 AND role = 'user'`,
         [referralCode]
       );
       if (!referrer.rows.length) return res.status(400).json({ error: 'Referral code is not valid.' });
+      if (String(referrer.rows[0].email || '').toLowerCase() === String(email).trim().toLowerCase()) {
+        return res.status(400).json({ error: 'A user cannot refer themselves.' });
+      }
     }
 
     console.log('Register attempt for:', email);
@@ -514,8 +558,8 @@ app.post('/api/auth/register', async (req, res) => {
     const myRefCode = 'JR' + Math.random().toString(36).substring(2, 7).toUpperCase();
 
     const stmt = await pool.query(
-      `INSERT INTO users (name, email, password, referral_code, referred_by) VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [name, email, hash, myRefCode, referralCode || null]
+      `INSERT INTO users (name, email, password, referral_code, referred_by, signup_ip) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+      [name, email, hash, myRefCode, referralCode || null, req.ip]
     );
 
     const userId = stmt.rows[0].id;
@@ -728,14 +772,17 @@ app.post('/api/auth/google', async (req, res) => {
       const referralCode = typeof referral_code === 'string' ? referral_code.trim().toUpperCase() : '';
       if (referralCode) {
         const referrer = await pool.query(
-          `SELECT id FROM users WHERE referral_code = $1 AND role = 'user'`,
+          `SELECT id, email FROM users WHERE referral_code = $1 AND role = 'user'`,
           [referralCode]
         );
         if (!referrer.rows.length) return res.status(400).json({ error: 'Referral code is not valid.' });
+        if (String(referrer.rows[0].email || '').toLowerCase() === email) {
+          return res.status(400).json({ error: 'A user cannot refer themselves.' });
+        }
       }
       const info = await pool.query(
-        `INSERT INTO users (name, email, google_id, role, referral_code, referred_by) VALUES ($1, $2, $3, 'user', $4, $5) RETURNING id`,
-        [identity.name || email.split('@')[0], email, identity.sub, myRefCode, referralCode || null]
+        `INSERT INTO users (name, email, google_id, role, referral_code, referred_by, signup_ip) VALUES ($1, $2, $3, 'user', $4, $5, $6) RETURNING id`,
+        [identity.name || email.split('@')[0], email, identity.sub, myRefCode, referralCode || null, req.ip]
       );
       const newUserId = info.rows[0].id;
       user = await pool.query('SELECT * FROM users WHERE id = $1', [newUserId]);
@@ -772,46 +819,105 @@ app.get('/api/user/profile', authenticateToken, async (req, res) => {
   res.json(user.rows[0]);
 });
 
+app.get('/api/user/referrals', authenticateToken, async (req, res) => {
+  const [counts, history] = await Promise.all([
+    pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM users WHERE referred_by = (SELECT referral_code FROM users WHERE id = $1)) AS total_referrals,
+        COUNT(*) FILTER (WHERE status IN ('Pending', 'Approved', 'Paid')) AS successful_referrals,
+        COUNT(*) FILTER (WHERE status = 'Pending') AS pending_rewards,
+        COUNT(*) FILTER (WHERE status = 'Rejected') AS rejected_referrals,
+        COALESCE(SUM(reward_amount) FILTER (WHERE status IN ('Pending', 'Approved', 'Paid')), 0) AS total_earnings,
+        GREATEST(0, 10 - COUNT(*) FILTER (WHERE status IN ('Pending', 'Approved', 'Paid'))) AS remaining_slots
+      FROM referral_rewards WHERE referrer_id = $1
+    `, [req.user.id]),
+    pool.query(`
+      SELECT rr.order_id, rr.purchase_amount, rr.purchase_at, rr.reward_amount, rr.status, rr.fraud_flag, referred.name AS referred_name
+      FROM referral_rewards rr JOIN users referred ON referred.id = rr.referred_user_id
+      WHERE rr.referrer_id = $1 ORDER BY rr.purchase_at DESC
+    `, [req.user.id])
+  ]);
+  res.json({ ...counts.rows[0], history: history.rows });
+});
+
 // ==================== PRICING & ORDER PLACEMENT ====================
 const WALLET_BY_CURRENCY = { INR: 'wallet_inr', USD: 'wallet_usd', EUR: 'wallet_eur' };
 const CURRENCY_MULTIPLIER = { INR: 1, USD: 0.012, EUR: 0.011 };
 
-// Places an order for a user: charges the wallet, writes the order, applies referral commission.
+// Places an order, debits the wallet, and creates a single eligible referral reward.
 // Returns { error } on failure, otherwise the created order summary.
-async function placeOrder(user, service, link, quantity, currency = 'INR') {
+async function placeOrder(user, service, link, quantity, currency = 'INR', phoneNumber = null) {
   const multiplier = CURRENCY_MULTIPLIER[currency] ?? 1;
   const walletField = WALLET_BY_CURRENCY[currency] || 'wallet_inr';
-  const totalCost = parseFloat((((service.rate_per_1000 * multiplier) / 1000) * quantity).toFixed(2));
-
-  if (user[walletField] < totalCost) {
-    return { error: 'Insufficient wallet balance. Please add funds.' };
-  }
+  const rate = Number(service.rate_per_1000) || 0;
+  const quantityRate = service.pricing_type === 'per_unit' ? rate : rate / 1000;
+  const totalCost = parseFloat((quantityRate * multiplier * quantity).toFixed(2));
 
   // Upstream (wholesale) cost of fulfilling this order, for margin reporting
   const supplierCost = service.cost_per_1000
     ? parseFloat((((service.cost_per_1000 * multiplier) / 1000) * quantity).toFixed(2))
     : 0;
 
-  await pool.query(`UPDATE users SET ${walletField} = ${walletField} - $1 WHERE id = $2`, [totalCost, user.id]);
-
-    const info = await pool.query(
-      `INSERT INTO orders (user_id, service_id, service_name, link, quantity, charge, currency, cost) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [user.id, service.id, service.name, link, quantity, totalCost, currency, supplierCost]
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const balance = await client.query(
+      `UPDATE users SET ${walletField} = ${walletField} - $1 WHERE id = $2 AND ${walletField} >= $1 RETURNING ${walletField}`,
+      [totalCost, user.id]
     );
+    if (!balance.rowCount) {
+      await client.query('ROLLBACK');
+      return { error: 'Insufficient wallet balance. Please add funds.' };
+    }
 
+    const info = await client.query(
+      `INSERT INTO orders (user_id, service_id, service_name, link, phone_number, quantity, charge, currency, cost, remains)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $6) RETURNING id`,
+      [user.id, service.id, service.name, link || null, phoneNumber, quantity, totalCost, currency, supplierCost]
+    );
     const orderId = info.rows[0].id;
 
-  // Apply the ₹100 eligibility threshold in INR, regardless of order currency.
-  const orderValueInInr = totalCost / multiplier;
-  if (orderValueInInr > 100 && user.referred_by) {
-    const referrer = await pool.query('SELECT id FROM users WHERE referral_code = $1', [user.referred_by]);
-    if (referrer.rows.length) {
-      const commission = parseFloat((totalCost * 0.10).toFixed(2));
-      await pool.query(`UPDATE users SET ${walletField} = ${walletField} + $1 WHERE id = $2`, [commission, referrer.rows[0].id]);
+    const orderValueInInr = totalCost / multiplier;
+    if (orderValueInInr >= 2100 && user.referred_by) {
+      const referrer = await client.query(
+        'SELECT id, signup_ip FROM users WHERE referral_code = $1 AND role = $2 FOR UPDATE',
+        [user.referred_by, 'user']
+      );
+      if (referrer.rows.length) {
+        const priorReward = await client.query('SELECT id FROM referral_rewards WHERE referred_user_id = $1', [user.id]);
+        if (!priorReward.rowCount) {
+          const successful = await client.query(
+            "SELECT COUNT(*) AS total FROM referral_rewards WHERE referrer_id = $1 AND status IN ('Pending', 'Approved', 'Paid')",
+            [referrer.rows[0].id]
+          );
+          const fraudFlag = Boolean(user.signup_ip && referrer.rows[0].signup_ip && user.signup_ip === referrer.rows[0].signup_ip);
+          const fraudReason = fraudFlag ? 'Referrer and referred account were registered from the same IP address; review before payment.' : null;
+          const rewardStatus = Number(successful.rows[0].total) >= 10 ? 'Rejected' : 'Pending';
+          const limitReason = rewardStatus === 'Rejected' ? 'Referrer has reached the 10 successful referral limit.' : fraudReason;
+          await client.query(
+            `INSERT INTO referral_rewards
+               (referrer_id, referred_user_id, order_id, purchase_amount, reward_amount, status, fraud_flag, fraud_reason)
+             VALUES ($1, $2, $3, $4, 750, $5, $6, $7)
+             ON CONFLICT (referred_user_id) DO NOTHING`,
+            [referrer.rows[0].id, user.id, orderId, orderValueInInr, rewardStatus, fraudFlag, limitReason]
+          );
+        }
+      }
     }
-  }
 
-  return { order_id: orderId, charge: totalCost, cost: supplierCost, remaining_balance: user[walletField] - totalCost };
+    await client.query('COMMIT');
+    return {
+      order_id: orderId,
+      charge: totalCost,
+      cost: supplierCost,
+      remaining_balance: Number(balance.rows[0][walletField])
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 // ==================== SERVICES & ORDERS ====================
@@ -821,16 +927,29 @@ app.get('/api/services', async (req, res) => {
 });
 
 app.post('/api/orders/create', authenticateToken, async (req, res) => {
-  const { service_id, link, quantity, currency = 'INR' } = req.body;
+  const { service_id, link, phone_number, quantity, currency = 'INR' } = req.body;
   const service = await pool.query('SELECT * FROM services WHERE id = $1', [service_id]);
   const user = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
 
   if (!service.rows.length) return res.status(404).json({ error: 'Service not found.' });
-  if (quantity < service.rows[0].min_quantity || quantity > service.rows[0].max_quantity) {
+  if (service.rows[0].requires_target_url && (typeof link !== 'string' || !link.trim())) {
+    return res.status(400).json({ error: 'A target URL is required for this package.' });
+  }
+  if (service.rows[0].requires_phone && (typeof phone_number !== 'string' || !phone_number.trim())) {
+    return res.status(400).json({ error: 'A phone number is required for this package.' });
+  }
+  const orderQuantity = Number(quantity);
+  if (!Number.isSafeInteger(orderQuantity) || orderQuantity < service.rows[0].min_quantity || orderQuantity > service.rows[0].max_quantity) {
     return res.status(400).json({ error: `Quantity must be between ${service.rows[0].min_quantity} and ${service.rows[0].max_quantity}` });
   }
+  if (!Object.prototype.hasOwnProperty.call(WALLET_BY_CURRENCY, currency)) {
+    return res.status(400).json({ error: 'Unsupported currency.' });
+  }
+  if (service.rows[0].requires_phone && !/^[+()\d\s-]{7,20}$/.test(phone_number.trim())) {
+    return res.status(400).json({ error: 'Enter a valid phone number.' });
+  }
 
-  const placed = await placeOrder(user.rows[0], service.rows[0], link, quantity, currency);
+  const placed = await placeOrder(user.rows[0], service.rows[0], link, orderQuantity, currency, phone_number);
   if (placed.error) return res.status(400).json({ error: placed.error });
 
   // Services imported from an upstream panel are pushed to that supplier automatically
@@ -921,9 +1040,16 @@ app.get('/api/admin/services', authenticateToken, requireAdmin, async (req, res)
 
 app.post('/api/admin/services', authenticateToken, requireAdmin, async (req, res) => {
   const { category, name, rate_per_1000, min_quantity, max_quantity, description, image } = req.body;
+  const pricingType = req.body.pricing_type || 'per_1000';
+  const requiresTargetUrl = req.body.requires_target_url !== false;
+  const requiresPhone = req.body.requires_phone === true;
+  if (!['per_1000', 'per_unit'].includes(pricingType)) {
+    return res.status(400).json({ error: 'Pricing type must be per 1,000 or per unit.' });
+  }
   const info = await pool.query(
-    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, image) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-    [category, name, rate_per_1000, min_quantity, max_quantity, description, image || null]
+    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, image, pricing_type, requires_target_url, requires_phone)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+    [category, name, rate_per_1000, min_quantity, max_quantity, description, image || null, pricingType, requiresTargetUrl, requiresPhone]
   );
   res.json({ success: true, id: info.rows[0].id });
 });
@@ -933,6 +1059,9 @@ app.put('/api/admin/services/:id', authenticateToken, requireAdmin, async (req, 
   const rate = Number(rate_per_1000);
   const min = Number(min_quantity);
   const max = Number(max_quantity);
+  const pricingType = req.body.pricing_type || 'per_1000';
+  const requiresTargetUrl = req.body.requires_target_url !== false;
+  const requiresPhone = req.body.requires_phone === true;
   if (
     typeof category !== 'string' || !category.trim()
     || typeof name !== 'string' || !name.trim()
@@ -940,6 +1069,9 @@ app.put('/api/admin/services/:id', authenticateToken, requireAdmin, async (req, 
     || !Number.isInteger(min) || min < 1
     || !Number.isInteger(max) || max < min
     || typeof description !== 'string'
+    || !['per_1000', 'per_unit'].includes(pricingType)
+    || typeof req.body.requires_target_url !== 'boolean'
+    || typeof req.body.requires_phone !== 'boolean'
     || !['active', 'inactive'].includes(status)
     || (image != null && typeof image !== 'string')
   ) {
@@ -948,11 +1080,12 @@ app.put('/api/admin/services/:id', authenticateToken, requireAdmin, async (req, 
   const updated = await pool.query(
     `UPDATE services
      SET category=$1, name=$2, rate_per_1000=$3, min_quantity=$4, max_quantity=$5,
-         description=$6, status=$7, image=$8,
+         description=$6, status=$7, image=$8, pricing_type=$9,
+         requires_target_url=$10, requires_phone=$11,
          admin_override = CASE WHEN provider_id IS NOT NULL THEN true ELSE admin_override END
-     WHERE id = $9
+     WHERE id = $12
      RETURNING provider_id`,
-    [category.trim(), name.trim(), rate, min, max, description.trim(), status, image || null, req.params.id]
+    [category.trim(), name.trim(), rate, min, max, description.trim(), status, image || null, pricingType, requiresTargetUrl, requiresPhone, req.params.id]
   );
   if (!updated.rowCount) return res.status(404).json({ error: 'Service not found.' });
   res.json({
@@ -1304,9 +1437,19 @@ async function refreshUpstreamOrderStatus(orderId = null, userId = null) {
       if (!mapped) continue;
 
       const updated = await pool.query(
-        `UPDATE orders SET status = $1
-         WHERE id = $2 AND status IN ('Pending', 'In progress', 'Partial')`,
-        [mapped, order.id]
+        `UPDATE orders
+         SET status = $1,
+             start_count = COALESCE($2, start_count),
+             remains = COALESCE($3, remains),
+             average_time = COALESCE($4, average_time)
+         WHERE id = $5 AND status IN ('Pending', 'In progress', 'Partial')`,
+        [
+          mapped,
+          payload?.start_count != null && Number.isInteger(Number(payload.start_count)) ? Number(payload.start_count) : null,
+          payload?.remains != null && Number.isInteger(Number(payload.remains)) ? Number(payload.remains) : null,
+          payload?.average_time != null ? String(payload.average_time) : null,
+          order.id
+        ]
       );
       if (updated.rowCount) checked++;
     } catch (err) {
@@ -1808,6 +1951,19 @@ app.get('/api/admin/dashboard', authenticateToken, requireAdmin, async (req, res
       `SELECT o.id, o.service_name, o.charge, o.currency, o.status, o.created_at, u.name AS user_name, u.email AS user_email
        FROM orders o JOIN users u ON o.user_id = u.id ORDER BY o.id DESC LIMIT 8`
     );
+    const referralMetrics = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM users referred JOIN users referrer ON referrer.referral_code = referred.referred_by WHERE referred.role = 'user' AND referrer.role = 'user') AS total_referrals,
+        (SELECT COUNT(*) FROM referral_rewards WHERE status IN ('Pending', 'Approved', 'Paid')) AS successful_referrals,
+        (SELECT COUNT(*) FROM users referred JOIN users referrer ON referrer.referral_code = referred.referred_by
+         LEFT JOIN referral_rewards rr ON rr.referred_user_id = referred.id
+         WHERE referred.role = 'user' AND referrer.role = 'user' AND rr.id IS NULL) AS pending_referrals,
+        (SELECT COUNT(*) FROM referral_rewards WHERE status = 'Rejected') AS rejected_referrals,
+        (SELECT COALESCE(SUM(reward_amount), 0) FROM referral_rewards WHERE status IN ('Pending', 'Approved', 'Paid')) AS rewards_generated,
+        (SELECT COALESCE(SUM(reward_amount), 0) FROM referral_rewards WHERE status = 'Paid') AS rewards_paid,
+        GREATEST(0, (SELECT COUNT(*) FROM users WHERE role = 'user') * 10 -
+          (SELECT COUNT(*) FROM referral_rewards WHERE status IN ('Pending', 'Approved', 'Paid'))) AS remaining_slots
+    `);
     res.json({
       users: parseInt(userCount.rows[0].n),
       active_services: parseInt(activeServices.rows[0].n),
@@ -1816,7 +1972,8 @@ app.get('/api/admin/dashboard', authenticateToken, requireAdmin, async (req, res
       revenue_total: parseFloat(revenueTotal.rows[0].n),
       revenue_today: parseFloat(revenueToday.rows[0].n),
       pending_orders: parseInt(pendingOrders.rows[0].n),
-      recent_orders: recentOrders.rows
+      recent_orders: recentOrders.rows,
+      referrals: referralMetrics.rows[0]
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1825,23 +1982,100 @@ app.get('/api/admin/dashboard', authenticateToken, requireAdmin, async (req, res
 
 // ==================== ADMIN USERS ====================
 app.get('/api/admin/referrals', authenticateToken, requireAdmin, async (req, res) => {
-  const [referrals, referrers] = await Promise.all([
+  const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+  const searchParam = `%${search}%`;
+  const [referrals, referrers, referrerTotals, summary] = await Promise.all([
     pool.query(
-      `SELECT referred.id, referred.name, referred.email, referred.referral_code, referred.referred_by, referred.created_at,
-              referrer.name AS referrer_name, referrer.email AS referrer_email
+      `SELECT referred.id AS referred_user_id, referred.name AS referred_name, referred.email AS referred_email,
+              referred.referral_code AS referred_code, referred.referred_by, referred.created_at AS joined_at,
+              referrer.id AS referrer_id, referrer.name AS referrer_name, referrer.email AS referrer_email,
+              referrer.referral_code AS referrer_code,
+              rr.id AS reward_id, rr.order_id, rr.purchase_amount, rr.purchase_at, rr.reward_amount,
+              rr.status AS reward_status, rr.fraud_flag, rr.fraud_reason,
+              first_purchase.id AS first_order_id, first_purchase.charge AS first_purchase_amount,
+              first_purchase.currency AS first_purchase_currency, first_purchase.created_at AS first_purchase_at,
+              first_purchase.status AS first_purchase_status
        FROM users referred
        JOIN users referrer ON referrer.referral_code = referred.referred_by
+       LEFT JOIN referral_rewards rr ON rr.referred_user_id = referred.id
+       LEFT JOIN LATERAL (
+         SELECT id, charge, currency, created_at, status
+         FROM orders WHERE user_id = referred.id ORDER BY created_at ASC, id ASC LIMIT 1
+       ) first_purchase ON true
        WHERE referred.role = 'user' AND referrer.role = 'user'
-       ORDER BY referred.created_at DESC, referred.id DESC`
+         AND ($1 = '' OR referrer.referral_code ILIKE $2 OR referred.referral_code ILIKE $2
+              OR referred.email ILIKE $2 OR referrer.email ILIKE $2)
+       ORDER BY referred.created_at DESC, referred.id DESC`,
+      [search, searchParam]
     ),
     pool.query(
       `SELECT id, name, email, referral_code
        FROM users
        WHERE role = 'user' AND referral_code IS NOT NULL
        ORDER BY name ASC, id ASC`
-    )
+    ),
+    pool.query(`
+      SELECT referrer.id, referrer.name, referrer.email, referrer.referral_code,
+             COUNT(referred.id)::integer AS total_referrals,
+             COUNT(rr.id) FILTER (WHERE rr.status IN ('Pending', 'Approved', 'Paid'))::integer AS successful_referrals,
+             COUNT(referred.id) FILTER (WHERE referred.id IS NOT NULL AND rr.id IS NULL)::integer AS pending_referrals,
+             COUNT(rr.id) FILTER (WHERE rr.status = 'Rejected')::integer AS rejected_referrals,
+             COALESCE(SUM(rr.reward_amount) FILTER (WHERE rr.status IN ('Pending', 'Approved', 'Paid')), 0) AS total_earnings,
+             GREATEST(0, 10 - COUNT(rr.id) FILTER (WHERE rr.status IN ('Pending', 'Approved', 'Paid')))::integer AS remaining_slots
+      FROM users referrer
+      LEFT JOIN users referred ON referred.referred_by = referrer.referral_code AND referred.role = 'user'
+      LEFT JOIN referral_rewards rr ON rr.referred_user_id = referred.id
+      WHERE referrer.role = 'user'
+      GROUP BY referrer.id, referrer.name, referrer.email, referrer.referral_code
+      ORDER BY referrer.name ASC, referrer.id ASC
+    `),
+    pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM users referred JOIN users referrer ON referrer.referral_code = referred.referred_by WHERE referred.role = 'user' AND referrer.role = 'user') AS total_referrals,
+        (SELECT COUNT(*) FROM referral_rewards WHERE status IN ('Pending', 'Approved', 'Paid')) AS successful_referrals,
+        (SELECT COUNT(*) FROM users referred JOIN users referrer ON referrer.referral_code = referred.referred_by
+         LEFT JOIN referral_rewards rr ON rr.referred_user_id = referred.id
+         WHERE referred.role = 'user' AND referrer.role = 'user' AND rr.id IS NULL) AS pending_referrals,
+        (SELECT COUNT(*) FROM referral_rewards WHERE status = 'Rejected') AS rejected_referrals,
+        (SELECT COALESCE(SUM(reward_amount), 0) FROM referral_rewards WHERE status IN ('Pending', 'Approved', 'Paid')) AS rewards_generated,
+        (SELECT COALESCE(SUM(reward_amount), 0) FROM referral_rewards WHERE status = 'Paid') AS rewards_paid,
+        GREATEST(0, (SELECT COUNT(*) FROM users WHERE role = 'user') * 10 -
+          (SELECT COUNT(*) FROM referral_rewards WHERE status IN ('Pending', 'Approved', 'Paid'))) AS remaining_slots
+    `)
   ]);
-  res.json({ referrals: referrals.rows, referrers: referrers.rows });
+  res.json({ referrals: referrals.rows, referrers: referrers.rows, referrer_totals: referrerTotals.rows, summary: summary.rows[0] });
+});
+
+app.put('/api/admin/referral-rewards/:id/status', authenticateToken, requireAdmin, async (req, res) => {
+  const rewardId = String(req.params.id);
+  const { status, fraud_reason } = req.body || {};
+  if (!/^[1-9]\d*$/.test(rewardId)) return res.status(400).json({ error: 'Reward ID must be a positive integer.' });
+  if (!['Approved', 'Rejected', 'Paid'].includes(status)) {
+    return res.status(400).json({ error: 'Reward status must be Approved, Rejected, or Paid.' });
+  }
+  const current = await pool.query('SELECT status, fraud_flag FROM referral_rewards WHERE id = $1', [rewardId]);
+  if (!current.rows.length) return res.status(404).json({ error: 'Referral reward not found.' });
+  if (status === 'Paid' && current.rows[0].status !== 'Approved') {
+    return res.status(400).json({ error: 'Approve a referral reward before marking it paid.' });
+  }
+  if (status === 'Approved' && current.rows[0].status !== 'Pending') {
+    return res.status(400).json({ error: 'Only pending referral rewards can be approved.' });
+  }
+  if (status === 'Rejected' && !['Pending', 'Approved'].includes(current.rows[0].status)) {
+    return res.status(400).json({ error: 'Only unpaid referral rewards can be rejected.' });
+  }
+  const reason = typeof fraud_reason === 'string' && fraud_reason.trim()
+    ? fraud_reason.trim()
+    : null;
+  const result = await pool.query(
+    `UPDATE referral_rewards
+     SET status = $1, updated_at = CURRENT_TIMESTAMP,
+         fraud_flag = fraud_flag OR $2,
+         fraud_reason = COALESCE($3, fraud_reason, CASE WHEN $2 THEN 'Rejected by admin.' END)
+     WHERE id = $4 RETURNING id, status, fraud_flag, fraud_reason`,
+    [status, status === 'Rejected', reason, rewardId]
+  );
+  res.json({ reward: result.rows[0] });
 });
 
 app.put('/api/admin/referrals/:id', authenticateToken, requireAdmin, async (req, res) => {
@@ -1852,10 +2086,14 @@ app.put('/api/admin/referrals/:id', authenticateToken, requireAdmin, async (req,
     ? req.body.referral_code.trim().toUpperCase()
     : '';
   const referredUser = await pool.query(
-    `SELECT id FROM users WHERE id = $1 AND role = 'user'`,
+    `SELECT id, referred_by FROM users WHERE id = $1 AND role = 'user'`,
     [req.params.id]
   );
   if (!referredUser.rows.length) return res.status(404).json({ error: 'Referred user not found.' });
+  const existingReward = await pool.query('SELECT id FROM referral_rewards WHERE referred_user_id = $1', [req.params.id]);
+  if (existingReward.rowCount && referredUser.rows[0].referred_by !== referralCode) {
+    return res.status(409).json({ error: 'A referral attribution with an eligible purchase cannot be changed.' });
+  }
 
   if (!referralCode) {
     await pool.query('UPDATE users SET referred_by = NULL WHERE id = $1', [req.params.id]);
@@ -2002,13 +2240,13 @@ app.patch('/api/admin/users/:id/suspend', authenticateToken, requireAdmin, async
 
 // ==================== SERVICES: duplicate + categories ====================
 app.post('/api/admin/services/:id/duplicate', authenticateToken, requireAdmin, async (req, res) => {
-  const original = await pool.query('SELECT category, name, rate_per_1000, min_quantity, max_quantity, description, image, status FROM services WHERE id = $1', [req.params.id]);
+  const original = await pool.query('SELECT category, name, rate_per_1000, pricing_type, min_quantity, max_quantity, description, image, status, requires_target_url, requires_phone FROM services WHERE id = $1', [req.params.id]);
   if (!original.rows.length) return res.status(404).json({ error: 'Service not found.' });
   const s = original.rows[0];
   const dup = await pool.query(
-    `INSERT INTO services (category, name, rate_per_1000, min_quantity, max_quantity, description, image, status)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-    [s.category, `${s.name} (copy)`, s.rate_per_1000, s.min_quantity, s.max_quantity, s.description, s.image, s.status]
+    `INSERT INTO services (category, name, rate_per_1000, pricing_type, min_quantity, max_quantity, description, image, status, requires_target_url, requires_phone)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+    [s.category, `${s.name} (copy)`, s.rate_per_1000, s.pricing_type, s.min_quantity, s.max_quantity, s.description, s.image, s.status, s.requires_target_url, s.requires_phone]
   );
   res.status(201).json({ service: dup.rows[0] });
 });
@@ -2701,7 +2939,7 @@ async function authenticateApiKey(req, res, next) {
 }
 
 app.post('/api/v2', authenticateApiKey, async (req, res) => {
-  const { action, service, link, quantity, order } = req.body || {};
+  const { action, service, link, phone_number, quantity, order } = req.body || {};
 
   switch (action) {
     case 'services': {
@@ -2722,14 +2960,15 @@ app.post('/api/v2', authenticateApiKey, async (req, res) => {
     case 'add': {
       const svc = await pool.query('SELECT * FROM services WHERE id = $1', [service]);
       if (!svc.rows.length) return res.json({ error: 'Invalid service id' });
-      if (!link) return res.json({ error: 'Link is required' });
+      if (svc.rows[0].requires_target_url && !link) return res.json({ error: 'Link is required' });
+      if (svc.rows[0].requires_phone && !phone_number) return res.json({ error: 'Phone number is required' });
 
       const qty = parseInt(quantity);
       if (!Number.isFinite(qty) || qty < svc.rows[0].min_quantity || qty > svc.rows[0].max_quantity) {
         return res.json({ error: `Quantity must be between ${svc.rows[0].min_quantity} and ${svc.rows[0].max_quantity}` });
       }
 
-      const placed = await placeOrder(req.apiUser, svc.rows[0], link, qty, req.apiUser.currency || 'INR');
+      const placed = await placeOrder(req.apiUser, svc.rows[0], link, qty, req.apiUser.currency || 'INR', phone_number);
       if (placed.error) return res.json({ error: placed.error });
 
       if (svc.rows[0].provider_id) {
@@ -2753,9 +2992,10 @@ app.post('/api/v2', authenticateApiKey, async (req, res) => {
       return res.json({
         order: row.rows[0].id,
         charge: row.rows[0].charge,
-        start_count: 0,
+        start_count: row.rows[0].start_count,
         status: row.rows[0].status,
-        remains: 0,
+        remains: row.rows[0].remains,
+        average_time: row.rows[0].average_time,
         currency: row.rows[0].currency
       });
     }
