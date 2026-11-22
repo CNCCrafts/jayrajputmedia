@@ -1,5 +1,9 @@
 # jayrajputmedia
 
+## Customer login persistence
+
+Customer login tokens are stored in browser `localStorage`, so customers stay signed in after a page refresh or payment-provider redirect. New customer tokens do not expire automatically; the Logout button clears the token from that browser. Existing, still-valid seven-day tokens are renewed when the customer profile loads. Customers should log out on shared devices.
+
 ## Wallet deposits
 
 Customers can top up with Cashfree or by scanning the PhonePe QR code (`public/images/bharatpe-qr.png`, UPI ID `6375063791@ybl`). PhonePe QR deposits require a UTR and remain pending until an administrator verifies the payment and approves the wallet credit. Submitting the UTR opens WhatsApp with a prefilled confirmation message; the deposit is not credited until it is verified.

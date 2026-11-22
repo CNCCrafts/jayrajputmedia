@@ -564,7 +564,7 @@ app.post('/api/auth/register', async (req, res) => {
 
     const userId = stmt.rows[0].id;
     console.log('User created with ID:', userId);
-    const token = jwt.sign({ id: userId, email, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: userId, email, role: 'user' }, JWT_SECRET);
     res.json({ token, user: { id: userId, name, email, role: 'user', referral_code: myRefCode } });
   } catch (err) {
     console.error('Register error:', err);
@@ -588,7 +588,7 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(403).json({ error: 'This account is suspended. Please contact support.' });
     }
 
-    const token = jwt.sign({ id: existingUser.id, email: existingUser.email, role: existingUser.role }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: existingUser.id, email: existingUser.email, role: existingUser.role }, JWT_SECRET);
 
     // Best-effort sign-in log (enables Admin > Users > Sign-in history). Non-blocking.
     pool.query('INSERT INTO user_logins (user_id, ip, user_agent) VALUES ($1, $2, $3)',
@@ -792,7 +792,7 @@ app.post('/api/auth/google', async (req, res) => {
     }
 
     const account = user.rows[0];
-    const token = jwt.sign({ id: account.id, email: account.email, role: account.role }, JWT_SECRET, { expiresIn: '7d' });
+    const token = jwt.sign({ id: account.id, email: account.email, role: account.role }, JWT_SECRET);
     res.json({
       token,
       user: {
@@ -816,7 +816,9 @@ app.post('/api/auth/google', async (req, res) => {
 // User Profile & Balance
 app.get('/api/user/profile', authenticateToken, async (req, res) => {
   const user = await pool.query('SELECT id, name, email, role, wallet_inr, wallet_usd, wallet_eur, currency, referral_code, referred_by FROM users WHERE id = $1', [req.user.id]);
-  res.json(user.rows[0]);
+  const profile = user.rows[0];
+  res.set('X-Auth-Token', jwt.sign({ id: profile.id, email: profile.email, role: profile.role }, JWT_SECRET));
+  res.json(profile);
 });
 
 app.get('/api/user/referrals', authenticateToken, async (req, res) => {

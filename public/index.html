@@ -31,7 +31,18 @@
 
 <script>
   function getAuthToken() {
-    return sessionStorage.getItem('jr_token') || localStorage.getItem('jr_token');
+    const persistentToken = localStorage.getItem('jr_token');
+    if (persistentToken) {
+      sessionStorage.removeItem('jr_token');
+      return persistentToken;
+    }
+
+    const legacyToken = sessionStorage.getItem('jr_token');
+    if (legacyToken) {
+      localStorage.setItem('jr_token', legacyToken);
+      sessionStorage.removeItem('jr_token');
+    }
+    return legacyToken;
   }
 
   function setAuthToken(token) {
@@ -95,7 +106,6 @@
     }
 
     history.replaceState(null, document.title, window.location.pathname);
-    fetchUserProfile();
     loadPaymentHistory();
   }
 </script>
@@ -3366,6 +3376,8 @@
         const res = await fetch('/api/user/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
+        const renewedToken = res.headers.get('X-Auth-Token');
+        if (res.ok && renewedToken) setAuthToken(renewedToken);
         if (res.status === 401 || res.status === 403) {
           sessionStorage.removeItem('jr_token');
           localStorage.removeItem('jr_token');
@@ -3392,7 +3404,7 @@
     window.addEventListener('DOMContentLoaded', async () => {
       initTheme();
       applySiteTheme();
-      await fetchUserProfile();
+      fetchUserProfile();
       loadServicesData();
       loadPaymentHistory();
       handlePaymentReturn();
